@@ -169,7 +169,7 @@ class MockP2PStream implements P2PStream {
   final Conn _mockConn = MockConn();
 
   @override
-  Future<Uint8List> read([int? count]) async {
+  Future<Uint8List> rawRead([int? count]) async {
     if (_readBuffer.isNotEmpty) {
       final available = _readBuffer.length;
       final bytesToRead =
@@ -195,11 +195,11 @@ class MockP2PStream implements P2PStream {
 
     _pendingReadCompleter ??= Completer<void>();
     await _pendingReadCompleter!.future;
-    return read(count); // Recurse
+    return rawRead(count); // Recurse
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_localCloseCompleter.isCompleted) {
       // Check local completer first
       throw StateError('Cannot write to locally closed stream');
@@ -399,7 +399,7 @@ class _StreamSinkWrapper<S> implements Sink<S> {
 Future<void> readFull(P2PStream stream, Uint8List buffer) async {
   var offset = 0;
   while (offset < buffer.length) {
-    final chunk = await stream.read(buffer.length - offset);
+    final chunk = await stream.rawRead(buffer.length - offset);
     if (chunk.isEmpty) {
       throw Exception(
         'Stream closed prematurely while reading full buffer (got $offset of ${buffer.length})',
@@ -428,7 +428,7 @@ Future<void> verifyPipe(P2PStream a, P2PStream b) async {
   // Write from B to A, then A to B
   (() async {
     try {
-      await b.write(message);
+      await b.rawWrite(message);
     } catch (e) {
       writeErrorB = e;
     }
@@ -437,7 +437,7 @@ Future<void> verifyPipe(P2PStream a, P2PStream b) async {
 
   (() async {
     try {
-      await a.write(message);
+      await a.rawWrite(message);
     } catch (e) {
       writeErrorA = e;
     }
@@ -492,7 +492,7 @@ Future<void> writeTestDelimited(P2PStream stream, List<int> message) async {
     message,
   );
   fullMessage[lengthBytes.length + message.length] = 10; // '\n'
-  await stream.write(fullMessage);
+  await stream.rawWrite(fullMessage);
 }
 
 // --- Test Suite ---
@@ -695,7 +695,7 @@ void main() {
         // Echo back to client
         final data = Uint8List(5);
         await readFull(stream, data);
-        await stream.write(data);
+        await stream.rawWrite(data);
       });
 
       final serverHandling = muxerA.handle(streamA); // Non-blocking
@@ -705,7 +705,7 @@ void main() {
       expect(selected, equals('/proto/test'));
 
       final testMessage = utf8.encode('hello');
-      await streamB.write(testMessage);
+      await streamB.rawWrite(testMessage);
 
       final response = Uint8List(testMessage.length);
       await readFull(streamB, response);

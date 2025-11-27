@@ -243,11 +243,11 @@ void main() {
           );
           try {
             final receivedData =
-                await stream.read().timeout(const Duration(seconds: 10));
+                await stream.rawRead().timeout(const Duration(seconds: 10));
             print(
               'Server Host (${serverPeerId.toBase58().substring(0, 10)}): Stream ${stream.id()} received ${receivedData.length} bytes.',
             );
-            await stream.write(receivedData); // Echo data
+            await stream.rawWrite(receivedData); // Echo data
             print(
               'Server Host (${serverPeerId.toBase58().substring(0, 10)}): Stream ${stream.id()} echoed data.',
             );
@@ -407,9 +407,9 @@ void main() {
         print(
           'Client1 (${client1PeerId.toBase58().substring(0, 10)}) sending data (${dataC1.length} bytes) on stream ${client1Stream.id()}',
         );
-        await client1Stream.write(dataC1);
+        await client1Stream.rawWrite(dataC1);
         final echoedToC1 =
-            await client1Stream.read().timeout(const Duration(seconds: 10));
+            await client1Stream.rawRead().timeout(const Duration(seconds: 10));
         expect(
           echoedToC1,
           orderedEquals(dataC1),
@@ -424,9 +424,9 @@ void main() {
         print(
           'Client2 (${client2PeerId.toBase58().substring(0, 10)}) sending data (${dataC2.length} bytes) on stream ${client2Stream.id()}',
         );
-        await client2Stream.write(dataC2);
+        await client2Stream.rawWrite(dataC2);
         final echoedToC2 =
-            await client2Stream.read().timeout(const Duration(seconds: 10));
+            await client2Stream.rawRead().timeout(const Duration(seconds: 10));
         expect(
           echoedToC2,
           orderedEquals(dataC2),

@@ -352,7 +352,7 @@ class MultistreamMuxer implements ProtocolSwitch {
     fullMessage[lengthBytes.length + message.length] = 10; // '\n'
 
     // Write to the stream
-    await stream.write(fullMessage);
+    await stream.rawWrite(fullMessage);
   }
 
   /// Reads a delimited message from the stream with comprehensive error handling
@@ -435,7 +435,7 @@ class MultistreamMuxer implements ProtocolSwitch {
         throw const FormatException('Stream closed during read operation');
       }
 
-      final chunk = await stream.read();
+      final chunk = await stream.rawRead();
 
       // Handle EOF gracefully
       if (chunk.isEmpty) {

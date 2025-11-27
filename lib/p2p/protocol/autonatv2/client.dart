@@ -105,12 +105,12 @@ class AutoNATv2ClientImpl implements AutoNATv2Client {
     try {
       // Create and send the dial request
       final request = _createDialRequest(requests, nonce);
-      await stream.write(request.writeToBuffer());
+      await stream.rawWrite(request.writeToBuffer());
 
       // Read the response
       Message response;
       try {
-        final responseData = await stream.read();
+        final responseData = await stream.rawRead();
         response = Message.fromBuffer(responseData);
       } catch (e) {
         stream.reset();
@@ -132,7 +132,7 @@ class AutoNATv2ClientImpl implements AutoNATv2Client {
 
         // Read the dial response after sending dial data
         try {
-          final responseData = await stream.read();
+          final responseData = await stream.rawRead();
           response = Message.fromBuffer(responseData);
         } catch (e) {
           stream.reset();
@@ -255,7 +255,7 @@ class AutoNATv2ClientImpl implements AutoNATv2Client {
       final response = Message()
         ..dialDataResponse = (DialDataResponse()..data = data);
 
-      await stream.write(response.writeToBuffer());
+      await stream.rawWrite(response.writeToBuffer());
       remain -= dataSize;
     }
   }
@@ -337,7 +337,7 @@ class AutoNATv2ClientImpl implements AutoNATv2Client {
     // Read the dial-back message
     DialBack? dialBack;
     try {
-      final data = await stream.read();
+      final data = await stream.rawRead();
       dialBack = DialBack.fromBuffer(data);
     } catch (e) {
       _log.fine(
@@ -374,7 +374,7 @@ class AutoNATv2ClientImpl implements AutoNATv2Client {
     try {
       final response = DialBackResponse()
         ..status = DialBackResponse_DialBackStatus.OK;
-      await stream.write(response.writeToBuffer());
+      await stream.rawWrite(response.writeToBuffer());
     } catch (e) {
       _log.fine('Failed to write dialback response: $e');
       stream.reset();

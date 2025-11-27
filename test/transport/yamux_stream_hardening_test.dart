@@ -49,7 +49,7 @@ void main() {
 
       // Attempt to read should throw a properly classified exception
       await expectLater(
-        stream.read(),
+        stream.rawRead(),
         throwsA(
           isA<YamuxStreamStateException>()
               .having((e) => e.currentState, 'currentState', 'reset')
@@ -68,7 +68,7 @@ void main() {
 
       // Attempt to read should throw a properly classified exception
       await expectLater(
-        stream.read(),
+        stream.rawRead(),
         throwsA(
           isA<YamuxStreamStateException>()
               .having((e) => e.currentState, 'currentState', 'closed')
@@ -81,7 +81,7 @@ void main() {
     test('read() on init stream throws YamuxStreamStateException', () async {
       // Stream starts in init state, attempt to read should throw
       await expectLater(
-        stream.read(),
+        stream.rawRead(),
         throwsA(
           isA<YamuxStreamStateException>()
               .having((e) => e.currentState, 'currentState', contains('init'))
@@ -96,7 +96,7 @@ void main() {
       await stream.open();
 
       // Start a read operation that will timeout
-      final readFuture = stream.read();
+      final readFuture = stream.rawRead();
 
       // Wait a bit to ensure the read is waiting
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -122,7 +122,7 @@ void main() {
       await stream.handleFrame(finFrame);
 
       // Read should return EOF (empty data) instead of throwing
-      final result = await stream.read();
+      final result = await stream.rawRead();
       expect(result, isEmpty);
     });
 
@@ -131,7 +131,7 @@ void main() {
       await stream.open();
 
       // Start a read operation and immediately set up expectation to handle the error
-      final readFuture = stream.read();
+      final readFuture = stream.rawRead();
       final expectation = expectLater(
         readFuture,
         throwsA(
@@ -160,11 +160,11 @@ void main() {
       // Note: YamuxStream only supports one pending read at a time, so only the last
       // completer is actually active. The earlier reads will hang.
       final readFutures = <Future<Uint8List>>[];
-      readFutures.add(stream.read().catchError((e) => Uint8List(0)));
+      readFutures.add(stream.rawRead().catchError((e) => Uint8List(0)));
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      readFutures.add(stream.read().catchError((e) => Uint8List(0)));
+      readFutures.add(stream.rawRead().catchError((e) => Uint8List(0)));
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      readFutures.add(stream.read().catchError((e) => Uint8List(0)));
+      readFutures.add(stream.rawRead().catchError((e) => Uint8List(0)));
 
       // Reset the stream while the last read is waiting
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -240,13 +240,13 @@ void main() {
 
       // Init state should be invalid for read
       await expectLater(
-        stream.read(),
+        stream.rawRead(),
         throwsA(isA<YamuxStreamStateException>()),
       );
 
       // Open state should be valid for read (will timeout but not throw state error)
       await stream.open();
-      final readFuture = stream.read();
+      final readFuture = stream.rawRead();
 
       // Immediately set up expectation to handle the error when it occurs
       final expectation = expectLater(
@@ -292,7 +292,7 @@ void main() {
       await stream.reset();
 
       try {
-        await stream.read();
+        await stream.rawRead();
         fail('Should have thrown an exception');
       } catch (e) {
         if (e is YamuxStreamStateException) {
@@ -309,7 +309,7 @@ void main() {
       await stream.reset();
 
       try {
-        await stream.read();
+        await stream.rawRead();
         fail('Should have thrown an exception');
       } catch (e) {
         if (e is YamuxStreamStateException) {

@@ -200,7 +200,7 @@ class YamuxStream implements P2PStream, core_mux.MuxedStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     final inputDataLength = data.length;
     _log.fine(
       '$_logPrefix YamuxStream.write: ENTERED. Requested to write $inputDataLength bytes. Current state: $_state, Our send window (remote receive): $_remoteReceiveWindow',
@@ -498,7 +498,7 @@ class YamuxStream implements P2PStream, core_mux.MuxedStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     return YamuxExceptionHandler.handleYamuxOperation<Uint8List>(
       () async => _performRead(maxLength),
       streamId: streamId,

@@ -310,11 +310,11 @@ void main() {
 
           try {
             final receivedData =
-                await stream.read().timeout(const Duration(seconds: 5));
+                await stream.rawRead().timeout(const Duration(seconds: 5));
             print(
               'Server Host received ${receivedData.length} bytes on stream ${stream.id()}',
             );
-            await stream.write(receivedData); // Echo data
+            await stream.rawWrite(receivedData); // Echo data
             print('Server Host echoed data on stream ${stream.id()}');
           } catch (e, s) {
             print('Server Host stream handler error: $e\n$s');
@@ -399,12 +399,12 @@ void main() {
         print(
           'Client Host sending ping data (${pingData.length} bytes) over stream ${clientStream.id()}',
         );
-        await clientStream.write(pingData);
+        await clientStream.rawWrite(pingData);
         print('Client Host ping data sent.');
 
         // Server handler reads and echoes, then completes serverHandlerFinishedProcessing
 
-        final echoedToClient = await clientStream.read().timeout(
+        final echoedToClient = await clientStream.rawRead().timeout(
           const Duration(seconds: 15),
           onTimeout: () {
             // Increased timeout

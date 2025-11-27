@@ -16,10 +16,10 @@ class ResetException implements Exception {
 /// MuxedStream is a bidirectional io pipe within a connection.
 abstract class MuxedStream {
   /// Reads data from the stream.
-  Future<List<int>> read(int length);
+  Future<List<int>> rawRead(int length);
 
   /// Writes data to the stream.
-  Future<void> write(List<int> data);
+  Future<void> rawWrite(List<int> data);
 
   /// Closes the stream.
   ///

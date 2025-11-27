@@ -45,7 +45,7 @@ class P2PStreamAdapter implements P2PStream {
       Future(() async {
         while (!_isClosed && !_incomingDataController.isClosed) {
           try {
-            final data = await _underlyingMuxedStream.read(0);
+            final data = await _underlyingMuxedStream.rawRead(0);
             if (data.isNotEmpty) {
               if (!_incomingDataController.isClosed) {
                 _incomingDataController.add(Uint8List.fromList(data));
@@ -142,7 +142,7 @@ class P2PStreamAdapter implements P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       throw const ResetException('Stream is closed');
     }
@@ -150,7 +150,7 @@ class P2PStreamAdapter implements P2PStream {
       // MuxedStream.read expects a length. If maxLength is null, decide a default.
       // If maxLength is 0, it might mean read whatever is available for some muxers.
       // This needs to align with the specific MuxedStream implementation.
-      final data = await _underlyingMuxedStream.read(
+      final data = await _underlyingMuxedStream.rawRead(
         maxLength ?? 0,
       ); // Assuming 0 means read available for underlying
       return Uint8List.fromList(data);
@@ -164,12 +164,12 @@ class P2PStreamAdapter implements P2PStream {
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) {
       throw const ResetException('Stream is closed');
     }
     try {
-      await _underlyingMuxedStream.write(data);
+      await _underlyingMuxedStream.rawWrite(data);
     } on ResetException {
       await _handleResetOrClose();
       rethrow;

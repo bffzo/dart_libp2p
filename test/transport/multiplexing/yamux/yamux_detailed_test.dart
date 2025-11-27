@@ -78,7 +78,7 @@ void main() {
         print('Test data created: $testData');
 
         print('\nWriting data from client stream...');
-        await stream1.write(testData).timeout(
+        await stream1.rawWrite(testData).timeout(
               const Duration(seconds: 5),
               onTimeout: () =>
                   throw TimeoutException('Timeout waiting for client write'),
@@ -86,7 +86,7 @@ void main() {
         print('Client stream write completed');
 
         print('\nReading data from server stream...');
-        final receivedData = await stream2.read().timeout(
+        final receivedData = await stream2.rawRead().timeout(
               const Duration(seconds: 5),
               onTimeout: () =>
                   throw TimeoutException('Timeout waiting for server read'),

@@ -41,7 +41,7 @@ Stream<List<int>> _adaptP2PStreamToDartStream(P2PStream p2pStream) {
           if (!controller.isClosed) await controller.close();
           break;
         }
-        final data = await p2pStream.read();
+        final data = await p2pStream.rawRead();
         if (p2pStream.isClosed || controller.isClosed) {
           // Check after read
           if (!controller.isClosed) await controller.close();
@@ -144,7 +144,7 @@ class CircuitV2Client implements Transport {
       final buffer = <int>[];
 
       // Read first chunk to get length prefix
-      var chunk = await stream.read();
+      var chunk = await stream.rawRead();
       print(
         '🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} bytes (chunk 1)',
       );
@@ -176,7 +176,7 @@ class CircuitV2Client implements Transport {
         print(
           '🎯 [CircuitV2Client._handleStreamV2] Need ${bytesRead + messageLength} bytes, have ${buffer.length}, reading more...',
         );
-        chunk = await stream.read();
+        chunk = await stream.rawRead();
         print(
           '🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} more bytes',
         );
@@ -287,8 +287,8 @@ class CircuitV2Client implements Transport {
       // Write the response with length prefix (DelimitedReader on relay side expects it)
       final responseBytes = stopResponse.writeToBuffer();
       final responseLengthBytes = encodeVarint(responseBytes.length);
-      await stream.write(responseLengthBytes);
-      await stream.write(responseBytes);
+      await stream.rawWrite(responseLengthBytes);
+      await stream.rawWrite(responseBytes);
       print(
         '🎯 [CircuitV2Client._handleStreamV2] STOP response sent successfully',
       );
@@ -416,7 +416,7 @@ class CircuitV2Client implements Transport {
       hopSinkController.stream.listen(
         (data) async {
           try {
-            await hopStream.write(Uint8List.fromList(data));
+            await hopStream.rawWrite(Uint8List.fromList(data));
           } catch (e) {
             _log.severe(
               '[CircuitV2Client.dial] ❌ Error writing to HOP stream: $e',

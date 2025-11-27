@@ -30,7 +30,7 @@ Stream<Uint8List> _p2pStreamToDartStream(P2PStream p2pStream) {
         // Checking p2pStream.isClosed here might lead to race conditions
         // if the stream closes between the check and the read() call.
         print('[Client] Reading chunk from P2PStream...');
-        final data = await p2pStream.read();
+        final data = await p2pStream.rawRead();
         print('[Client] Read ${data.length} bytes, adding to controller...');
         // Assuming read() throws an exception (e.g., StateError or custom) when closed or EOF.
         // If read() could return an empty list to signify EOF before closing, that would need handling.
@@ -241,7 +241,7 @@ class StreamSinkFromP2PStream implements Sink<List<int>> {
 
   @override
   void add(List<int> data) {
-    _stream.write(Uint8List.fromList(data));
+    _stream.rawWrite(Uint8List.fromList(data));
     // Note: P2PStream.write is often async. If writeDelimitedMessage expects synchronous writes
     // or needs flow control, this adapter might need to be more complex (e.g., using a StreamController).
     // For now, assuming P2PStream.write handles buffering or is suitably async.

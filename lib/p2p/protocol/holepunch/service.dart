@@ -228,7 +228,7 @@ class HolePunchServiceImpl implements HolePunchService {
       str.setDeadline(DateTime.now().add(streamTimeout));
 
       // Read Connect message
-      final msgBytes = await str.read();
+      final msgBytes = await str.rawRead();
       final msg = HolePunch.fromBuffer(msgBytes);
       if (msg.type != HolePunch_Type.CONNECT) {
         throw Exception(
@@ -257,10 +257,10 @@ class HolePunchServiceImpl implements HolePunchService {
 
       final tstart = DateTime.now();
       final responseBytes = response.writeToBuffer();
-      await str.write(Uint8List.fromList(responseBytes));
+      await str.rawWrite(Uint8List.fromList(responseBytes));
 
       // Read SYNC message
-      final syncMsgBytes = await str.read();
+      final syncMsgBytes = await str.rawRead();
       final syncMsg = HolePunch.fromBuffer(syncMsgBytes);
       if (syncMsg.type != HolePunch_Type.SYNC) {
         throw Exception(

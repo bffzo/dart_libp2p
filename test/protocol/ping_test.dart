@@ -137,8 +137,8 @@ void main() {
         [PingConstants.protocolId],
         Context(),
       );
-      await stream1.write(pingPayload);
-      final response1 = await stream1.read();
+      await stream1.rawWrite(pingPayload);
+      final response1 = await stream1.rawRead();
       expect(response1, equals(pingPayload));
       await stream1.close();
 
@@ -148,8 +148,8 @@ void main() {
         [PingConstants.protocolId],
         Context(),
       );
-      await stream2.write(pingPayload);
-      final response2 = await stream2.read();
+      await stream2.rawWrite(pingPayload);
+      final response2 = await stream2.rawRead();
       expect(response2, equals(pingPayload));
       await stream2.close();
     });
@@ -347,7 +347,7 @@ class PingPongMockStream implements P2PStream {
   @override
   StreamManagementScope scope() => _streamScope; // Changed return type
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     // Simulate echoing the last written data
     if (_lastWritten == null) throw Exception('No data written');
     final data = _lastWritten!;
@@ -356,7 +356,7 @@ class PingPongMockStream implements P2PStream {
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     _lastWritten = data;
   }
 

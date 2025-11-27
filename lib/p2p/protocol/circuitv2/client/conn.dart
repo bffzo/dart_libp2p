@@ -135,12 +135,12 @@ class RelayedConn implements TransportConn {
   // == TransportConn Methods ==
   @override
   Future<Uint8List> read([int? maxLength]) async {
-    return _stream.read(maxLength);
+    return _stream.rawRead(maxLength);
   }
 
   @override
   Future<void> write(Uint8List data) async {
-    await _stream.write(data);
+    await _stream.rawWrite(data);
   }
 
   @override

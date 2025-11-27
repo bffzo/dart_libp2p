@@ -461,13 +461,13 @@ class MockP2PStream extends _i1.Mock implements _i5.P2PStream {
       ) as _i2.StreamManagementScope);
 
   @override
-  _i9.Future<_i16.Uint8List> read([int? maxLength]) => (super.noSuchMethod(
+  _i9.Future<_i16.Uint8List> rawRead([int? maxLength]) => (super.noSuchMethod(
         Invocation.method(#read, [maxLength]),
         returnValue: _i9.Future<_i16.Uint8List>.value(_i16.Uint8List(0)),
       ) as _i9.Future<_i16.Uint8List>);
 
   @override
-  _i9.Future<void> write(_i16.Uint8List? data) => (super.noSuchMethod(
+  _i9.Future<void> rawWrite(_i16.Uint8List? data) => (super.noSuchMethod(
         Invocation.method(#write, [data]),
         returnValue: _i9.Future<void>.value(),
         returnValueForMissingStub: _i9.Future<void>.value(),

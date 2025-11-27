@@ -170,7 +170,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
           ..status = DialResponse_ResponseStatus.E_REQUEST_REJECTED);
 
       try {
-        stream.write(response.writeToBuffer());
+        stream.rawWrite(response.writeToBuffer());
       } catch (e) {
         stream.reset();
         _log.fine('Failed to write request rejected response to $peerId: $e');
@@ -196,7 +196,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
     // Read the request
     Message? message;
     try {
-      message = Message.fromBuffer(await stream.read());
+      message = Message.fromBuffer(await stream.rawRead());
     } catch (e) {
       stream.reset();
       _log.fine('Failed to read request from $peerId: $e');
@@ -243,7 +243,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
           ..status = DialResponse_ResponseStatus.E_DIAL_REFUSED);
 
       try {
-        stream.write(response.writeToBuffer());
+        stream.rawWrite(response.writeToBuffer());
       } catch (e) {
         stream.reset();
         _log.fine('Failed to write dial refused response to $peerId: $e');
@@ -273,7 +273,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
           ..status = DialResponse_ResponseStatus.E_REQUEST_REJECTED);
 
       try {
-        stream.write(response.writeToBuffer());
+        stream.rawWrite(response.writeToBuffer());
       } catch (e) {
         stream.reset();
         _log.fine('Failed to write request rejected response to $peerId: $e');
@@ -330,7 +330,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
         ..addrIdx = addrIdx);
 
     try {
-      stream.write(response.writeToBuffer());
+      stream.rawWrite(response.writeToBuffer());
     } catch (e) {
       stream.reset();
       _log.fine('Failed to write response to $peerId: $e');
@@ -361,12 +361,12 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
         ..addrIdx = addrIdx
         ..numBytes = Int64(numBytes));
 
-    await stream.write(request.writeToBuffer());
+    await stream.rawWrite(request.writeToBuffer());
 
     // Read dial data
     var remain = numBytes;
     while (remain > 0) {
-      final data = await stream.read();
+      final data = await stream.rawRead();
       if (data.isEmpty) {
         throw Exception('Dial data read failed: empty message');
       }
@@ -414,14 +414,14 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
 
       // Send the nonce
       final dialBack = DialBack()..nonce = Int64(nonce);
-      await stream.write(dialBack.writeToBuffer());
+      await stream.rawWrite(dialBack.writeToBuffer());
 
       // Close the write side of the stream
       await stream.closeWrite();
 
       // Read a response to ensure the message was delivered
       try {
-        await stream.read();
+        await stream.rawRead();
       } catch (e) {
         // Ignore read errors, we just want to make sure the message was sent
       }

@@ -74,9 +74,9 @@ void main() {
       print('Total streams after stream 3: ${multiplexer.totalStreamsCreated}');
 
       // Verify the streams work
-      await stream1.write(utf8.encode('test data 1'));
-      await stream2.write(utf8.encode('test data 2'));
-      await stream3.write(utf8.encode('test data 3'));
+      await stream1.rawWrite(utf8.encode('test data 1'));
+      await stream2.rawWrite(utf8.encode('test data 2'));
+      await stream3.rawWrite(utf8.encode('test data 3'));
 
       print('Successfully wrote data to all streams');
 
@@ -151,8 +151,8 @@ void main() {
       print('Total streams: ${multiplexer.totalStreamsCreated}');
 
       // Test writing data
-      await stream1.write(utf8.encode('muxed stream data 1'));
-      await stream2.write(utf8.encode('muxed stream data 2'));
+      await stream1.rawWrite(utf8.encode('muxed stream data 1'));
+      await stream2.rawWrite(utf8.encode('muxed stream data 2'));
       print('Successfully wrote data through muxed streams');
 
       // Clean up

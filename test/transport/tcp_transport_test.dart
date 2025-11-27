@@ -290,12 +290,12 @@ void main() {
         try {
           final dataToSend =
               Uint8List.fromList(List.generate(20, (i) => i % 256));
-          await clientStream.write(dataToSend);
+          await clientStream.rawWrite(dataToSend);
 
           final receivedDataBuffer = BytesBuilder();
           var totalBytesRead = 0;
           while (totalBytesRead < dataToSend.length) {
-            final chunk = await serverStream.read();
+            final chunk = await serverStream.rawRead();
             if (chunk.isEmpty && totalBytesRead < dataToSend.length) {
               fail(
                 'Yamux stream (small data) closed prematurely. Expected ${dataToSend.length}, got $totalBytesRead',
@@ -352,12 +352,12 @@ void main() {
         try {
           final dataToSend =
               Uint8List.fromList(List.generate(1000, (i) => i % 256));
-          await clientStream.write(dataToSend);
+          await clientStream.rawWrite(dataToSend);
 
           final receivedDataBuffer = BytesBuilder();
           var totalBytesRead = 0;
           while (totalBytesRead < dataToSend.length) {
-            final chunk = await serverStream.read();
+            final chunk = await serverStream.rawRead();
             if (chunk.isEmpty && totalBytesRead < dataToSend.length) {
               fail(
                 'Yamux stream (large data) closed prematurely. Expected ${dataToSend.length}, got $totalBytesRead',

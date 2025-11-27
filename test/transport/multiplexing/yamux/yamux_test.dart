@@ -144,10 +144,10 @@ void main() {
         // Test basic data transfer to verify stream is working
         print('Testing basic data transfer...');
         final testData = Uint8List.fromList([1, 2, 3]);
-        await withTimeout(stream1.write(testData), 'test data write');
+        await withTimeout(stream1.rawWrite(testData), 'test data write');
         print('Client wrote test data: $testData');
 
-        final received = await withTimeout(stream2.read(), 'test data read');
+        final received = await withTimeout(stream2.rawRead(), 'test data read');
         print('Server received data: $received');
         expect(received, equals(testData));
         print('Basic data transfer successful');
@@ -196,20 +196,20 @@ void main() {
         // Send data from stream1 to stream2
         print('Testing client to server transfer...');
         final data1 = Uint8List.fromList([1, 2, 3, 4]);
-        await withTimeout(stream1.write(data1), 'client write');
+        await withTimeout(stream1.rawWrite(data1), 'client write');
         print('Client wrote: $data1');
 
-        final received1 = await withTimeout(stream2.read(), 'server read');
+        final received1 = await withTimeout(stream2.rawRead(), 'server read');
         print('Server received: $received1');
         expect(received1, equals(data1));
 
         // Send data from stream2 to stream1
         print('Testing server to client transfer...');
         final data2 = Uint8List.fromList([5, 6, 7, 8]);
-        await withTimeout(stream2.write(data2), 'server write');
+        await withTimeout(stream2.rawWrite(data2), 'server write');
         print('Server wrote: $data2');
 
-        final received2 = await withTimeout(stream1.read(), 'client read');
+        final received2 = await withTimeout(stream1.rawRead(), 'client read');
         print('Client received: $received2');
         expect(received2, equals(data2));
 
@@ -264,8 +264,8 @@ void main() {
           Future.wait([
             for (var i = 0; i < streams1.length; i++)
               Future.wait([
-                streams1[i].write(Uint8List.fromList([i + 1])),
-                streams2[i].write(Uint8List.fromList([i + 10])),
+                streams1[i].rawWrite(Uint8List.fromList([i + 1])),
+                streams2[i].rawWrite(Uint8List.fromList([i + 10])),
               ]),
           ]),
           'concurrent writes',
@@ -275,9 +275,9 @@ void main() {
         print('Verifying received data...');
         for (var i = 0; i < streams1.length; i++) {
           final received1 =
-              await withTimeout(streams1[i].read(), 'stream${i + 1} read');
+              await withTimeout(streams1[i].rawRead(), 'stream${i + 1} read');
           final received2 =
-              await withTimeout(streams2[i].read(), 'stream${i + 1} read');
+              await withTimeout(streams2[i].rawRead(), 'stream${i + 1} read');
           print(
             'Stream $i - Client received: $received1, Server received: $received2',
           );
@@ -346,7 +346,7 @@ void main() {
         print('Starting data transfer...');
         // Start write operation in the background
         final writeComplete = Completer<void>();
-        stream1.write(largeData).then((_) {
+        stream1.rawWrite(largeData).then((_) {
           print('Write operation completed');
           writeComplete.complete();
         }).catchError((Object e) {
@@ -360,7 +360,7 @@ void main() {
 
         while (receivedData.length < largeData.length) {
           try {
-            final chunk = await withTimeout(stream2.read(), 'chunk read');
+            final chunk = await withTimeout(stream2.rawRead(), 'chunk read');
             if (chunk.isEmpty) {
               print('Received empty chunk, stream might be closed');
               break;
@@ -433,7 +433,7 @@ void main() {
 
       print('Verifying server stream closure...');
       await expectLater(
-        withTimeout(stream2.read(), 'stream2 read'),
+        withTimeout(stream2.rawRead(), 'stream2 read'),
         throwsA(isA<StateError>()),
       );
       expect(stream2.isClosed, isTrue);
@@ -666,10 +666,10 @@ void main() {
         // Test basic data transfer before closing connection
         print('Testing basic data transfer...');
         final testData = Uint8List.fromList([1, 2, 3]);
-        await withTimeout(stream1.write(testData), 'test data write');
+        await withTimeout(stream1.rawWrite(testData), 'test data write');
         print('Client wrote test data: $testData');
 
-        final received = await withTimeout(stream2.read(), 'test data read');
+        final received = await withTimeout(stream2.rawRead(), 'test data read');
         print('Server received data: $received');
         expect(received, equals(testData));
         print('Basic data transfer successful');
@@ -683,12 +683,12 @@ void main() {
 
         print('Verifying stream operations fail...');
         await expectLater(
-          () => stream1.write(Uint8List.fromList([1])),
+          () => stream1.rawWrite(Uint8List.fromList([1])),
           throwsA(isA<StateError>()),
           reason: 'Write operation should fail after connection close',
         );
         await expectLater(
-          stream1.read,
+          stream1.rawRead,
           throwsA(isA<StateError>()),
           reason: 'Read operation should fail after connection close',
         );
@@ -761,14 +761,14 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       await expectLater(
-        () => withTimeout(stream2.read(), 'stream2 read after reset'),
+        () => withTimeout(stream2.rawRead(), 'stream2 read after reset'),
         throwsA(isA<StateError>()),
         reason: 'Reading from a reset stream should throw an error',
       );
 
       await expectLater(
         () => withTimeout(
-          stream2.write(Uint8List.fromList([1, 2, 3])),
+          stream2.rawWrite(Uint8List.fromList([1, 2, 3])),
           'stream2 write after reset',
         ),
         throwsA(isA<StateError>()),
@@ -806,7 +806,7 @@ void main() {
       // 2. Attempting to write on stream1 should fail
       await expectLater(
         () => withTimeout(
-          stream1.write(Uint8List.fromList([1])),
+          stream1.rawWrite(Uint8List.fromList([1])),
           'stream1 write after closeWrite',
         ),
         throwsA(isA<StateError>()),
@@ -816,12 +816,12 @@ void main() {
 
       // 3. stream2 can still write data
       final testData = Uint8List.fromList([10, 20, 30]);
-      await withTimeout(stream2.write(testData), 'stream2 write');
+      await withTimeout(stream2.rawWrite(testData), 'stream2 write');
       print('Stream 2 wrote data: $testData');
 
       // 4. stream1 can still read that data
       final receivedData =
-          await withTimeout(stream1.read(), 'stream1 read after closeWrite');
+          await withTimeout(stream1.rawRead(), 'stream1 read after closeWrite');
       expect(
         receivedData,
         equals(testData),
@@ -832,7 +832,7 @@ void main() {
       // 5. stream2 reading should now get an EOF because stream1 sent FIN
       await expectLater(
         () => withTimeout(
-          stream2.read(),
+          stream2.rawRead(),
           'stream2 read after stream1 closeWrite',
         ),
         throwsA(isA<StateError>()),
@@ -870,7 +870,7 @@ void main() {
       // 2. Attempting to read from stream1 should fail or return EOF
       // The implementation completes the pending read with an empty list (EOF)
       final readResult =
-          await withTimeout(stream1.read(), 'stream1 read after closeRead');
+          await withTimeout(stream1.rawRead(), 'stream1 read after closeRead');
       expect(
         readResult.isEmpty,
         isTrue,
@@ -880,19 +880,19 @@ void main() {
 
       // 3. stream2 can still write data (it's unaware of the local closeRead)
       final testDataFrom2 = Uint8List.fromList([1, 2, 3]);
-      await withTimeout(stream2.write(testDataFrom2), 'stream2 write');
+      await withTimeout(stream2.rawWrite(testDataFrom2), 'stream2 write');
       print('Stream 2 wrote data successfully');
 
       // 4. stream1 can still write data
       final testDataFrom1 = Uint8List.fromList([4, 5, 6]);
       await withTimeout(
-        stream1.write(testDataFrom1),
+        stream1.rawWrite(testDataFrom1),
         'stream1 write after closeRead',
       );
       print('Stream 1 wrote data successfully');
 
       // 5. stream2 can read the data from stream1
-      final receivedData = await withTimeout(stream2.read(), 'stream2 read');
+      final receivedData = await withTimeout(stream2.rawRead(), 'stream2 read');
       expect(
         receivedData,
         equals(testDataFrom1),
@@ -978,7 +978,7 @@ void main() {
         Future.microtask(() async {
           try {
             for (final chunk in chunks) {
-              await stream1.write(chunk);
+              await stream1.rawWrite(chunk);
               chunksWritten++;
 
               // Check session health every 10 chunks
@@ -1003,7 +1003,7 @@ void main() {
         while (receivedData.length < largeData.length) {
           try {
             final chunk = await withTimeout(
-              stream2.read(),
+              stream2.rawRead(),
               'chunk read ${readOperations + 1}',
             );
             if (chunk.isEmpty) {

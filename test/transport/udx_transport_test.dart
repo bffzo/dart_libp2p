@@ -135,14 +135,14 @@ void main() {
         print(
           '[Data Transfer Test] Dialer stream (${dialerStream.id()}) writing data...',
         );
-        await dialerStream.write(testData);
+        await dialerStream.rawWrite(testData);
         print('[Data Transfer Test] Dialer stream data written.');
 
         // Receive data on listener side
         print(
           '[Data Transfer Test] Listener stream (${listenerStream.id()}) reading data...',
         );
-        final receivedData = await listenerStream.read();
+        final receivedData = await listenerStream.rawRead();
         print(
           '[Data Transfer Test] Listener stream data read: ${receivedData.length} bytes.',
         );
@@ -275,11 +275,11 @@ void main() {
         print(
           '[Lifecycle Test] Writing data to dialer stream ${dialerStream.id()}',
         );
-        await dialerStream.write(Uint8List.fromList([1, 2, 3]));
+        await dialerStream.rawWrite(Uint8List.fromList([1, 2, 3]));
         print(
           '[Lifecycle Test] Reading data from listener stream ${listenerStream.id()}',
         );
-        await listenerStream.read();
+        await listenerStream.rawRead();
         print('[Lifecycle Test] Data read by listener.');
 
         // Wait for idle state (using shorter timeout)
@@ -396,7 +396,7 @@ void main() {
         await dialerConn.close(); // Close the connection
 
         expect(
-          () => dialerStream.write(
+          () => dialerStream.rawWrite(
             Uint8List.fromList([1, 2, 3]),
           ), // Try writing to its stream
           throwsA(isA<StateError>()),

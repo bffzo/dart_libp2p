@@ -36,10 +36,10 @@ abstract class P2PStream {
   StreamManagementScope scope(); // Changed to StreamManagementScope
 
   /// Reads data from the stream
-  Future<Uint8List> read([int? maxLength]);
+  Future<Uint8List> rawRead([int? maxLength]);
 
   /// Writes data to the stream
-  Future<void> write(Uint8List data);
+  Future<void> rawWrite(Uint8List data);
 
   /// Returns a Dart Stream of the incoming data
   P2PStream get incoming;

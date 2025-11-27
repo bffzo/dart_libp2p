@@ -128,13 +128,13 @@ class MockP2PStream implements P2PStream {
   StreamManagementScope scope() => MockStreamManagementScope();
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) throw Exception('Stream closed');
     return Uint8List.fromList([1, 2, 3]);
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) throw Exception('Stream closed');
   }
 

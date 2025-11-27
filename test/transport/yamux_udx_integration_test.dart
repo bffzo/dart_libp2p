@@ -640,11 +640,11 @@ void main() {
               try {
                 while (!stream.isClosed) {
                   final data =
-                      await stream.read().timeout(const Duration(seconds: 10));
+                      await stream.rawRead().timeout(const Duration(seconds: 10));
                   if (data.isEmpty) break;
 
                   print('   Server echoing ${data.length} bytes');
-                  await stream.write(data);
+                  await stream.rawWrite(data);
                 }
               } catch (e) {
                 print('   Server echo handler error: $e');
@@ -792,7 +792,7 @@ Future<void> _testLargePayloadTransfer(
   Future.microtask(() async {
     try {
       for (final chunk in chunks) {
-        await clientStream.write(chunk);
+        await clientStream.rawWrite(chunk);
         chunksWritten++;
 
         // Check session health every 10 chunks
@@ -815,7 +815,7 @@ Future<void> _testLargePayloadTransfer(
   while (receivedData.length < largeData.length) {
     try {
       final chunk =
-          await serverStream.read().timeout(const Duration(seconds: 10));
+          await serverStream.rawRead().timeout(const Duration(seconds: 10));
       if (chunk.isEmpty) {
         print(
           '   ⚠️ [$testContext] Received empty chunk, stream might be closed',
@@ -917,7 +917,7 @@ Future<void> _testLargePayloadEcho(
     try {
       while (receivedData.length < largeData.length) {
         final chunk =
-            await clientStream.read().timeout(const Duration(seconds: 10));
+            await clientStream.rawRead().timeout(const Duration(seconds: 10));
         if (chunk.isEmpty) {
           print(
             '   ⚠️ [$testContext] Received empty chunk, stream might be closed',
@@ -948,7 +948,7 @@ Future<void> _testLargePayloadEcho(
   Future.microtask(() async {
     try {
       for (final chunk in chunks) {
-        await clientStream.write(chunk);
+        await clientStream.rawWrite(chunk);
         chunksWritten++;
 
         // Check stream health every 10 chunks
@@ -1054,7 +1054,7 @@ Future<void> _testLargePayloadTransferP2P(
   Future.microtask(() async {
     try {
       for (final chunk in chunks) {
-        await clientStream.write(chunk);
+        await clientStream.rawWrite(chunk);
         chunksWritten++;
 
         // Check stream health every 10 chunks
@@ -1077,7 +1077,7 @@ Future<void> _testLargePayloadTransferP2P(
   while (receivedData.length < largeData.length) {
     try {
       final chunk =
-          await serverStream.read().timeout(const Duration(seconds: 10));
+          await serverStream.rawRead().timeout(const Duration(seconds: 10));
       if (chunk.isEmpty) {
         print(
           '   ⚠️ [$testContext] Received empty chunk, stream might be closed',

@@ -982,7 +982,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
     _logger.fine(
       '[UDXSessionConn $id] read() delegating to initialP2PStream.read(length: $length)',
     );
-    return initialP2PStream.read(length);
+    return initialP2PStream.rawRead(length);
   }
 
   @override
@@ -991,7 +991,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
     _logger.fine(
       '[UDXSessionConn $id] write() delegating to initialP2PStream.write() data length: ${data.length}',
     );
-    return initialP2PStream.write(data);
+    return initialP2PStream.rawWrite(data);
   }
 
   @override

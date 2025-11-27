@@ -111,7 +111,7 @@ class HangingMockStream implements P2PStream {
   StreamManagementScope scope() => NullScope();
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       return Uint8List(0);
     }
@@ -128,7 +128,7 @@ class HangingMockStream implements P2PStream {
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) {
       throw StateError('Stream is closed');
     }

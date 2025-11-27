@@ -69,14 +69,14 @@ void main() {
       udxDataController.add(testData);
       await Future<void>.delayed(Duration.zero); // allow stream to deliver data
 
-      final result = await adapter.read();
+      final result = await adapter.rawRead();
       expect(result, equals(testData));
     });
 
     test('read() waits for data if buffer is empty', () async {
       final testData = Uint8List.fromList([4, 5, 6]);
 
-      final readFuture = adapter.read();
+      final readFuture = adapter.rawRead();
 
       // Ensure read is waiting
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -91,10 +91,10 @@ void main() {
       udxDataController.add(testData);
       await Future<void>.delayed(Duration.zero);
 
-      final part1 = await adapter.read(3);
+      final part1 = await adapter.rawRead(3);
       expect(part1, equals(Uint8List.fromList([1, 2, 3])));
 
-      final part2 = await adapter.read();
+      final part2 = await adapter.rawRead();
       expect(part2, equals(Uint8List.fromList([4, 5])));
     });
 
@@ -103,14 +103,14 @@ void main() {
       await udxDataController.close();
       await adapter.close();
 
-      final result = await adapter.read();
+      final result = await adapter.rawRead();
       expect(result, isEmpty);
     });
 
     test(
       'read() throws TimeoutException if no data arrives',
       () async {
-        final readFuture = adapter.read();
+        final readFuture = adapter.rawRead();
 
         expect(
           () async => readFuture,
@@ -128,7 +128,7 @@ void main() {
       final testData = Uint8List.fromList([7, 8, 9]);
       when(mockUdxStream.add(any)).thenAnswer((_) async {});
 
-      await adapter.write(testData);
+      await adapter.rawWrite(testData);
 
       verify(mockUdxStream.add(testData)).called(1);
       verify(mockParentConn.notifyActivity()).called(1);
@@ -138,7 +138,7 @@ void main() {
       await adapter.close();
 
       expect(
-        () async => adapter.write([1, 2, 3]),
+        () async => adapter.rawWrite([1, 2, 3]),
         throwsA(isA<StateError>()),
       );
     });

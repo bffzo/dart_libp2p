@@ -98,19 +98,19 @@ class SwarmStream implements P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       throw Exception('Stream $_id is closed');
     }
-    return _underlyingMuxedStream.read(maxLength);
+    return _underlyingMuxedStream.rawRead(maxLength);
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) {
       throw Exception('Stream $_id is closed');
     }
-    return _underlyingMuxedStream.write(data);
+    return _underlyingMuxedStream.rawWrite(data);
   }
 
   @override

@@ -161,13 +161,13 @@ Future<void> writeDelimited(
   fullMessage[lengthBytes.length + message.length] = 10; // '\n'
 
   // Write to the stream
-  await stream.write(fullMessage);
+  await stream.rawWrite(fullMessage);
 }
 
 /// Reads a delimited message from the stream
 Future<Uint8List> readDelimited(P2PStream stream) async {
   // Read the first byte to determine if we need to read more for the varint
-  final firstByte = await stream.read(1);
+  final firstByte = await stream.rawRead(1);
   if (firstByte.isEmpty) {
     throw const FormatException('Unexpected end of stream');
   }
@@ -190,7 +190,7 @@ Future<Uint8List> readDelimited(P2PStream stream) async {
   // Read the rest of the varint bytes if needed
   Uint8List varintBytes;
   if (bytesToRead > 0) {
-    final restOfVarint = await stream.read(bytesToRead - 1);
+    final restOfVarint = await stream.rawRead(bytesToRead - 1);
     varintBytes = Uint8List(bytesToRead);
     varintBytes[0] = firstByte[0];
     varintBytes.setRange(1, bytesToRead, restOfVarint);
@@ -205,7 +205,7 @@ Future<Uint8List> readDelimited(P2PStream stream) async {
   }
 
   // Read the message
-  final message = await stream.read(length);
+  final message = await stream.rawRead(length);
   if (message.length != length) {
     throw const FormatException('Unexpected end of stream');
   }

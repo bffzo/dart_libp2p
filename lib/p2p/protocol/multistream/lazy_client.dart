@@ -99,7 +99,7 @@ class _LazyClientConn implements LazyConn {
       return Uint8List(0);
     }
 
-    return stream.read(maxLength);
+    return stream.rawRead(maxLength);
   }
 
   /// Performs the read handshake
@@ -186,7 +186,7 @@ class _LazyClientConn implements LazyConn {
       // Write handshake
       if (extra == null || extra.isEmpty) {
         // Just write the handshake
-        stream.write(Uint8List.fromList(handshakeBytes));
+        stream.rawWrite(Uint8List.fromList(handshakeBytes));
         _writeHandshakeLock.complete();
         _writeHandshakeDone = true;
         return 0;
@@ -199,7 +199,7 @@ class _LazyClientConn implements LazyConn {
           handshakeBytes.length + extra.length,
           extra,
         );
-        stream.write(combined);
+        stream.rawWrite(combined);
         _writeHandshakeLock.complete();
         _writeHandshakeDone = true;
         return extra.length;
@@ -239,7 +239,7 @@ class _LazyClientConn implements LazyConn {
       }
     }
 
-    await stream.write(data);
+    await stream.rawWrite(data);
   }
 
   /// Close closes the underlying stream after finishing the handshake.

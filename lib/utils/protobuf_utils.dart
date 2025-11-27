@@ -33,7 +33,7 @@ Future<Uint8List> _readNBytesFromP2PStream(
     // Try to read at most 'needed' bytes, but P2PStream.read() might return less or more if not capped.
     // The P2PStream.read([int? maxLength]) signature allows specifying maxLength.
     // Let's use it to avoid over-reading if possible, though the core logic handles carry-over.
-    final chunk = await stream.read(needed);
+    final chunk = await stream.rawRead(needed);
 
     if (chunk.isEmpty) {
       if (stream.isClosed) {
@@ -100,7 +100,7 @@ Future<T> readDelimited<T extends GeneratedMessage>(
       // Read a new chunk from the P2PStream. Read one byte at a time for varint, or a small chunk.
       // Reading one byte at a time can be inefficient. Let's read a small chunk.
       final chunk = await stream
-          .read(12); // Read up to 12 bytes (max varint is 10, plus a bit)
+          .rawRead(12); // Read up to 12 bytes (max varint is 10, plus a bit)
       if (chunk.isEmpty) {
         if (stream.isClosed) {
           throw StateError(
@@ -171,5 +171,5 @@ Future<void> writeDelimited(P2PStream stream, GeneratedMessage message) async {
   fullMessage.add(lengthBytes);
   fullMessage.add(messageBytes);
 
-  await stream.write(fullMessage.toBytes());
+  await stream.rawWrite(fullMessage.toBytes());
 }

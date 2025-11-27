@@ -413,7 +413,7 @@ class OBPProtocolHandler {
       _logger.info('[$context] WRITE_VERIFY: Calling stream.write() now...');
       final writeStartTime = DateTime.now();
 
-      await stream.write(frameData).timeout(timeout);
+      await stream.rawWrite(frameData).timeout(timeout);
 
       final writeEndTime = DateTime.now();
       final writeDuration = writeEndTime.difference(writeStartTime);
@@ -502,7 +502,7 @@ class OBPProtocolHandler {
         );
         final readStartTime = DateTime.now();
 
-        final chunk = await stream.read().timeout(timeout);
+        final chunk = await stream.rawRead().timeout(timeout);
 
         final readEndTime = DateTime.now();
         final readDuration = readEndTime.difference(readStartTime);

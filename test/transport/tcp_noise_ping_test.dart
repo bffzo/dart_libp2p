@@ -226,20 +226,20 @@ void main() {
           'Client sending ping data (${pingData.length} bytes) on stream ${clientStream.id()}',
         );
 
-        await clientStream.write(pingData);
+        await clientStream.rawWrite(pingData);
         print('Client ping data sent.');
 
-        final receivedOnServer = await serverStream.read();
+        final receivedOnServer = await serverStream.rawRead();
         print(
           'Server received data (${receivedOnServer.length} bytes) on stream ${serverStream.id()}',
         );
         expect(receivedOnServer, orderedEquals(pingData));
 
         print('Server echoing data back on stream ${serverStream.id()}');
-        await serverStream.write(receivedOnServer);
+        await serverStream.rawWrite(receivedOnServer);
         print('Server data echoed.');
 
-        final echoedToClient = await clientStream.read();
+        final echoedToClient = await clientStream.rawRead();
         print(
           'Client received echoed data (${echoedToClient.length} bytes) on stream ${clientStream.id()}',
         );

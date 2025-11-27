@@ -161,7 +161,7 @@ class MockP2PStream implements P2PStream {
   final Conn _mockConn;
 
   @override
-  Future<Uint8List> read([int? count]) async {
+  Future<Uint8List> rawRead([int? count]) async {
     if (_readBuffer.isNotEmpty) {
       final available = _readBuffer.length;
       final bytesToRead =
@@ -182,11 +182,11 @@ class MockP2PStream implements P2PStream {
     }
     _pendingReadCompleter ??= Completer<void>();
     await _pendingReadCompleter!.future;
-    return read(count);
+    return rawRead(count);
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_localCloseCompleter.isCompleted) {
       throw StateError('Cannot write to locally closed stream');
     }
@@ -323,10 +323,10 @@ class P2PStreamToTransportConnAdapter implements TransportConn {
   final String _id;
 
   @override
-  Future<Uint8List> read([int? length]) => _p2pStream.read(length);
+  Future<Uint8List> read([int? length]) => _p2pStream.rawRead(length);
 
   @override
-  Future<void> write(Uint8List data) => _p2pStream.write(data);
+  Future<void> write(Uint8List data) => _p2pStream.rawWrite(data);
 
   @override
   Future<void> close() => _p2pStream.close();

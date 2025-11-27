@@ -94,8 +94,8 @@ void main() {
           Context(),
         );
         final pingPayload = Uint8List(32);
-        await stream.write(pingPayload);
-        final response = await stream.read();
+        await stream.rawWrite(pingPayload);
+        final response = await stream.rawRead();
         expect(response, equals(pingPayload));
         await stream.close();
         await subscription.cancel();

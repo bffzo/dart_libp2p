@@ -218,7 +218,7 @@ class MockMuxedStream implements core_mux.MuxedStream, P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       throw StateError('Stream is closed');
     }
@@ -228,7 +228,7 @@ class MockMuxedStream implements core_mux.MuxedStream, P2PStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     if (_isClosed) {
       throw StateError('Stream is closed');
     }

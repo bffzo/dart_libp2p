@@ -153,7 +153,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     _logger.fine(
       '[UDXP2PStreamAdapter ${id()}] read called. maxLength: $maxLength, isClosed: $_isClosed, buffer: ${_readBuffer.length}, pendingRead: ${_pendingReadCompleter != null}',
     );
@@ -258,7 +258,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     _logger.fine(
       '[UDXP2PStreamAdapter ${id()}] write called with ${data.length} bytes. isClosed: $_isClosed',
     );

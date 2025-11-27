@@ -160,11 +160,11 @@ Future<void> main(List<String> arguments) async {
         '[$currentHostLogId] Received ping from $remotePeerLogId on stream ${stream.id()} for protocol ${stream.protocol()}',
       );
       try {
-        final data = await stream.read().timeout(const Duration(seconds: 10));
+        final data = await stream.rawRead().timeout(const Duration(seconds: 10));
         print(
           '[$currentHostLogId] Ping data received (${data.length} bytes) from $remotePeerLogId.',
         );
-        await stream.write(data); // Echo the data back (pong)
+        await stream.rawWrite(data); // Echo the data back (pong)
         print('[$currentHostLogId] Pong sent to $remotePeerLogId.');
       } catch (e, s) {
         print(
@@ -278,13 +278,13 @@ Future<void> main(List<String> arguments) async {
           final payload = Uint8List.fromList(
             List.generate(32, (_) => Random().nextInt(256)),
           );
-          await clientStream.write(payload);
+          await clientStream.rawWrite(payload);
           print(
             '[$currentHostLogId] Sent ${payload.length} byte ping to ${shortPeerId(targetPeerId)}.',
           );
 
           final pongData =
-              await clientStream.read().timeout(const Duration(seconds: 10));
+              await clientStream.rawRead().timeout(const Duration(seconds: 10));
           final rtt = DateTime.now().difference(startTime);
           print(
             '[$currentHostLogId] Received ${pongData.length} byte pong from ${shortPeerId(targetPeerId)} in ${rtt.inMilliseconds}ms.',
