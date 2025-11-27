@@ -1,18 +1,17 @@
 import 'dart:async';
 
-import 'package:dart_libp2p/p2p/discovery/mdns/mdns.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/p2p/discovery/mdns/mdns.dart';
 import 'package:test/test.dart';
 
 // Mock implementation of Host for testing
 class MockHost implements Host {
+  MockHost(this._peerId, this._listenAddrs);
   final PeerId _peerId;
   final List<MultiAddr> _listenAddrs;
-
-  MockHost(this._peerId, this._listenAddrs);
 
   @override
   PeerId get id => _peerId;
@@ -41,7 +40,8 @@ void main() {
 
   setUpAll(() {
     // Create the PeerId once before all tests
-    testPeerId = PeerId.fromString('QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N');
+    testPeerId =
+        PeerId.fromString('QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N');
   });
 
   group('MdnsDiscovery', () {
@@ -127,14 +127,17 @@ void main() {
       final notifee = TestNotifee();
       final mdns = MdnsDiscovery(host, notifee: notifee);
 
-      final testAddr = MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/${testPeerId.toString()}');
+      final testAddr = MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/$testPeerId');
       final testPeer = AddrInfo(testPeerId, [testAddr]);
 
       mdns.debugInjectPeer(testPeer);
 
       expect(notifee.discoveredPeers, hasLength(1));
       expect(notifee.discoveredPeers.first.id, equals(testPeerId));
-      expect(notifee.discoveredPeers.first.addrs.first.toString(), equals(testAddr.toString()));
+      expect(
+        notifee.discoveredPeers.first.addrs.first.toString(),
+        equals(testAddr.toString()),
+      );
     });
 
     test('findPeers forwards discovered peers to returned stream', () async {
@@ -153,14 +156,19 @@ void main() {
         }
       });
 
-      final discoveredAddr = MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/${testPeerId.toString()}');
+      final discoveredAddr =
+          MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/$testPeerId');
       final discovered = AddrInfo(testPeerId, [discoveredAddr]);
 
       mdns.debugInjectPeer(discovered);
 
-      final received = await completer.future.timeout(const Duration(seconds: 2));
+      final received =
+          await completer.future.timeout(const Duration(seconds: 2));
       expect(received.id, equals(testPeerId));
-      expect(received.addrs.first.toString(), equals(discoveredAddr.toString()));
+      expect(
+        received.addrs.first.toString(),
+        equals(discoveredAddr.toString()),
+      );
 
       await sub.cancel();
       await mdns.stop();
@@ -178,10 +186,12 @@ void main() {
     });
 
     test('handles host with multiple addresses', () async {
-      final addr1 = MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/${testPeerId.toString()}');
-      final addr2 = MultiAddr('/ip4/192.168.1.100/udp/4002/udx/p2p/${testPeerId.toString()}');
+      final addr1 = MultiAddr('/ip4/127.0.0.1/udp/4001/udx/p2p/$testPeerId');
+      final addr2 = MultiAddr(
+        '/ip4/192.168.1.100/udp/4002/udx/p2p/$testPeerId',
+      );
       final host = MockHost(testPeerId, [addr1, addr2]);
-      
+
       final mdns = MdnsDiscovery(host);
 
       // Should handle multiple addresses without issues

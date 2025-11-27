@@ -1,23 +1,22 @@
-    import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 /// Manages Docker containers for holepunch integration testing
 class ContainerOrchestrator {
-  final String composeFile;
-  final Map<String, String> environment;
-  final Duration startupTimeout;
-  
-  bool _isStarted = false;
-  
-  /// Check if the orchestrator is already started
-  bool get isStarted => _isStarted;
-
   ContainerOrchestrator({
     required this.composeFile,
     Map<String, String>? environment,
     this.startupTimeout = const Duration(minutes: 2),
   }) : environment = environment ?? <String, String>{};
+  final String composeFile;
+  final Map<String, String> environment;
+  final Duration startupTimeout;
+
+  bool _isStarted = false;
+
+  /// Check if the orchestrator is already started
+  bool get isStarted => _isStarted;
 
   /// Start the container topology
   Future<void> start() async {
@@ -26,19 +25,19 @@ class ContainerOrchestrator {
     }
 
     print('🐳 Starting container topology...');
-    
+
     // Clean up any leftover containers and networks first
     await _cleanup();
-    
+
     // Build images first
     await _runDockerCompose(['build']);
-    
+
     // Start services with orphan removal
     await _runDockerCompose(['up', '-d', '--remove-orphans']);
-    
+
     // Wait for services to be healthy
     await _waitForServices();
-    
+
     _isStarted = true;
     print('✅ Container topology is ready');
   }
@@ -48,18 +47,17 @@ class ContainerOrchestrator {
     if (!_isStarted) return;
 
     print('🛑 Stopping container topology...');
-    
+
     try {
       // Stop and remove containers
       await _runDockerCompose(['down', '-v', '--remove-orphans']);
-      
+
       // Clean up networks
       await _runDockerCompose(['down', '--volumes', '--remove-orphans']);
-      
     } catch (e) {
       print('⚠️ Warning during cleanup: $e');
     }
-    
+
     _isStarted = false;
     print('✅ Container cleanup complete');
   }
@@ -67,14 +65,16 @@ class ContainerOrchestrator {
   /// Clean up any leftover containers and networks before starting
   Future<void> _cleanup() async {
     print('🧹 Cleaning up leftover containers and networks...');
-    
+
     try {
       // Force stop and remove any containers from this compose project
-      await _runDockerCompose(['down', '-v', '--remove-orphans', '--timeout', '10']);
-      
+      await _runDockerCompose(
+        ['down', '-v', '--remove-orphans', '--timeout', '10'],
+      );
+
       // Clean up specific holepunch networks that might be leftover
       await _cleanupHolepunchNetworks();
-      
+
       print('✅ Cleanup completed');
     } catch (e) {
       print('⚠️  Warning: Cleanup encountered issues (may be normal): $e');
@@ -85,16 +85,17 @@ class ContainerOrchestrator {
   Future<void> _cleanupHolepunchNetworks() async {
     final networkNames = [
       'holepunch_nat_a',
-      'holepunch_nat_b', 
+      'holepunch_nat_b',
       'holepunch_public',
       'holepunch_nat_a_net',
       'holepunch_nat_b_net',
       'holepunch_public_net',
     ];
-    
+
     for (final networkName in networkNames) {
       try {
-        final result = await Process.run('docker', ['network', 'rm', networkName]);
+        final result =
+            await Process.run('docker', ['network', 'rm', networkName]);
         if (result.exitCode == 0) {
           print('🗑️  Removed network: $networkName');
         }
@@ -108,7 +109,7 @@ class ContainerOrchestrator {
   Future<Map<String, ContainerStatus>> getStatus() async {
     final result = await _runDockerCompose(['ps', '--format', 'json']);
     final lines = result.split('\n').where((line) => line.trim().isNotEmpty);
-    
+
     final statuses = <String, ContainerStatus>{};
     for (final line in lines) {
       try {
@@ -124,7 +125,7 @@ class ContainerOrchestrator {
         print('⚠️ Failed to parse container status: $e');
       }
     }
-    
+
     return statuses;
   }
 
@@ -135,13 +136,13 @@ class ContainerOrchestrator {
       ['exec', containerName, ...command],
       environment: _buildEnvironment(),
     );
-    
+
     if (result.exitCode != 0) {
       throw ContainerException(
         'Command failed in container $containerName: ${result.stderr}',
       );
     }
-    
+
     return result.stdout as String;
   }
 
@@ -150,7 +151,7 @@ class ContainerOrchestrator {
     final args = ['logs'];
     if (lines != null) args.addAll(['--tail', lines.toString()]);
     args.add(containerName);
-    
+
     final result = await Process.run('docker', args);
     return result.stdout as String;
   }
@@ -164,11 +165,14 @@ class ContainerOrchestrator {
     Duration? timeout,
   }) async {
     // Default timeout for holepunch operations, shorter for others
-    timeout ??= (path == '/holepunch' ? Duration(seconds: 45) : Duration(seconds: 10));
-    
+    timeout ??= (path == '/holepunch'
+        ? const Duration(seconds: 45)
+        : const Duration(seconds: 10));
+
     try {
-      return await _performHttpRequest(containerName, path, method, body).timeout(timeout);
-    } on TimeoutException catch (e) {
+      return await _performHttpRequest(containerName, path, method, body)
+          .timeout(timeout);
+    } on TimeoutException {
       throw ContainerException(
         'HTTP $method $path to $containerName timed out after ${timeout.inSeconds}s',
       );
@@ -177,42 +181,44 @@ class ContainerOrchestrator {
 
   Future<Map<String, dynamic>> _performHttpRequest(
     String containerName,
-    String path, 
+    String path,
     String method,
     Map<String, dynamic>? body,
   ) async {
     // Map container names to their host-mapped ports
     final portMappings = {
       'peer-a': 8081,
-      'peer-b': 8082, 
+      'peer-b': 8082,
       'relay-server': 8083,
     };
-    
+
     final port = portMappings[containerName];
     if (port == null) {
-      throw ContainerException('No port mapping configured for container $containerName');
+      throw ContainerException(
+        'No port mapping configured for container $containerName',
+      );
     }
-    
+
     // Make HTTP request to localhost with mapped port
     final client = HttpClient();
     try {
       final uri = Uri.parse('http://localhost:$port$path');
       final request = await client.openUrl(method, uri);
-      
+
       if (body != null) {
         request.headers.contentType = ContentType.json;
         request.write(jsonEncode(body));
       }
-      
+
       final response = await request.close();
       final responseBody = await utf8.decoder.bind(response).join();
-      
+
       if (response.statusCode >= 400) {
         throw ContainerException(
           'HTTP $method $path failed with ${response.statusCode}: $responseBody',
         );
       }
-      
+
       return jsonDecode(responseBody) as Map<String, dynamic>;
     } finally {
       client.close();
@@ -225,29 +231,26 @@ class ContainerOrchestrator {
       ['-f', composeFile, ...args],
       environment: _buildEnvironment(),
     );
-    
+
     if (result.exitCode != 0) {
       throw ContainerException(
         'Docker compose command failed: ${result.stderr}',
       );
     }
-    
+
     return result.stdout as String;
   }
 
-
-
   Future<void> _waitForServices() async {
     print('⏳ Waiting for services to be ready...');
-    
+
     final timeout = DateTime.now().add(startupTimeout);
-    
+
     while (DateTime.now().isBefore(timeout)) {
       final statuses = await getStatus();
-      final unhealthyServices = statuses.values
-          .where((status) => status.state != 'running')
-          .toList();
-      
+      final unhealthyServices =
+          statuses.values.where((status) => status.state != 'running').toList();
+
       if (unhealthyServices.isEmpty) {
         // All services are running, now check control APIs
         final controlChecks = await _checkControlAPIs();
@@ -256,17 +259,17 @@ class ContainerOrchestrator {
           return;
         }
       }
-      
+
       print('⏳ Waiting for ${unhealthyServices.length} services...');
-      await Future.delayed(Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
-    
+
     throw ContainerException('Services failed to start within timeout');
   }
 
   Future<bool> _checkControlAPIs() async {
     final peerServices = ['peer-a', 'peer-b', 'relay-server'];
-    
+
     for (final service in peerServices) {
       try {
         await sendControlRequest(service, '/status');
@@ -276,7 +279,7 @@ class ContainerOrchestrator {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -288,15 +291,14 @@ class ContainerOrchestrator {
 }
 
 class ContainerStatus {
-  final String name;
-  final String state;
-  final String health;
-
   ContainerStatus({
     required this.name,
     required this.state,
     required this.health,
   });
+  final String name;
+  final String state;
+  final String health;
 
   bool get isHealthy => state == 'running' && health != 'unhealthy';
 
@@ -305,9 +307,9 @@ class ContainerStatus {
 }
 
 class ContainerException implements Exception {
-  final String message;
   ContainerException(this.message);
-  
+  final String message;
+
   @override
   String toString() => 'ContainerException: $message';
 }

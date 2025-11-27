@@ -1,17 +1,17 @@
-import 'package:test/test.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/config/config.dart';
+import 'package:dart_libp2p/core/crypto/ed25519.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/context.dart';
 import 'package:dart_libp2p/core/network/network.dart';
 import 'package:dart_libp2p/core/network/rcmgr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/p2p/host/basic/basic_host.dart';
-import 'package:dart_libp2p/p2p/network/swarm/swarm.dart';
 import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/peerstore.dart';
+import 'package:dart_libp2p/p2p/network/swarm/swarm.dart';
 import 'package:dart_libp2p/p2p/transport/basic_upgrader.dart';
-import 'package:dart_libp2p/core/crypto/ed25519.dart';
-import 'package:dart_libp2p/config/config.dart';
 import 'package:logging/logging.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Self-dial Prevention Tests', () {
@@ -78,7 +78,10 @@ void main() {
       await host.connect(selfAddrInfo);
 
       // Verify that no connection was actually established
-      expect(host.network.connectedness(localPeerId), equals(Connectedness.notConnected));
+      expect(
+        host.network.connectedness(localPeerId),
+        equals(Connectedness.notConnected),
+      );
     });
 
     test('Swarm.dialPeer should prevent self-dialing', () async {
@@ -86,12 +89,14 @@ void main() {
 
       // This should throw an exception preventing self-dial
       expect(
-        () async => await swarm.dialPeer(context, localPeerId),
-        throwsA(isA<Exception>().having(
-          (e) => e.toString(),
-          'message',
-          contains('Cannot dial self'),
-        )),
+        () async => swarm.dialPeer(context, localPeerId),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Cannot dial self'),
+          ),
+        ),
       );
     });
 
@@ -113,7 +118,8 @@ void main() {
 
         // Check that the prevention message was logged
         expect(
-          logMessages.any((msg) => msg.contains('Preventing self-dial attempt')),
+          logMessages
+              .any((msg) => msg.contains('Preventing self-dial attempt')),
           isTrue,
           reason: 'Expected self-dial prevention log message',
         );
@@ -122,7 +128,8 @@ void main() {
       }
     });
 
-    test('Self-dial prevention should work with different address formats', () async {
+    test('Self-dial prevention should work with different address formats',
+        () async {
       // Test with various address formats that might be encountered
       final testAddresses = [
         '/ip4/0.0.0.0/udp/33220/udx',
@@ -141,7 +148,10 @@ void main() {
         await host.connect(selfAddrInfo);
 
         // Verify no connection was established
-        expect(host.network.connectedness(localPeerId), equals(Connectedness.notConnected));
+        expect(
+          host.network.connectedness(localPeerId),
+          equals(Connectedness.notConnected),
+        );
       }
     });
   });

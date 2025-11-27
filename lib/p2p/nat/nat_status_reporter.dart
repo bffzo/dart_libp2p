@@ -1,30 +1,31 @@
 import 'dart:async';
-import 'nat_behavior.dart';
-import 'nat_behavior_tracker.dart';
-import 'nat_traversal_strategy.dart';
+import 'package:dart_libp2p/p2p/nat/nat_behavior.dart';
+import 'package:dart_libp2p/p2p/nat/nat_behavior_tracker.dart';
+import 'package:dart_libp2p/p2p/nat/nat_traversal_strategy.dart';
 
 /// A class that provides NAT status reporting
 class NatStatusReporter {
-  /// The NAT behavior tracker to use for status reporting
-  final NatBehaviorTracker _behaviorTracker;
-
   /// Creates a new NAT status reporter
   NatStatusReporter({
     required NatBehaviorTracker behaviorTracker,
   }) : _behaviorTracker = behaviorTracker;
 
+  /// The NAT behavior tracker to use for status reporting
+  final NatBehaviorTracker _behaviorTracker;
+
   /// Gets the current NAT behavior
   NatBehavior get currentBehavior => _behaviorTracker.currentBehavior;
 
   /// Gets the history of NAT behavior records
-  List<NatBehaviorRecord> get behaviorHistory => _behaviorTracker.behaviorHistory;
+  List<NatBehaviorRecord> get behaviorHistory =>
+      _behaviorTracker.behaviorHistory;
 
   /// Gets the recommended traversal strategy based on the current NAT behavior
-  TraversalStrategy get recommendedStrategy => 
+  TraversalStrategy get recommendedStrategy =>
       NatTraversalStrategy.selectStrategy(currentBehavior);
 
   /// Gets a description of the recommended traversal strategy
-  String get recommendedStrategyDescription => 
+  String get recommendedStrategyDescription =>
       NatTraversalStrategy.getStrategyDescription(recommendedStrategy);
 
   /// Gets a summary of the current NAT status
@@ -41,8 +42,8 @@ class NatStatusReporter {
       'recommendedStrategy': recommendedStrategy.name,
       'recommendedStrategyDescription': recommendedStrategyDescription,
       'historySize': behaviorHistory.length,
-      'lastUpdated': behaviorHistory.isNotEmpty 
-          ? behaviorHistory.last.timestamp.toIso8601String() 
+      'lastUpdated': behaviorHistory.isNotEmpty
+          ? behaviorHistory.last.timestamp.toIso8601String()
           : null,
     };
   }
@@ -50,26 +51,33 @@ class NatStatusReporter {
   /// Gets a detailed report of the NAT status
   Map<String, dynamic> getDetailedReport() {
     final summary = getStatusSummary();
-    
+
     // Add history to the report
-    final historyList = behaviorHistory.map((record) => {
-      'timestamp': record.timestamp.toIso8601String(),
-      'mappingBehavior': record.behavior.mappingBehavior.name,
-      'filteringBehavior': record.behavior.filteringBehavior.name,
-      'supportsHairpinning': record.behavior.supportsHairpinning,
-      'preservesPorts': record.behavior.preservesPorts,
-      'supportsPortMapping': record.behavior.supportsPortMapping,
-      'mappingLifetime': record.behavior.mappingLifetime,
-    }).toList();
-    
+    final historyList = behaviorHistory
+        .map(
+          (record) => {
+            'timestamp': record.timestamp.toIso8601String(),
+            'mappingBehavior': record.behavior.mappingBehavior.name,
+            'filteringBehavior': record.behavior.filteringBehavior.name,
+            'supportsHairpinning': record.behavior.supportsHairpinning,
+            'preservesPorts': record.behavior.preservesPorts,
+            'supportsPortMapping': record.behavior.supportsPortMapping,
+            'mappingLifetime': record.behavior.mappingLifetime,
+          },
+        )
+        .toList();
+
     summary['history'] = historyList;
-    
+
     return summary;
   }
 
   /// Gets the recommended traversal strategy for a connection with a remote peer
   TraversalStrategy getRecommendedPeerStrategy(NatBehavior remoteBehavior) {
-    return NatTraversalStrategy.selectPeerStrategy(currentBehavior, remoteBehavior);
+    return NatTraversalStrategy.selectPeerStrategy(
+      currentBehavior,
+      remoteBehavior,
+    );
   }
 
   /// Gets a description of the recommended traversal strategy for a connection with a remote peer

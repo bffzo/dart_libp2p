@@ -1,9 +1,5 @@
-import 'dart:io';
-import 'dart:typed_data';
-
+import 'package:dart_libp2p/core/network/transport_conn.dart';
 import 'package:dart_libp2p/p2p/security/secured_connection.dart';
-
-import '../../core/network/transport_conn.dart';
 
 /// Interface for security protocols in libp2p
 abstract class SecurityProtocol {
@@ -16,4 +12,3 @@ abstract class SecurityProtocol {
   /// Secures an inbound connection
   Future<SecuredConnection> secureInbound(TransportConn connection);
 }
-

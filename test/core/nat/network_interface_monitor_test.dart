@@ -1,10 +1,14 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:dart_libp2p/p2p/nat/network_interface_monitor.dart';
 import 'package:test/test.dart';
 
 /// A mock implementation of NetworkInterface for testing
 class MockNetworkInterface implements NetworkInterface {
+  MockNetworkInterface({
+    required this.name,
+    required this.addresses,
+    required this.index,
+  });
   @override
   final String name;
 
@@ -13,12 +17,6 @@ class MockNetworkInterface implements NetworkInterface {
 
   @override
   final int index;
-
-  MockNetworkInterface({
-    required this.name,
-    required this.addresses,
-    required this.index,
-  });
 }
 
 void main() {
@@ -38,7 +36,8 @@ void main() {
 
       // Create monitor with mock interface provider
       monitor = NetworkInterfaceMonitor(
-        checkInterval: Duration(milliseconds: 100), // Short interval for testing
+        checkInterval:
+            const Duration(milliseconds: 100), // Short interval for testing
         interfaceProvider: () async => mockInterfaces,
       );
     });
@@ -93,7 +92,8 @@ void main() {
       expect(callbackCalled, isTrue);
     });
 
-    test('should not notify callbacks when network interfaces do not change', () async {
+    test('should not notify callbacks when network interfaces do not change',
+        () async {
       // Initialize the monitor with initial interfaces
       await monitor.initialize();
 

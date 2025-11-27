@@ -1,11 +1,19 @@
 import 'dart:async';
 
-import 'stomp_constants.dart';
-import 'stomp_exceptions.dart';
-import 'stomp_frame.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_constants.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_exceptions.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_frame.dart';
 
 /// Represents a STOMP subscription
 class StompSubscription {
+  StompSubscription({
+    required this.id,
+    required this.destination,
+    required this.ackMode,
+    Map<String, String>? headers,
+  })  : headers = headers ?? <String, String>{},
+        _messageController = StreamController<StompMessage>.broadcast(),
+        _unsubscribeController = StreamController<void>.broadcast();
   final String id;
   final String destination;
   final String ackMode;
@@ -14,15 +22,6 @@ class StompSubscription {
   final StreamController<void> _unsubscribeController;
 
   bool _isActive = true;
-
-  StompSubscription({
-    required this.id,
-    required this.destination,
-    required this.ackMode,
-    Map<String, String>? headers,
-  }) : headers = headers ?? <String, String>{},
-       _messageController = StreamController<StompMessage>.broadcast(),
-       _unsubscribeController = StreamController<void>.broadcast();
 
   /// Stream of messages for this subscription
   Stream<StompMessage> get messages => _messageController.stream;
@@ -36,7 +35,10 @@ class StompSubscription {
   /// Delivers a message to this subscription
   void deliverMessage(StompMessage message) {
     if (!_isActive) {
-      throw StompSubscriptionException('Cannot deliver message to inactive subscription', id);
+      throw StompSubscriptionException(
+        'Cannot deliver message to inactive subscription',
+        id,
+      );
     }
     _messageController.add(message);
   }
@@ -44,7 +46,7 @@ class StompSubscription {
   /// Marks this subscription as unsubscribed
   void markUnsubscribed() {
     if (!_isActive) return;
-    
+
     _isActive = false;
     _unsubscribeController.add(null);
     _messageController.close();
@@ -68,13 +70,6 @@ class StompSubscription {
 
 /// Represents a STOMP message received from a subscription
 class StompMessage {
-  final String messageId;
-  final String destination;
-  final String subscriptionId;
-  final Map<String, String> headers;
-  final String? body;
-  final String? ackId;
-
   StompMessage({
     required this.messageId,
     required this.destination,
@@ -87,7 +82,9 @@ class StompMessage {
   /// Creates a StompMessage from a MESSAGE frame
   factory StompMessage.fromFrame(StompFrame frame) {
     if (frame.command != StompCommands.message) {
-      throw StompFrameException('Cannot create StompMessage from non-MESSAGE frame: ${frame.command}');
+      throw StompFrameException(
+        'Cannot create StompMessage from non-MESSAGE frame: ${frame.command}',
+      );
     }
 
     final messageId = frame.getHeader(StompHeaders.messageId);
@@ -95,13 +92,19 @@ class StompMessage {
     final subscriptionId = frame.getHeader(StompHeaders.subscription);
 
     if (messageId == null) {
-      throw const StompFrameException('MESSAGE frame missing message-id header');
+      throw const StompFrameException(
+        'MESSAGE frame missing message-id header',
+      );
     }
     if (destination == null) {
-      throw const StompFrameException('MESSAGE frame missing destination header');
+      throw const StompFrameException(
+        'MESSAGE frame missing destination header',
+      );
     }
     if (subscriptionId == null) {
-      throw const StompFrameException('MESSAGE frame missing subscription header');
+      throw const StompFrameException(
+        'MESSAGE frame missing subscription header',
+      );
     }
 
     return StompMessage(
@@ -113,6 +116,12 @@ class StompMessage {
       ackId: frame.getHeader(StompHeaders.ack),
     );
   }
+  final String messageId;
+  final String destination;
+  final String subscriptionId;
+  final Map<String, String> headers;
+  final String? body;
+  final String? ackId;
 
   /// Gets a header value
   String? getHeader(String name) {
@@ -150,17 +159,21 @@ class StompMessage {
 /// Manager for STOMP subscriptions
 class StompSubscriptionManager {
   final Map<String, StompSubscription> _subscriptions = {};
-  final StreamController<StompSubscription> _subscriptionController = StreamController<StompSubscription>.broadcast();
-  final StreamController<String> _unsubscribeController = StreamController<String>.broadcast();
+  final StreamController<StompSubscription> _subscriptionController =
+      StreamController<StompSubscription>.broadcast();
+  final StreamController<String> _unsubscribeController =
+      StreamController<String>.broadcast();
 
   /// Stream of new subscriptions
-  Stream<StompSubscription> get onSubscription => _subscriptionController.stream;
+  Stream<StompSubscription> get onSubscription =>
+      _subscriptionController.stream;
 
   /// Stream of unsubscribed subscription IDs
   Stream<String> get onUnsubscribe => _unsubscribeController.stream;
 
   /// Gets all active subscriptions
-  List<StompSubscription> get subscriptions => _subscriptions.values.where((s) => s.isActive).toList();
+  List<StompSubscription> get subscriptions =>
+      _subscriptions.values.where((s) => s.isActive).toList();
 
   /// Gets a subscription by ID
   StompSubscription? getSubscription(String id) {
@@ -175,11 +188,17 @@ class StompSubscriptionManager {
     Map<String, String>? headers,
   }) {
     if (_subscriptions.containsKey(id)) {
-      throw StompSubscriptionException('Subscription with ID already exists', id);
+      throw StompSubscriptionException(
+        'Subscription with ID already exists',
+        id,
+      );
     }
 
     if (_subscriptions.length >= StompConstants.maxSubscriptions) {
-      throw StompSubscriptionException('Maximum number of subscriptions reached', id);
+      throw StompSubscriptionException(
+        'Maximum number of subscriptions reached',
+        id,
+      );
     }
 
     final subscription = StompSubscription(
@@ -277,18 +296,17 @@ enum StompAckMode {
 
 /// Pending acknowledgment for a message
 class PendingAck {
-  final String messageId;
-  final String subscriptionId;
-  final String? ackId;
-  final DateTime timestamp;
-  final StompAckMode ackMode;
-
   PendingAck({
     required this.messageId,
     required this.subscriptionId,
     required this.ackId,
     required this.ackMode,
   }) : timestamp = DateTime.now();
+  final String messageId;
+  final String subscriptionId;
+  final String? ackId;
+  final DateTime timestamp;
+  final StompAckMode ackMode;
 
   @override
   String toString() {
@@ -315,8 +333,9 @@ class StompAckManager {
     if (ack.ackId == null) return; // No ack required
 
     _pendingAcks[ack.ackId!] = ack;
-    
-    final subscriptionAcks = _subscriptionAcks.putIfAbsent(ack.subscriptionId, () => <PendingAck>[]);
+
+    final subscriptionAcks =
+        _subscriptionAcks.putIfAbsent(ack.subscriptionId, () => <PendingAck>[]);
     subscriptionAcks.add(ack);
   }
 
@@ -336,10 +355,10 @@ class StompAckManager {
         final ackIndex = subscriptionAcks.indexOf(ack);
         if (ackIndex != -1) {
           // Acknowledge all messages up to and including this one
-          for (int i = 0; i <= ackIndex; i++) {
+          for (var i = 0; i <= ackIndex; i++) {
             final pendingAck = subscriptionAcks[i];
             if (pendingAck.ackId != null) {
-              _pendingAcks.remove(pendingAck.ackId!);
+              _pendingAcks.remove(pendingAck.ackId);
               if (pendingAck != ack) {
                 acknowledged.add(pendingAck);
               }
@@ -373,10 +392,10 @@ class StompAckManager {
         final ackIndex = subscriptionAcks.indexOf(ack);
         if (ackIndex != -1) {
           // Nack all messages up to and including this one
-          for (int i = 0; i <= ackIndex; i++) {
+          for (var i = 0; i <= ackIndex; i++) {
             final pendingAck = subscriptionAcks[i];
             if (pendingAck.ackId != null) {
-              _pendingAcks.remove(pendingAck.ackId!);
+              _pendingAcks.remove(pendingAck.ackId);
               if (pendingAck != ack) {
                 nacked.add(pendingAck);
               }
@@ -405,7 +424,7 @@ class StompAckManager {
     if (subscriptionAcks != null) {
       for (final ack in subscriptionAcks) {
         if (ack.ackId != null) {
-          _pendingAcks.remove(ack.ackId!);
+          _pendingAcks.remove(ack.ackId);
         }
       }
     }

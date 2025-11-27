@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'conn.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
 
 /// TransportConn extends the Conn interface with methods for reading and writing raw data.
 /// This is used by transport implementations that need to send and receive data directly.
@@ -10,7 +10,7 @@ abstract class TransportConn extends Conn {
   /// Otherwise, reads whatever is available.
   Future<Uint8List> read([int? length]);
 
-  Socket get socket ;
+  Socket get socket;
 
   /// Writes data to the connection.
   Future<void> write(Uint8List data);

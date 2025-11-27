@@ -9,6 +9,12 @@ typedef NetworkInterfaceProvider = Future<List<NetworkInterface>> Function();
 
 /// A class that monitors network interfaces for changes
 class NetworkInterfaceMonitor {
+  /// Creates a new network interface monitor
+  NetworkInterfaceMonitor({
+    this.checkInterval = const Duration(seconds: 30),
+    NetworkInterfaceProvider? interfaceProvider,
+  }) : _interfaceProvider = interfaceProvider ?? NetworkInterface.list;
+
   /// The interval between checks for network interface changes
   final Duration checkInterval;
 
@@ -23,12 +29,6 @@ class NetworkInterfaceMonitor {
 
   /// Callbacks for network interface changes
   final List<NetworkInterfaceChangeCallback> _callbacks = [];
-
-  /// Creates a new network interface monitor
-  NetworkInterfaceMonitor({
-    this.checkInterval = const Duration(seconds: 30),
-    NetworkInterfaceProvider? interfaceProvider,
-  }) : _interfaceProvider = interfaceProvider ?? NetworkInterface.list;
 
   /// Initializes the network interface monitor
   Future<void> initialize() async {
@@ -87,7 +87,8 @@ class NetworkInterfaceMonitor {
     // Check each interface
     for (final newInterface in newInterfaces) {
       // Try to find matching interface in current interfaces
-      final matchingInterfaceExists = _currentInterfaces.any((i) => i.name == newInterface.name);
+      final matchingInterfaceExists =
+          _currentInterfaces.any((i) => i.name == newInterface.name);
 
       // If interface not found, they've changed
       if (!matchingInterfaceExists) {
@@ -100,7 +101,10 @@ class NetworkInterfaceMonitor {
       );
 
       // Check if addresses have changed
-      if (_addressesHaveChanged(matchingInterface.addresses, newInterface.addresses)) {
+      if (_addressesHaveChanged(
+        matchingInterface.addresses,
+        newInterface.addresses,
+      )) {
         return true;
       }
     }
@@ -109,7 +113,10 @@ class NetworkInterfaceMonitor {
   }
 
   /// Checks if addresses have changed
-  bool _addressesHaveChanged(List<InternetAddress> oldAddresses, List<InternetAddress> newAddresses) {
+  bool _addressesHaveChanged(
+    List<InternetAddress> oldAddresses,
+    List<InternetAddress> newAddresses,
+  ) {
     // If the number of addresses has changed, they've changed
     if (oldAddresses.length != newAddresses.length) {
       return true;
@@ -118,7 +125,8 @@ class NetworkInterfaceMonitor {
     // Check each address
     for (final newAddress in newAddresses) {
       // Check if address exists in old addresses
-      final addressExists = oldAddresses.any((a) => a.address == newAddress.address);
+      final addressExists =
+          oldAddresses.any((a) => a.address == newAddress.address);
       if (!addressExists) {
         return true;
       }

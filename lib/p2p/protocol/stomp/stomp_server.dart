@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:dart_libp2p/core/interfaces.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_constants.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_exceptions.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_frame.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_subscription.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_transaction.dart';
 import 'package:logging/logging.dart';
-
-import '../../../core/interfaces.dart';
-import '../../../core/peer/peer_id.dart';
-import 'stomp_constants.dart';
-import 'stomp_exceptions.dart';
-import 'stomp_frame.dart';
-import 'stomp_subscription.dart';
-import 'stomp_transaction.dart';
 
 final _logger = Logger('stomp.server');
 
@@ -25,6 +24,12 @@ enum StompServerConnectionState {
 
 /// Represents a client connection to the STOMP server
 class StompServerConnection {
+  StompServerConnection({
+    required this.peerId,
+    required this.stream,
+    required this.sessionId,
+    required this.clientHeaders,
+  }) : connectedAt = DateTime.now();
   final PeerId peerId;
   final P2PStream stream;
   final String sessionId;
@@ -32,20 +37,15 @@ class StompServerConnection {
   final Map<String, String> clientHeaders;
 
   StompServerConnectionState _state = StompServerConnectionState.connecting;
-  final StompSubscriptionManager _subscriptionManager = StompSubscriptionManager();
+  final StompSubscriptionManager _subscriptionManager =
+      StompSubscriptionManager();
   final StompTransactionManager _transactionManager = StompTransactionManager();
   final StompAckManager _ackManager = StompAckManager();
 
   // Frame processing
-  final StreamController<StompFrame> _frameController = StreamController<StompFrame>.broadcast();
+  final StreamController<StompFrame> _frameController =
+      StreamController<StompFrame>.broadcast();
   final List<int> _readBuffer = [];
-
-  StompServerConnection({
-    required this.peerId,
-    required this.stream,
-    required this.sessionId,
-    required this.clientHeaders,
-  }) : connectedAt = DateTime.now();
 
   /// Current connection state
   StompServerConnectionState get state => _state;
@@ -78,19 +78,20 @@ class StompServerConnection {
 
     final frameBytes = frame.toBytes();
     await stream.write(frameBytes);
-    _logger.finest('Sent frame to ${peerId}: ${frame.command}');
+    _logger.finest('Sent frame to $peerId: ${frame.command}');
   }
 
   /// Starts reading frames from the client
   void startReading() {
     _readFrames().catchError((e) {
-      _logger.warning('Error reading frames from ${peerId}: $e');
+      _logger.warning('Error reading frames from $peerId: $e');
       setState(StompServerConnectionState.error);
     });
   }
 
   Future<void> _readFrames() async {
-    while (!stream.isClosed && _state != StompServerConnectionState.disconnected) {
+    while (
+        !stream.isClosed && _state != StompServerConnectionState.disconnected) {
       try {
         final data = await stream.read();
         if (data.isEmpty) break; // EOF
@@ -103,22 +104,23 @@ class StompServerConnection {
           if (nullIndex == -1) break; // No complete frame yet
 
           // Extract frame data including the NULL byte
-          final frameData = Uint8List.fromList(_readBuffer.sublist(0, nullIndex + 1));
+          final frameData =
+              Uint8List.fromList(_readBuffer.sublist(0, nullIndex + 1));
           _readBuffer.removeRange(0, nullIndex + 1);
 
           // Parse and emit frame
           try {
             final frame = StompFrame.fromBytes(frameData);
             _frameController.add(frame);
-            _logger.finest('Received frame from ${peerId}: ${frame.command}');
+            _logger.finest('Received frame from $peerId: ${frame.command}');
           } catch (e) {
-            _logger.warning('Error parsing frame from ${peerId}: $e');
+            _logger.warning('Error parsing frame from $peerId: $e');
           }
         }
       } catch (e) {
-        if (_state != StompServerConnectionState.disconnecting && 
+        if (_state != StompServerConnectionState.disconnecting &&
             _state != StompServerConnectionState.disconnected) {
-          _logger.warning('Error reading from ${peerId}: $e');
+          _logger.warning('Error reading from $peerId: $e');
           break;
         }
       }
@@ -143,7 +145,7 @@ class StompServerConnection {
       try {
         await stream.close();
       } catch (e) {
-        _logger.warning('Error closing stream for ${peerId}: $e');
+        _logger.warning('Error closing stream for $peerId: $e');
       }
     }
 
@@ -159,6 +161,13 @@ class StompServerConnection {
 
 /// STOMP server for handling client connections over libp2p
 class StompServer {
+  StompServer({
+    required Host host,
+    String? serverName,
+    Duration timeout = StompConstants.defaultTimeout,
+  })  : _host = host,
+        _serverName = serverName ?? 'dart-libp2p-stomp/1.0',
+        _timeout = timeout;
   final Host _host;
   final String _serverName;
   final Duration _timeout;
@@ -173,34 +182,31 @@ class StompServer {
   final Map<String, List<StompFrame>> _destinationMessages = {};
 
   // Event streams
-  final StreamController<StompServerConnection> _connectionController = StreamController<StompServerConnection>.broadcast();
-  final StreamController<StompServerConnection> _disconnectionController = StreamController<StompServerConnection>.broadcast();
-  final StreamController<StompMessage> _messageController = StreamController<StompMessage>.broadcast();
+  final StreamController<StompServerConnection> _connectionController =
+      StreamController<StompServerConnection>.broadcast();
+  final StreamController<StompServerConnection> _disconnectionController =
+      StreamController<StompServerConnection>.broadcast();
+  final StreamController<StompMessage> _messageController =
+      StreamController<StompMessage>.broadcast();
 
   bool _isRunning = false;
-
-  StompServer({
-    required Host host,
-    String? serverName,
-    Duration timeout = StompConstants.defaultTimeout,
-  }) : _host = host,
-       _serverName = serverName ?? 'dart-libp2p-stomp/1.0',
-       _timeout = timeout;
 
   /// Whether the server is running
   bool get isRunning => _isRunning;
 
   /// Stream of new connections
-  Stream<StompServerConnection> get onConnection => _connectionController.stream;
+  Stream<StompServerConnection> get onConnection =>
+      _connectionController.stream;
 
   /// Stream of disconnections
-  Stream<StompServerConnection> get onDisconnection => _disconnectionController.stream;
+  Stream<StompServerConnection> get onDisconnection =>
+      _disconnectionController.stream;
 
   /// Stream of messages sent to destinations
   Stream<StompMessage> get onMessage => _messageController.stream;
 
   /// Gets all active connections
-  List<StompServerConnection> get connections => 
+  List<StompServerConnection> get connections =>
       _connections.values.where((c) => c.isActive).toList();
 
   /// Gets a connection by session ID
@@ -216,7 +222,11 @@ class StompServer {
   /// Starts the STOMP server
   Future<void> start() async {
     if (_isRunning) {
-      throw const StompStateException('Server already running', 'running', 'stopped');
+      throw const StompStateException(
+        'Server already running',
+        'running',
+        'stopped',
+      );
     }
 
     // Register stream handler
@@ -233,7 +243,8 @@ class StompServer {
     _isRunning = false;
 
     // Close all connections
-    final connectionList = List<StompServerConnection>.from(_connections.values);
+    final connectionList =
+        List<StompServerConnection>.from(_connections.values);
     for (final connection in connectionList) {
       await connection.close();
     }
@@ -259,7 +270,11 @@ class StompServer {
     Map<String, String>? headers,
   }) async {
     if (!_isRunning) {
-      throw const StompStateException('Server not running', 'stopped', 'running');
+      throw const StompStateException(
+        'Server not running',
+        'stopped',
+        'running',
+      );
     }
 
     final messageId = _generateMessageId();
@@ -268,7 +283,9 @@ class StompServer {
       StompHeaders.messageId: messageId,
     };
 
-    if (contentType != null) messageHeaders[StompHeaders.contentType] = contentType;
+    if (contentType != null) {
+      messageHeaders[StompHeaders.contentType] = contentType;
+    }
     if (headers != null) messageHeaders.addAll(headers);
 
     Uint8List? frameBody;
@@ -289,7 +306,9 @@ class StompServer {
       body: frameBody,
     );
 
-    _destinationMessages.putIfAbsent(destination, () => <StompFrame>[]).add(messageFrame);
+    _destinationMessages
+        .putIfAbsent(destination, () => <StompFrame>[])
+        .add(messageFrame);
 
     // Send to all subscribers
     final subscribers = _destinationSubscriptions[destination];
@@ -305,7 +324,9 @@ class StompServer {
     final message = StompMessage.fromFrame(messageFrame);
     _messageController.add(message);
 
-    _logger.info('Sent message to destination $destination (${subscribers?.length ?? 0} subscribers)');
+    _logger.info(
+      'Sent message to destination $destination (${subscribers?.length ?? 0} subscribers)',
+    );
   }
 
   /// Broadcasts a message to all connected clients
@@ -358,7 +379,6 @@ class StompServer {
       _connectionController.add(connection);
 
       _logger.info('STOMP client connected: $peerId (session: $sessionId)');
-
     } catch (e) {
       _logger.warning('Error handling new STOMP connection from $peerId: $e');
       if (!stream.isClosed) {
@@ -371,14 +391,19 @@ class StompServer {
   Future<StompFrame> _readConnectFrame(P2PStream stream) async {
     final buffer = <int>[];
     final timeout = Timer(_timeout, () {
-      throw StompTimeoutException('Timeout waiting for CONNECT frame', _timeout);
+      throw StompTimeoutException(
+        'Timeout waiting for CONNECT frame',
+        _timeout,
+      );
     });
 
     try {
       while (true) {
         final data = await stream.read();
         if (data.isEmpty) {
-          throw const StompConnectionException('Stream closed before CONNECT frame');
+          throw const StompConnectionException(
+            'Stream closed before CONNECT frame',
+          );
         }
 
         buffer.addAll(data);
@@ -386,11 +411,15 @@ class StompServer {
         // Look for complete frame
         final nullIndex = buffer.indexOf(StompConstants.nullByte);
         if (nullIndex != -1) {
-          final frameData = Uint8List.fromList(buffer.sublist(0, nullIndex + 1));
+          final frameData =
+              Uint8List.fromList(buffer.sublist(0, nullIndex + 1));
           final frame = StompFrame.fromBytes(frameData);
 
-          if (frame.command != StompCommands.connect && frame.command != StompCommands.stomp) {
-            throw StompProtocolException('Expected CONNECT or STOMP frame, got ${frame.command}');
+          if (frame.command != StompCommands.connect &&
+              frame.command != StompCommands.stomp) {
+            throw StompProtocolException(
+              'Expected CONNECT or STOMP frame, got ${frame.command}',
+            );
           }
 
           return frame;
@@ -426,49 +455,55 @@ class StompServer {
         await _handleClientFrame(connection, frame);
       } catch (e) {
         _logger.warning('Error handling frame from ${connection.peerId}: $e');
-        await _sendErrorFrameToConnection(connection, 'Frame processing error: $e');
+        await _sendErrorFrameToConnection(
+          connection,
+          'Frame processing error: $e',
+        );
       }
     });
   }
 
-  Future<void> _handleClientFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleClientFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     switch (frame.command) {
       case StompCommands.send:
         await _handleSendFrame(connection, frame);
-        break;
       case StompCommands.subscribe:
         await _handleSubscribeFrame(connection, frame);
-        break;
       case StompCommands.unsubscribe:
         await _handleUnsubscribeFrame(connection, frame);
-        break;
       case StompCommands.ack:
         await _handleAckFrame(connection, frame);
-        break;
       case StompCommands.nack:
         await _handleNackFrame(connection, frame);
-        break;
       case StompCommands.begin:
         await _handleBeginFrame(connection, frame);
-        break;
       case StompCommands.commit:
         await _handleCommitFrame(connection, frame);
-        break;
       case StompCommands.abort:
         await _handleAbortFrame(connection, frame);
-        break;
       case StompCommands.disconnect:
         await _handleDisconnectFrame(connection, frame);
-        break;
       default:
-        await _sendErrorFrameToConnection(connection, 'Unknown command: ${frame.command}');
+        await _sendErrorFrameToConnection(
+          connection,
+          'Unknown command: ${frame.command}',
+        );
     }
   }
 
-  Future<void> _handleSendFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleSendFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final destination = frame.getHeader(StompHeaders.destination);
     if (destination == null) {
-      await _sendErrorFrameToConnection(connection, 'SEND frame missing destination header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'SEND frame missing destination header',
+      );
       return;
     }
 
@@ -488,7 +523,11 @@ class StompServer {
     }
   }
 
-  Future<void> _processSendFrame(StompServerConnection connection, StompFrame frame, String destination) async {
+  Future<void> _processSendFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+    String destination,
+  ) async {
     final messageId = _generateMessageId();
     final messageHeaders = Map<String, String>.from(frame.headers);
     messageHeaders[StompHeaders.messageId] = messageId;
@@ -500,7 +539,9 @@ class StompServer {
     );
 
     // Store message
-    _destinationMessages.putIfAbsent(destination, () => <StompFrame>[]).add(messageFrame);
+    _destinationMessages
+        .putIfAbsent(destination, () => <StompFrame>[])
+        .add(messageFrame);
 
     // Send to subscribers
     final subscribers = _destinationSubscriptions[destination];
@@ -512,15 +553,23 @@ class StompServer {
       }
     }
 
-    _logger.fine('Message sent to destination $destination from ${connection.peerId}');
+    _logger.fine(
+      'Message sent to destination $destination from ${connection.peerId}',
+    );
   }
 
-  Future<void> _handleSubscribeFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleSubscribeFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final destination = frame.getHeader(StompHeaders.destination);
     final subscriptionId = frame.getHeader(StompHeaders.id);
 
     if (destination == null || subscriptionId == null) {
-      await _sendErrorFrameToConnection(connection, 'SUBSCRIBE frame missing required headers');
+      await _sendErrorFrameToConnection(
+        connection,
+        'SUBSCRIBE frame missing required headers',
+      );
       return;
     }
 
@@ -535,7 +584,9 @@ class StompServer {
     );
 
     // Add to destination subscriptions
-    _destinationSubscriptions.putIfAbsent(destination, () => <StompServerConnection>{}).add(connection);
+    _destinationSubscriptions
+        .putIfAbsent(destination, () => <StompServerConnection>{})
+        .add(connection);
 
     // Send any stored messages for this destination
     final storedMessages = _destinationMessages[destination];
@@ -551,22 +602,31 @@ class StompServer {
       await _sendReceiptFrame(connection, receiptId);
     }
 
-    _logger.info('Client ${connection.peerId} subscribed to $destination (id: $subscriptionId)');
+    _logger.info(
+      'Client ${connection.peerId} subscribed to $destination (id: $subscriptionId)',
+    );
   }
 
-  Future<void> _handleUnsubscribeFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleUnsubscribeFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final subscriptionId = frame.getHeader(StompHeaders.id);
     if (subscriptionId == null) {
-      await _sendErrorFrameToConnection(connection, 'UNSUBSCRIBE frame missing id header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'UNSUBSCRIBE frame missing id header',
+      );
       return;
     }
 
-    final subscription = connection.subscriptions.getSubscription(subscriptionId);
+    final subscription =
+        connection.subscriptions.getSubscription(subscriptionId);
     if (subscription != null) {
       // Remove from destination subscriptions
       final subscribers = _destinationSubscriptions[subscription.destination];
       subscribers?.remove(connection);
-      if (subscribers?.isEmpty == true) {
+      if (subscribers?.isEmpty ?? false) {
         _destinationSubscriptions.remove(subscription.destination);
       }
 
@@ -581,13 +641,21 @@ class StompServer {
       await _sendReceiptFrame(connection, receiptId);
     }
 
-    _logger.info('Client ${connection.peerId} unsubscribed from subscription $subscriptionId');
+    _logger.info(
+      'Client ${connection.peerId} unsubscribed from subscription $subscriptionId',
+    );
   }
 
-  Future<void> _handleAckFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleAckFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final ackId = frame.getHeader(StompHeaders.id);
     if (ackId == null) {
-      await _sendErrorFrameToConnection(connection, 'ACK frame missing id header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'ACK frame missing id header',
+      );
       return;
     }
 
@@ -612,10 +680,16 @@ class StompServer {
     }
   }
 
-  Future<void> _handleNackFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleNackFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final ackId = frame.getHeader(StompHeaders.id);
     if (ackId == null) {
-      await _sendErrorFrameToConnection(connection, 'NACK frame missing id header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'NACK frame missing id header',
+      );
       return;
     }
 
@@ -640,10 +714,16 @@ class StompServer {
     }
   }
 
-  Future<void> _handleBeginFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleBeginFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final transactionId = frame.getHeader(StompHeaders.transaction);
     if (transactionId == null) {
-      await _sendErrorFrameToConnection(connection, 'BEGIN frame missing transaction header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'BEGIN frame missing transaction header',
+      );
       return;
     }
 
@@ -663,16 +743,23 @@ class StompServer {
     _logger.fine('Transaction $transactionId begun for ${connection.peerId}');
   }
 
-  Future<void> _handleCommitFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleCommitFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final transactionId = frame.getHeader(StompHeaders.transaction);
     if (transactionId == null) {
-      await _sendErrorFrameToConnection(connection, 'COMMIT frame missing transaction header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'COMMIT frame missing transaction header',
+      );
       return;
     }
 
     try {
-      final transaction = connection.transactions.commitTransaction(transactionId);
-      
+      final transaction =
+          connection.transactions.commitTransaction(transactionId);
+
       // Process all frames in the transaction
       for (final txFrame in transaction.frames) {
         if (txFrame.command == StompCommands.send) {
@@ -703,13 +790,20 @@ class StompServer {
       await _sendReceiptFrame(connection, receiptId);
     }
 
-    _logger.fine('Transaction $transactionId committed for ${connection.peerId}');
+    _logger
+        .fine('Transaction $transactionId committed for ${connection.peerId}');
   }
 
-  Future<void> _handleAbortFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleAbortFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     final transactionId = frame.getHeader(StompHeaders.transaction);
     if (transactionId == null) {
-      await _sendErrorFrameToConnection(connection, 'ABORT frame missing transaction header');
+      await _sendErrorFrameToConnection(
+        connection,
+        'ABORT frame missing transaction header',
+      );
       return;
     }
 
@@ -729,7 +823,10 @@ class StompServer {
     _logger.fine('Transaction $transactionId aborted for ${connection.peerId}');
   }
 
-  Future<void> _handleDisconnectFrame(StompServerConnection connection, StompFrame frame) async {
+  Future<void> _handleDisconnectFrame(
+    StompServerConnection connection,
+    StompFrame frame,
+  ) async {
     // Send receipt if requested
     final receiptId = frame.getHeader(StompHeaders.receipt);
     if (receiptId != null) {
@@ -740,7 +837,11 @@ class StompServer {
     await _closeConnection(connection);
   }
 
-  Future<void> _sendMessageToConnection(StompServerConnection connection, StompFrame messageFrame, String destination) async {
+  Future<void> _sendMessageToConnection(
+    StompServerConnection connection,
+    StompFrame messageFrame,
+    String destination,
+  ) async {
     final subscription = connection.subscriptions.subscriptions
         .where((s) => s.destination == destination)
         .firstOrNull;
@@ -775,7 +876,10 @@ class StompServer {
     await connection.sendFrame(deliveryFrame);
   }
 
-  Future<void> _sendReceiptFrame(StompServerConnection connection, String receiptId) async {
+  Future<void> _sendReceiptFrame(
+    StompServerConnection connection,
+    String receiptId,
+  ) async {
     final receiptFrame = StompFrame(
       command: StompCommands.receipt,
       headers: {StompHeaders.receiptId: receiptId},
@@ -784,7 +888,10 @@ class StompServer {
     await connection.sendFrame(receiptFrame);
   }
 
-  Future<void> _sendErrorFrameToConnection(StompServerConnection connection, String message) async {
+  Future<void> _sendErrorFrameToConnection(
+    StompServerConnection connection,
+    String message,
+  ) async {
     final errorFrame = StompFrameFactory.error(message: message);
     await connection.sendFrame(errorFrame);
   }
@@ -800,12 +907,15 @@ class StompServer {
     }
 
     // Clean up empty destination subscriptions
-    _destinationSubscriptions.removeWhere((_, subscribers) => subscribers.isEmpty);
+    _destinationSubscriptions
+        .removeWhere((_, subscribers) => subscribers.isEmpty);
 
     await connection.close();
     _disconnectionController.add(connection);
 
-    _logger.info('STOMP client disconnected: ${connection.peerId} (session: ${connection.sessionId})');
+    _logger.info(
+      'STOMP client disconnected: ${connection.peerId} (session: ${connection.sessionId})',
+    );
   }
 
   String _generateSessionId() {

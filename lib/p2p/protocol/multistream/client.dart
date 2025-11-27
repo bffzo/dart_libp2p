@@ -1,6 +1,7 @@
 /// Package multistream implements client functionality for the
 /// multistream-select protocol. The protocol is defined at
 /// https://github.com/multiformats/multistream-select
+library;
 
 import 'dart:async';
 import 'dart:convert';
@@ -13,10 +14,10 @@ import 'package:dart_libp2p/p2p/protocol/multistream/multistream.dart';
 /// ErrNotSupported is the error returned when the muxer doesn't support
 /// the protocols tried for the handshake.
 class ProtocolNotSupportedException implements Exception {
+  const ProtocolNotSupportedException(this.protocols);
+
   /// List of protocols that were not supported by the muxer
   final List<ProtocolID> protocols;
-
-  const ProtocolNotSupportedException(this.protocols);
 
   @override
   String toString() => 'Protocols not supported: $protocols';
@@ -25,13 +26,16 @@ class ProtocolNotSupportedException implements Exception {
 /// ErrUnrecognizedResponse is the error returned when the muxer responds with
 /// an unexpected message.
 class UnrecognizedResponseException implements Exception {
+  const UnrecognizedResponseException({
+    required this.actual,
+    required this.expected,
+  });
   final String actual;
   final String expected;
 
-  const UnrecognizedResponseException({required this.actual, required this.expected});
-
   @override
-  String toString() => 'Unrecognized response. Expected: $expected (or na). Got: $actual';
+  String toString() =>
+      'Unrecognized response. Expected: $expected (or na). Got: $actual';
 }
 
 /// ErrNoProtocols is the error thrown when no protocols have been specified.
@@ -45,7 +49,10 @@ class NoProtocolsException implements Exception {
 /// SelectProtoOrFail performs the initial multistream handshake
 /// to inform the muxer of the protocol that will be used to communicate
 /// on this stream. It returns an error if the muxer does not support the protocol.
-Future<void> selectProtoOrFail(ProtocolID proto, P2PStream<dynamic> stream) async {
+Future<void> selectProtoOrFail(
+  ProtocolID proto,
+  P2PStream stream,
+) async {
   try {
     // Send the multistream protocol ID and the requested protocol
     await writeDelimited(stream, utf8.encode(protocolID));
@@ -54,7 +61,7 @@ Future<void> selectProtoOrFail(ProtocolID proto, P2PStream<dynamic> stream) asyn
     // Read the multistream header response
     final headerResponse = await readNextToken(stream);
     if (headerResponse != protocolID) {
-      throw FormatException('Received mismatch in protocol id');
+      throw const FormatException('Received mismatch in protocol id');
     }
 
     // Read the protocol response
@@ -62,14 +69,17 @@ Future<void> selectProtoOrFail(ProtocolID proto, P2PStream<dynamic> stream) asyn
     if (protoResponse == 'na') {
       throw ProtocolNotSupportedException([proto]);
     } else if (protoResponse != proto) {
-      throw UnrecognizedResponseException(actual: protoResponse, expected: proto);
+      throw UnrecognizedResponseException(
+        actual: protoResponse,
+        expected: proto,
+      );
     }
 
     // Success - protocol selected
     return;
   } catch (e) {
-    if (e is! ProtocolNotSupportedException && 
-        e is! UnrecognizedResponseException && 
+    if (e is! ProtocolNotSupportedException &&
+        e is! UnrecognizedResponseException &&
         e is! FormatException) {
       await stream.reset();
     }
@@ -79,7 +89,10 @@ Future<void> selectProtoOrFail(ProtocolID proto, P2PStream<dynamic> stream) asyn
 
 /// SelectOneOf will perform handshakes with the protocols on the given list
 /// until it finds one which is supported by the muxer.
-Future<ProtocolID> selectOneOf(List<ProtocolID> protos, P2PStream<dynamic> stream) async {
+Future<ProtocolID> selectOneOf(
+  List<ProtocolID> protos,
+  P2PStream stream,
+) async {
   if (protos.isEmpty) {
     throw const NoProtocolsException();
   }
@@ -118,7 +131,7 @@ Future<ProtocolID> selectOneOf(List<ProtocolID> protos, P2PStream<dynamic> strea
 }
 
 /// Tries to select a protocol by sending it to the muxer and reading the response
-Future<void> _trySelect(ProtocolID proto, P2PStream<dynamic> stream) async {
+Future<void> _trySelect(ProtocolID proto, P2PStream stream) async {
   await writeDelimited(stream, utf8.encode(proto));
 
   final response = await readNextToken(stream);
@@ -130,14 +143,21 @@ Future<void> _trySelect(ProtocolID proto, P2PStream<dynamic> stream) async {
 }
 
 /// Writes a delimited message to the stream
-Future<void> writeDelimited(P2PStream<dynamic> stream, List<int> message) async {
+Future<void> writeDelimited(
+  P2PStream stream,
+  List<int> message,
+) async {
   // Encode the length as a varint
   final lengthBytes = encodeVarint(message.length + 1);
 
   // Create the full message: length + message + newline
   final fullMessage = Uint8List(lengthBytes.length + message.length + 1);
   fullMessage.setRange(0, lengthBytes.length, lengthBytes);
-  fullMessage.setRange(lengthBytes.length, lengthBytes.length + message.length, message);
+  fullMessage.setRange(
+    lengthBytes.length,
+    lengthBytes.length + message.length,
+    message,
+  );
   fullMessage[lengthBytes.length + message.length] = 10; // '\n'
 
   // Write to the stream
@@ -145,25 +165,25 @@ Future<void> writeDelimited(P2PStream<dynamic> stream, List<int> message) async 
 }
 
 /// Reads a delimited message from the stream
-Future<Uint8List> readDelimited(P2PStream<dynamic> stream) async {
+Future<Uint8List> readDelimited(P2PStream stream) async {
   // Read the first byte to determine if we need to read more for the varint
   final firstByte = await stream.read(1);
   if (firstByte.isEmpty) {
-    throw FormatException('Unexpected end of stream');
+    throw const FormatException('Unexpected end of stream');
   }
 
   // Determine how many more bytes we need to read for the varint
-  int bytesToRead = 0;
+  var bytesToRead = 0;
   if (firstByte[0] >= 0x80) {
     // We need to read more bytes
     bytesToRead = 1;
-    int b = firstByte[0];
+    var b = firstByte[0];
     while (b >= 0x80 && bytesToRead < 9) {
       b >>= 7;
       bytesToRead++;
     }
     if (bytesToRead >= 9) {
-      throw FormatException('Varint too long');
+      throw const FormatException('Varint too long');
     }
   }
 
@@ -178,22 +198,22 @@ Future<Uint8List> readDelimited(P2PStream<dynamic> stream) async {
     varintBytes = firstByte;
   }
 
-
   // Decode the varint to get the message length
   final (length, _) = decodeVarint(varintBytes);
   if (length > 1024) {
-    throw MessageTooLargeException();
+    throw const MessageTooLargeException();
   }
 
   // Read the message
   final message = await stream.read(length);
   if (message.length != length) {
-    throw FormatException('Unexpected end of stream');
+    throw const FormatException('Unexpected end of stream');
   }
 
   // Check for trailing newline
-  if (message.isEmpty || message[length - 1] != 10) { // '\n'
-    throw FormatException('Message did not have trailing newline');
+  if (message.isEmpty || message[length - 1] != 10) {
+    // '\n'
+    throw const FormatException('Message did not have trailing newline');
   }
 
   // Return the message without the trailing newline
@@ -201,7 +221,7 @@ Future<Uint8List> readDelimited(P2PStream<dynamic> stream) async {
 }
 
 /// Reads the next token from the stream
-Future<String> readNextToken(P2PStream<dynamic> stream) async {
+Future<String> readNextToken(P2PStream stream) async {
   final bytes = await readDelimited(stream);
   return utf8.decode(bytes);
 }
@@ -214,7 +234,7 @@ Uint8List encodeVarint(int value) {
 
   final bytes = <int>[];
   do {
-    int b = value & 0x7F;
+    var b = value & 0x7F;
     value >>= 7;
     if (value != 0) {
       b |= 0x80;
@@ -227,9 +247,9 @@ Uint8List encodeVarint(int value) {
 
 /// Decodes a varint to an integer
 (int, int) decodeVarint(Uint8List bytes) {
-  int result = 0;
-  int shift = 0;
-  int bytesRead = 0;
+  var result = 0;
+  var shift = 0;
+  var bytesRead = 0;
 
   for (final b in bytes) {
     bytesRead++;
@@ -239,9 +259,9 @@ Uint8List encodeVarint(int value) {
     }
     shift += 7;
     if (shift > 63) {
-      throw FormatException('Varint too long');
+      throw const FormatException('Varint too long');
     }
   }
 
-  throw FormatException('Unexpected end of varint');
+  throw const FormatException('Unexpected end of varint');
 }

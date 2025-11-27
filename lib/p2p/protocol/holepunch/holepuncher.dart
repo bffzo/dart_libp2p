@@ -1,39 +1,37 @@
 /// The holepuncher implementation for the holepunch protocol.
+library;
 
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dart_libp2p/core/host/host.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/common.dart'
+    show Direction; // Import Direction
+import 'package:dart_libp2p/core/network/conn.dart';
+import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/network.dart';
+import 'package:dart_libp2p/core/network/notifiee.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart';
+import 'package:dart_libp2p/core/network/stream.dart'; // For P2PStream
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/pb/holepunch.pb.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart';
 import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
-import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/network.dart';
-import 'package:dart_libp2p/core/network/stream.dart'; // For P2PStream
-import 'package:dart_libp2p/core/network/common.dart' show Direction; // Import Direction
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
-
-import '../../../core/network/context.dart';
-import '../../../core/network/notifiee.dart';
-import '../../../core/network/rcmgr.dart';
-import '../../../core/peer/addr_info.dart';
-import '../../../core/protocol/protocol.dart';
-import '../../discovery/peer_info.dart';
 
 /// Logger for the holepuncher
 final _log = Logger('p2p-holepunch');
 
-
 /// Result of initiating a hole punch
 class HolePunchResult {
+  HolePunchResult(this.addrs, this.obsAddrs, this.rtt);
   final List<MultiAddr> addrs;
   final List<MultiAddr> obsAddrs;
   final int rtt;
-
-  HolePunchResult(this.addrs, this.obsAddrs, this.rtt);
 }
 
 /// Error thrown when another hole punching attempt is currently running
@@ -63,6 +61,18 @@ abstract class AddrFilter {
 /// It then first tries to establish a direct connection, and if that fails, it
 /// initiates a hole punch.
 class HolePuncher {
+  /// Creates a new holepuncher
+  HolePuncher(
+    this._host,
+    this._ids,
+    this._listenAddrs, {
+    HolePunchTracer? tracer,
+    AddrFilter? filter,
+  })  : _tracer = tracer,
+        _filter = filter {
+    _host.network.notify(_NetNotifiee(this));
+  }
+
   /// The context for the holepuncher
   final _ctx = Completer<void>();
 
@@ -88,16 +98,6 @@ class HolePuncher {
 
   /// Address filter
   final AddrFilter? _filter;
-
-  /// Creates a new holepuncher
-  HolePuncher(this._host, this._ids, this._listenAddrs, {
-    HolePunchTracer? tracer,
-    AddrFilter? filter,
-  }) : 
-    _tracer = tracer,
-    _filter = filter {
-    _host.network.notify(_NetNotifiee(this));
-  }
 
   /// Begins a direct connect attempt
   Future<void> _beginDirectConnect(PeerId peerId) async {
@@ -150,7 +150,9 @@ class HolePuncher {
 
           final dt = DateTime.now().difference(tstart);
           _tracer?.directDialSuccessful(peerId, dt);
-          _log.fine('Direct connection to peer successful, no need for a hole punch');
+          _log.fine(
+            'Direct connection to peer successful, no need for a hole punch',
+          );
           return;
         } catch (err) {
           final dt = DateTime.now().difference(tstart);
@@ -163,7 +165,7 @@ class HolePuncher {
     _log.fine('Got inbound proxy conn');
 
     // Hole punch
-    for (int i = 1; i <= maxRetries; i++) {
+    for (var i = 1; i <= maxRetries; i++) {
       try {
         final result = await _initiateHolePunch(peerId);
         final addrs = result.addrs;
@@ -175,7 +177,7 @@ class HolePuncher {
 
         // Wait for sync to reach the other peer and then punch a hole for it in our NAT
         // by attempting a connect to it.
-        await Future.delayed(Duration(milliseconds: synTime));
+        await Future<void>.delayed(Duration(milliseconds: synTime));
 
         final pi = PeerInfo(peerId: peerId, addrs: addrs.toSet());
         _tracer?.startHolePunch(peerId, addrs, rtt);
@@ -187,7 +189,13 @@ class HolePuncher {
           final dt = DateTime.now().difference(start);
           _tracer?.endHolePunch(peerId, dt, null);
           _log.fine('Hole punching successful');
-          _tracer?.holePunchFinished('initiator', i, addrs, obsAddrs, getDirectConnection(_host, peerId));
+          _tracer?.holePunchFinished(
+            'initiator',
+            i,
+            addrs,
+            obsAddrs,
+            getDirectConnection(_host, peerId),
+          );
           return;
         } catch (err) {
           final dt = DateTime.now().difference(start);
@@ -205,7 +213,6 @@ class HolePuncher {
 
     throw Exception('All retries for hole punch with peer $peerId failed');
   }
-
 
   /// Initiates a hole punch with a remote peer
   Future<HolePunchResult> _initiateHolePunch(PeerId peerId) async {
@@ -246,7 +253,9 @@ class HolePuncher {
       }
 
       if (obsAddrs.isEmpty) {
-        _log.warning('No public addresses available for hole punch initiation, but proceeding anyway. Peer: ${str.conn.remotePeer}');
+        _log.warning(
+          'No public addresses available for hole punch initiation, but proceeding anyway. Peer: ${str.conn.remotePeer}',
+        );
         // Don't abort - use all available addresses and let the peer decide
         obsAddrs = _listenAddrs();
         if (obsAddrs.isEmpty) {
@@ -278,7 +287,7 @@ class HolePuncher {
       }
 
       if (addrs.isEmpty) {
-        throw Exception('Didn\'t receive any public addresses in CONNECT');
+        throw Exception("Didn't receive any public addresses in CONNECT");
       }
 
       final syncMsg = HolePunch()..type = HolePunch_Type.SYNC;
@@ -307,7 +316,7 @@ class HolePuncher {
       await _host.connect(addrInfo, context: combinedCtx);
       _log.fine('Hole punch successful');
     } catch (err) {
-      _log.fine('Hole punch attempt with peer failed: ${err.toString()}');
+      _log.fine('Hole punch attempt with peer failed: $err');
       rethrow;
     }
   }
@@ -325,20 +334,22 @@ class HolePuncher {
 
 /// Network notifiee for the holepuncher
 class _NetNotifiee implements Notifiee {
-  final HolePuncher _hp;
-
   _NetNotifiee(this._hp);
+  final HolePuncher _hp;
 
   @override
   Future<void> connected(Network network, Conn conn) async {
     // Hole punch if it's an inbound proxy connection.
     // If we already have a direct connection with the remote peer, this will be a no-op.
-    if (conn.stat.stats.direction == Direction.inbound && isRelayAddress(conn.remoteMultiaddr)) {
+    if (conn.stat.stats.direction == Direction.inbound &&
+        isRelayAddress(conn.remoteMultiaddr)) {
       // Waiting for Identify here will allow us to access the peer's public and observed addresses
       // that we can dial to for a hole punch.
       _hp._ids.identifyWait(conn).then((_) {
         _hp.directConnect(conn.remotePeer).catchError((err) {
-          _log.fine('Attempt to perform DirectConnect to ${conn.remotePeer} failed: $err');
+          _log.fine(
+            'Attempt to perform DirectConnect to ${conn.remotePeer} failed: $err',
+          );
         });
       }).catchError((_) {
         // Ignore errors from identifyWait
@@ -348,7 +359,7 @@ class _NetNotifiee implements Notifiee {
 
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-    return Future.delayed(Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override
@@ -379,7 +390,13 @@ abstract class HolePunchTracer {
   void endHolePunch(PeerId peerId, Duration dt, Object? err);
 
   /// Called when a hole punch finishes
-  void holePunchFinished(String side, int attempts, List<MultiAddr> addrs, List<MultiAddr> obsAddrs, Conn? conn);
+  void holePunchFinished(
+    String side,
+    int attempts,
+    List<MultiAddr> addrs,
+    List<MultiAddr> obsAddrs,
+    Conn? conn,
+  );
 
   /// Closes the tracer
   void close();

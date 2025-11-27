@@ -5,9 +5,8 @@
 import 'dart:typed_data';
 
 import 'package:buffer/buffer.dart';
-import 'package:protobuf/protobuf.dart';
-
 import 'package:dart_libp2p/p2p/protocol/multistream/client.dart';
+import 'package:protobuf/protobuf.dart';
 
 /// A reader for reading length-prefixed protocol buffer messages.
 ///
@@ -22,11 +21,10 @@ import 'package:dart_libp2p/p2p/protocol/multistream/client.dart';
 ///   - messages are small (max 4k) and the length fits in a couple of bytes,
 ///     so overall we have at most three reads per message.
 class DelimitedReader {
+  DelimitedReader(this._stream, this._maxSize) : _reader = ByteDataReader();
   final Stream<List<int>> _stream;
   final ByteDataReader _reader;
   final int _maxSize;
-
-  DelimitedReader(this._stream, this._maxSize) : _reader = ByteDataReader();
 
   /// Reads a protocol buffer message from the stream.
   Future<T> readMsg<T extends GeneratedMessage>(T message) async {
@@ -38,7 +36,7 @@ class DelimitedReader {
 
     // Read the message data
     final data = await _readExact(length);
-    
+
     // Parse the message
     message.mergeFromBuffer(data);
     return message;

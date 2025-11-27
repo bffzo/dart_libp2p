@@ -627,7 +627,7 @@ class ResilientMessaging {
         
         // Exponential backoff
         final delay = baseDelay * pow(2, attempts - 1);
-        await Future.delayed(delay);
+        await Future<void>.delayed(delay);
       }
     }
   }

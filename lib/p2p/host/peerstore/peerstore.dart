@@ -1,9 +1,10 @@
 /// Package peerstore provides utility functions for working with peerstores.
+library;
 
 import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 
-import '../../../core/peerstore.dart';
+import 'package:dart_libp2p/core/peerstore.dart';
 
 /// PeerInfos converts a slice of peer IDs to a slice of peer address information using a peerstore.
 Future<List<AddrInfo>> peerInfos(Peerstore ps, List<PeerId> peers) async {
@@ -11,7 +12,7 @@ Future<List<AddrInfo>> peerInfos(Peerstore ps, List<PeerId> peers) async {
   for (final p in peers) {
     futures.add(ps.peerInfo(p));
   }
-  return await Future.wait(futures);
+  return Future.wait(futures);
 }
 
 /// PeerInfoIDs extracts peer IDs from a slice of peer address information.

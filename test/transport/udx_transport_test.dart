@@ -1,30 +1,25 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:logging/logging.dart';
-import 'package:test/test.dart';
-import 'package:dart_udx/src/udx.dart';
-import 'package:dart_udx/src/socket.dart';
-import 'package:dart_udx/src/stream.dart';
 
 import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/p2p/transport/udx_transport.dart';
-import 'package:dart_libp2p/p2p/transport/transport_config.dart';
-import 'package:dart_libp2p/p2p/transport/connection_state.dart';
 import 'package:dart_libp2p/p2p/transport/connection_manager.dart';
-import 'package:dart_udx/src/packet.dart'; // For UDXPacket.construct
-import 'package:dart_udx/src/events.dart'; // For UDXEvent
+import 'package:dart_libp2p/p2p/transport/connection_state.dart';
+import 'package:dart_libp2p/p2p/transport/transport_config.dart';
+import 'package:dart_libp2p/p2p/transport/udx_transport.dart';
+import 'package:dart_udx/src/udx.dart';
+import 'package:logging/logging.dart';
+import 'package:test/test.dart';
 
 void main() {
-
   Logger.root.level = Level.ALL; // Capture all Yamux logs
   Logger.root.onRecord.listen((record) {
-      print('[${record.level.name}] ${record.loggerName}: ${record.message}');
-      if (record.error != null) {
-        print('  ERROR: ${record.error}');
-      }
-      if (record.stackTrace != null) {
-        // print('  STACKTRACE: ${record.stackTrace}'); // Can be very verbose
-      }
+    print('[${record.level.name}] ${record.loggerName}: ${record.message}');
+    if (record.error != null) {
+      print('  ERROR: ${record.error}');
+    }
+    if (record.stackTrace != null) {
+      // print('  STACKTRACE: ${record.stackTrace}'); // Can be very verbose
+    }
   });
 
   group('UDX Transport Integration Tests', () {
@@ -41,10 +36,7 @@ void main() {
       mockUdx = UDX();
       transport = UDXTransport(
         config: config,
-        connManager: ConnectionManager(
-          idleTimeout: const Duration(minutes: 5),
-          shutdownTimeout: const Duration(seconds: 30),
-        ),
+        connManager: ConnectionManager(),
         udxInstance: mockUdx,
       );
     });
@@ -54,7 +46,10 @@ void main() {
     });
 
     test('should support IPv4/IPv6 and UDP protocols', () {
-      expect(transport.protocols, containsAll(['/ip4/udp/udx', '/ip6/udp/udx']));
+      expect(
+        transport.protocols,
+        containsAll(['/ip4/udp/udx', '/ip6/udp/udx']),
+      );
     });
 
     test('should validate multiaddrs correctly', () {
@@ -75,32 +70,31 @@ void main() {
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
         print('Listener bound to $actualAddr');
-        
+
         // Create a subscription to track incoming connections
         print('Waiting for incoming connection...');
         final connectionsFuture = listener.connectionStream.first;
-        
+
         // Dial the listener
         print('Dialing listener...');
         final dialerConn = await transport.dial(actualAddr);
         print('Dialer connected');
-        
+
         print('Waiting for listener to accept connection...');
         final listenerConn = await connectionsFuture;
         print('Listener accepted connection');
-        
+
         print('Dialer closing connection...');
         await dialerConn.close();
         print('Dialer connection closed.');
 
-
         print('Listener closing connection...');
         await listenerConn.close();
         print('Listener connection closed.');
-        
+
         expect(dialerConn.isClosed, isTrue);
         expect(listenerConn.isClosed, isTrue);
-        
+
         print('Test completed');
       });
 
@@ -110,12 +104,12 @@ void main() {
 
         // Correctly await the Future and check for an async exception
         await expectLater(
-            () async => await transport.dial(addr),
+          () async => transport.dial(addr),
           throwsA(isA<TimeoutException>()),
         );
 
         // Give time for cleanup to complete
-        await Future.delayed(Duration(seconds: 5));
+        await Future<void>.delayed(const Duration(seconds: 5));
       });
     });
 
@@ -124,28 +118,36 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         final connectionsFuture = listener.connectionStream.first;
         final dialerConn = await transport.dial(actualAddr);
-        final listenerConn = await connectionsFuture as UDXSessionConn; // Cast to access initialP2PStream
-        final dialerSessionConn = dialerConn as UDXSessionConn; // Cast to access initialP2PStream
-        
+        final listenerConn = await connectionsFuture
+            as UDXSessionConn; // Cast to access initialP2PStream
+        final dialerSessionConn =
+            dialerConn as UDXSessionConn; // Cast to access initialP2PStream
+
         // Use the initialP2PStream for data transfer
         final dialerStream = dialerSessionConn.initialP2PStream;
         final listenerStream = listenerConn.initialP2PStream;
 
         // Send data from dialer to listener
         final testData = Uint8List.fromList([1, 2, 3, 4, 5]);
-        print('[Data Transfer Test] Dialer stream (${dialerStream.id()}) writing data...');
+        print(
+          '[Data Transfer Test] Dialer stream (${dialerStream.id()}) writing data...',
+        );
         await dialerStream.write(testData);
         print('[Data Transfer Test] Dialer stream data written.');
-        
+
         // Receive data on listener side
-        print('[Data Transfer Test] Listener stream (${listenerStream.id()}) reading data...');
+        print(
+          '[Data Transfer Test] Listener stream (${listenerStream.id()}) reading data...',
+        );
         final receivedData = await listenerStream.read();
-        print('[Data Transfer Test] Listener stream data read: ${receivedData?.length} bytes.');
+        print(
+          '[Data Transfer Test] Listener stream data read: ${receivedData.length} bytes.',
+        );
         expect(receivedData, equals(testData));
-        
+
         // Close the streams first, then the connections
         print('[Data Transfer Test] Closing dialer stream...');
         await dialerStream.close();
@@ -163,28 +165,32 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         final connectionsFuture = listener.connectionStream.first;
         final dialerConn = await transport.dial(actualAddr);
         final listenerConn = await connectionsFuture as UDXSessionConn; // Cast
         final dialerSessionConn = dialerConn as UDXSessionConn; // Cast
 
         final dialerStream = dialerSessionConn.initialP2PStream;
-        final listenerStream = listenerConn.initialP2PStream; // Though not used for reading in this test path
-        
+        final listenerStream = listenerConn
+            .initialP2PStream; // Though not used for reading in this test path
+
         // Set a very short read timeout on the P2PStream
-        print('[Read Timeout Test] Setting read timeout on dialer stream ${dialerStream.id()}');
+        print(
+          '[Read Timeout Test] Setting read timeout on dialer stream ${dialerStream.id()}',
+        );
         // UDXP2PStreamAdapter.setReadDeadline is Unimplemented.
         // This test will likely still fail until deadlines are implemented on UDXP2PStreamAdapter.
         // For now, we expect it to throw UnimplementedError if called.
         // Let's adjust the expectation if setReadTimeout itself is the target of testing.
         // The original test was on TransportConn.setReadTimeout, which UDXSessionConn implements.
         // UDXSessionConn.setReadTimeout throws UnimplementedError.
-        
+
         expect(
           () => dialerConn.setReadTimeout(const Duration(milliseconds: 100)),
           throwsA(isA<UnimplementedError>()),
-          reason: "UDXSessionConn.setReadTimeout is expected to be unimplemented."
+          reason:
+              'UDXSessionConn.setReadTimeout is expected to be unimplemented.',
         );
 
         // If we wanted to test read timeout on the stream itself (once implemented):
@@ -193,7 +199,7 @@ void main() {
         //   () => dialerStream.read(),
         //   throwsA(isA<TimeoutException>()),
         // );
-        
+
         print('[Read Timeout Test] Closing streams and connections...');
         await dialerStream.close();
         await listenerStream.close();
@@ -221,63 +227,83 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await testTransport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         // Create a subscription to track incoming connections
         final connectionsFuture = listener.connectionStream.first;
-        
+
         // Dial the listener
         final dialerConn = await testTransport.dial(actualAddr);
         final listenerConn = await connectionsFuture;
-        
+
         // Register the connection with the manager
         testTransport.connectionManager.registerConnection(dialerConn);
-        
+
         // Get state stream and collect states
         final states = <ConnectionState>[];
         // Ensure dialerConn is not null before trying to get its state stream
-        final dialerStateStream = testTransport.connectionManager.getStateStream(dialerConn as UDXSessionConn);
-        expect(dialerStateStream, isNotNull, reason: "Dialer connection state stream should not be null.");
+        final dialerStateStream = testTransport.connectionManager
+            .getStateStream(dialerConn as UDXSessionConn);
+        expect(
+          dialerStateStream,
+          isNotNull,
+          reason: 'Dialer connection state stream should not be null.',
+        );
 
         final subscription = dialerStateStream!.listen((change) {
-              print('State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}');
-              states.add(change.newState);
-            });
+          print(
+            'State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}',
+          );
+          states.add(change.newState);
+        });
 
         // Add initial state
-        final initialState = testTransport.connectionManager.getState(dialerConn as UDXSessionConn);
-        expect(initialState, isNotNull, reason: "Initial state of dialer connection should not be null.");
+        final initialState =
+            testTransport.connectionManager.getState(dialerConn);
+        expect(
+          initialState,
+          isNotNull,
+          reason: 'Initial state of dialer connection should not be null.',
+        );
         states.add(initialState!);
-        
+
         // Use the initialP2PStreams for data transfer
-        final dialerStream = (dialerConn as UDXSessionConn).initialP2PStream;
-        final listenerStream = (listenerConn as UDXSessionConn).initialP2PStream;
+        final dialerStream = dialerConn.initialP2PStream;
+        final listenerStream =
+            (listenerConn as UDXSessionConn).initialP2PStream;
 
         // Trigger active state
-        print('[Lifecycle Test] Writing data to dialer stream ${dialerStream.id()}');
+        print(
+          '[Lifecycle Test] Writing data to dialer stream ${dialerStream.id()}',
+        );
         await dialerStream.write(Uint8List.fromList([1, 2, 3]));
-        print('[Lifecycle Test] Reading data from listener stream ${listenerStream.id()}');
+        print(
+          '[Lifecycle Test] Reading data from listener stream ${listenerStream.id()}',
+        );
         await listenerStream.read();
         print('[Lifecycle Test] Data read by listener.');
-        
+
         // Wait for idle state (using shorter timeout)
-        await Future.delayed(const Duration(seconds: 2));
-        
+        await Future<void>.delayed(const Duration(seconds: 2));
+
         // Trigger closing and closed states
         await dialerConn.close();
-        
+
         // Wait for all state changes
-        await Future.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
-        
+
         print('Final states: $states');
-        expect(states, containsAllInOrder([
-          ConnectionState.ready,
-          ConnectionState.active,
-          ConnectionState.idle,
-          ConnectionState.closing,
-          ConnectionState.closed,
-        ]));
-        
+        expect(
+          states,
+          containsAllInOrder([
+            ConnectionState.ready,
+            ConnectionState.active,
+            ConnectionState.idle,
+            ConnectionState.closing,
+            ConnectionState.closed,
+          ]),
+        );
+
         await listenerConn.close();
         await listener.close();
         await testTransport.dispose();
@@ -287,37 +313,48 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         final connectionsFuture = listener.connectionStream.first;
         final dialerConn = await transport.dial(actualAddr);
         final listenerConn = await connectionsFuture;
 
         // Register the connection with the manager
         transport.connectionManager.registerConnection(dialerConn);
-        
+
         // Get state stream to track changes
         final states = <ConnectionState>[];
-        final dialerStateStream = transport.connectionManager.getStateStream(dialerConn as UDXSessionConn);
-        expect(dialerStateStream, isNotNull, reason: "Dialer connection state stream for graceful shutdown test should not be null.");
-        
+        final dialerStateStream = transport.connectionManager
+            .getStateStream(dialerConn as UDXSessionConn);
+        expect(
+          dialerStateStream,
+          isNotNull,
+          reason:
+              'Dialer connection state stream for graceful shutdown test should not be null.',
+        );
+
         final subscription = dialerStateStream!.listen((change) {
-              print('State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}');
-              states.add(change.newState);
-            });
-        
+          print(
+            'State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}',
+          );
+          states.add(change.newState);
+        });
+
         // Start graceful shutdown
         await transport.connectionManager.closeConnection(dialerConn);
-        
+
         // Wait for all state changes
-        await Future.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
-        
+
         expect(dialerConn.isClosed, isTrue);
-        expect(states, containsAllInOrder([
-          ConnectionState.closing,
-          ConnectionState.closed,
-        ]));
-        
+        expect(
+          states,
+          containsAllInOrder([
+            ConnectionState.closing,
+            ConnectionState.closed,
+          ]),
+        );
+
         await listenerConn.close();
         await listener.close();
       });
@@ -328,42 +365,56 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         final connectionsFuture = listener.connectionStream.first;
         final dialerConn = await transport.dial(actualAddr);
         final listenerConn = await connectionsFuture;
 
         // Register the connection with the manager
         transport.connectionManager.registerConnection(dialerConn);
-        
+
         // Get state stream to track changes
         final states = <ConnectionState>[];
-        final dialerStateStream = transport.connectionManager.getStateStream(dialerConn as UDXSessionConn);
-        expect(dialerStateStream, isNotNull, reason: "Dialer connection state stream for error handling test should not be null.");
+        final dialerStateStream = transport.connectionManager
+            .getStateStream(dialerConn as UDXSessionConn);
+        expect(
+          dialerStateStream,
+          isNotNull,
+          reason:
+              'Dialer connection state stream for error handling test should not be null.',
+        );
 
         final subscription = dialerStateStream!.listen((change) {
-              print('State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}');
-              states.add(change.newState);
-            });
-        
+          print(
+            'State change: ${change.previousState} -> ${change.newState}${change.error != null ? ' (Error: ${change.error})' : ''}',
+          );
+          states.add(change.newState);
+        });
+
         // Try to write to the stream of a closed connection
-        final dialerStream = (dialerConn as UDXSessionConn).initialP2PStream;
+        final dialerStream = dialerConn.initialP2PStream;
         await dialerConn.close(); // Close the connection
-        
+
         expect(
-          () => dialerStream.write(Uint8List.fromList([1, 2, 3])), // Try writing to its stream
+          () => dialerStream.write(
+            Uint8List.fromList([1, 2, 3]),
+          ), // Try writing to its stream
           throwsA(isA<StateError>()),
-          reason: "Writing to a stream of a closed connection should throw StateError."
+          reason:
+              'Writing to a stream of a closed connection should throw StateError.',
         );
-        
-        await Future.delayed(const Duration(seconds: 1));
+
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
-        
-        expect(states, containsAllInOrder([
-          ConnectionState.closing,
-          ConnectionState.closed,
-        ]));
-        
+
+        expect(
+          states,
+          containsAllInOrder([
+            ConnectionState.closing,
+            ConnectionState.closed,
+          ]),
+        );
+
         await listenerConn.close();
         await listener.close();
       });
@@ -374,12 +425,12 @@ void main() {
         final listenerAddr = MultiAddr('/ip4/127.0.0.1/udp/0/udx');
         final listener = await transport.listen(listenerAddr);
         final actualAddr = listener.addr;
-        
+
         final dialerConn = await transport.dial(actualAddr);
-        
+
         // Dispose the transport
         await transport.dispose();
-        
+
         // Verify connections are closed
         expect(dialerConn.isClosed, isTrue);
         expect(listener.isClosed, isTrue);

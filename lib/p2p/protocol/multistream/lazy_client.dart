@@ -1,6 +1,7 @@
 /// Package multistream implements lazy client functionality for the
 /// multistream-select protocol. The protocol is defined at
 /// https://github.com/multiformats/multistream-select
+library;
 
 import 'dart:async';
 import 'dart:convert';
@@ -8,9 +9,8 @@ import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/core/protocol/protocol.dart';
-import 'package:dart_libp2p/p2p/protocol/multistream/multistream.dart';
 import 'package:dart_libp2p/p2p/protocol/multistream/client.dart';
-
+import 'package:dart_libp2p/p2p/protocol/multistream/multistream.dart';
 
 /// LazyConn is a ReadWriteCloser adapter that lazily negotiates a protocol
 /// using multistream-select on first use.
@@ -30,7 +30,7 @@ abstract class LazyConn {
 
 /// NewMSSelect returns a new Multistream which is able to perform
 /// protocol selection with a MultistreamMuxer.
-LazyConn newMSSelect(P2PStream<dynamic> stream, ProtocolID proto) {
+LazyConn newMSSelect(P2PStream stream, ProtocolID proto) {
   return _LazyClientConn(
     protos: [protocolID, proto],
     stream: stream,
@@ -40,7 +40,7 @@ LazyConn newMSSelect(P2PStream<dynamic> stream, ProtocolID proto) {
 /// NewMultistream returns a multistream for the given protocol. This will not
 /// perform any protocol selection. If you are using a MultistreamMuxer, use
 /// NewMSSelect.
-LazyConn newMultistream(P2PStream<dynamic> stream, ProtocolID proto) {
+LazyConn newMultistream(P2PStream stream, ProtocolID proto) {
   return _LazyClientConn(
     protos: [proto],
     stream: stream,
@@ -53,6 +53,10 @@ LazyConn newMultistream(P2PStream<dynamic> stream, ProtocolID proto) {
 /// It *does not* block writes waiting for the other end to respond. Instead, it
 /// simply assumes the negotiation went successfully and starts writing data.
 class _LazyClientConn implements LazyConn {
+  _LazyClientConn({
+    required this.protos,
+    required this.stream,
+  });
   // Used to ensure we only trigger the write half of the handshake once.
   final _writeHandshakeLock = Completer<void>();
   Exception? _writeError;
@@ -67,12 +71,7 @@ class _LazyClientConn implements LazyConn {
   final List<ProtocolID> protos;
 
   // The inner connection.
-  final P2PStream<dynamic> stream;
-
-  _LazyClientConn({
-    required this.protos,
-    required this.stream,
-  });
+  final P2PStream stream;
 
   /// Read reads data from the stream.
   ///
@@ -100,7 +99,7 @@ class _LazyClientConn implements LazyConn {
       return Uint8List(0);
     }
 
-    return await stream.read(maxLength);
+    return stream.read(maxLength);
   }
 
   /// Performs the read handshake
@@ -120,7 +119,9 @@ class _LazyClientConn implements LazyConn {
         }
 
         if (tok != proto) {
-          _readError = FormatException('Protocol mismatch in lazy handshake ($tok != $proto)');
+          _readError = FormatException(
+            'Protocol mismatch in lazy handshake ($tok != $proto)',
+          );
           _readHandshakeLock.complete();
           _readHandshakeDone = true;
           return;
@@ -193,7 +194,11 @@ class _LazyClientConn implements LazyConn {
         // Write handshake and extra data
         final combined = Uint8List(handshakeBytes.length + extra.length);
         combined.setRange(0, handshakeBytes.length, handshakeBytes);
-        combined.setRange(handshakeBytes.length, handshakeBytes.length + extra.length, extra);
+        combined.setRange(
+          handshakeBytes.length,
+          handshakeBytes.length + extra.length,
+          extra,
+        );
         stream.write(combined);
         _writeHandshakeLock.complete();
         _writeHandshakeDone = true;
@@ -216,7 +221,7 @@ class _LazyClientConn implements LazyConn {
   /// stream is actually write only).
   @override
   Future<void> write(Uint8List data) async {
-    int bytesWritten = 0;
+    var bytesWritten = 0;
 
     if (!_writeHandshakeDone) {
       // Start read handshake in background

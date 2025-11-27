@@ -1,56 +1,72 @@
 /// Implementation of the holepunch service.
+library;
 
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dart_libp2p/core/host/host.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/common.dart'
+    show Direction; // Import Direction
+import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart';
+import 'package:dart_libp2p/core/network/stream.dart'; // For P2PStream
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/holepunch_service.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/holepuncher.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/pb/holepunch.pb.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart';
 import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
-import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
-
-import '../../../core/network/context.dart';
-import '../../../core/network/rcmgr.dart';
-import '../../../core/network/stream.dart'; // For P2PStream
-import '../../../core/network/common.dart' show Direction; // Import Direction
-import '../../../core/peer/addr_info.dart';
-import '../../discovery/peer_info.dart';
 
 /// Logger for the holepunch service
 final _log = Logger('p2p-holepunch');
 
 /// Options for the holepunch service
 class HolePunchOptions {
-  /// Tracer for the holepunch service
-  final HolePunchTracer? tracer;
-
-  /// Address filter for the holepunch service
-  final AddrFilter? filter;
-
   /// Creates new holepunch options
   const HolePunchOptions({
     this.tracer,
     this.filter,
   });
-}
 
+  /// Tracer for the holepunch service
+  final HolePunchTracer? tracer;
+
+  /// Address filter for the holepunch service
+  final AddrFilter? filter;
+}
 
 /// Result of an incoming hole punch
 class IncomingHolePunchResult {
+  IncomingHolePunchResult(this.rtt, this.remoteAddrs, this.ownAddrs);
   final int rtt;
   final List<MultiAddr> remoteAddrs;
   final List<MultiAddr> ownAddrs;
-
-  IncomingHolePunchResult(this.rtt, this.remoteAddrs, this.ownAddrs);
 }
 
 /// Implementation of the holepunch service
 class HolePunchServiceImpl implements HolePunchService {
+  /// Creates a new holepunch service
+  ///
+  /// listenAddrs should return public/observed addresses when available.
+  /// The service will start immediately and work with available addresses.
+  HolePunchServiceImpl(
+    this._host,
+    this._ids,
+    this._listenAddrs, {
+    HolePunchOptions? options,
+  })  : _tracer = options?.tracer,
+        _filter = options?.filter {
+    _incrementRefCount();
+    // Note: _initializeService() is called asynchronously here and will complete
+    // _hasPublicAddrsChan when ready. directConnect() will wait for this.
+    _initializeService();
+  }
+
   /// The context for the service
   final _ctx = Completer<void>();
   final _ctxCancel = Completer<void>();
@@ -81,22 +97,6 @@ class HolePunchServiceImpl implements HolePunchService {
   final _refCount = Completer<void>();
   var _refCountValue = 0;
   final _refCountMutex = Lock();
-
-  /// Creates a new holepunch service
-  ///
-  /// listenAddrs should return public/observed addresses when available.
-  /// The service will start immediately and work with available addresses.
-  HolePunchServiceImpl(this._host, this._ids, this._listenAddrs, {
-    HolePunchOptions? options,
-  }) : 
-    _tracer = options?.tracer,
-    _filter = options?.filter {
-
-    _incrementRefCount();
-    // Note: _initializeService() is called asynchronously here and will complete
-    // _hasPublicAddrsChan when ready. directConnect() will wait for this.
-    _initializeService();
-  }
 
   /// Increments the reference count
   Future<void> _incrementRefCount() async {
@@ -131,34 +131,44 @@ class HolePunchServiceImpl implements HolePunchService {
         // Service is closed
         return;
       }
-      _holePuncher = HolePuncher(_host, _ids, _listenAddrs, tracer: _tracer, filter: _filter);
+      _holePuncher = HolePuncher(
+        _host,
+        _ids,
+        _listenAddrs,
+        tracer: _tracer,
+        filter: _filter,
+      );
     });
 
     // The service is now ready to accept holepunch requests
     _hasPublicAddrsChan.complete();
     _log.fine('Holepunch service initialized and ready for host ${_host.id}');
-    
+
     // Start monitoring for address changes to improve holepunching as addresses become available
     _startAddressMonitoring();
-    
+
     await _decrementRefCount();
   }
-  
+
   /// Monitors for address changes and logs them for debugging
   void _startAddressMonitoring() {
     // This is a simple monitoring approach - in a production implementation,
     // you might want to listen to specific events from the identify service
-    Timer.periodic(Duration(seconds: 10), (timer) {
+    Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_ctxCancel.isCompleted) {
         timer.cancel();
         return;
       }
-      
+
       final currentAddrs = _listenAddrs();
       if (currentAddrs.isNotEmpty) {
-        _log.fine('Holepunch service for host ${_host.id} has ${currentAddrs.length} addresses available: $currentAddrs');
+        _log.fine(
+          'Holepunch service for host ${_host.id} has ${currentAddrs.length} addresses available: $currentAddrs',
+        );
       } else {
-        _log.fine('Holepunch service for host ${_host.id} waiting for addresses to be discovered');
+        _log.fine(
+          'Holepunch service for host ${_host.id} waiting for addresses to be discovered',
+        );
       }
     });
   }
@@ -187,12 +197,13 @@ class HolePunchServiceImpl implements HolePunchService {
     return _ctx.future;
   }
 
-
   /// Handles an incoming hole punch
   Future<IncomingHolePunchResult> _incomingHolePunch(P2PStream str) async {
     // Sanity check: a hole punch request should only come from peers behind a relay
     if (!isRelayAddress(str.conn.remoteMultiaddr)) {
-      throw Exception('Received hole punch stream: ${str.conn.remoteMultiaddr}');
+      throw Exception(
+        'Received hole punch stream: ${str.conn.remoteMultiaddr}',
+      );
     }
 
     var ownAddrs = _listenAddrs();
@@ -202,7 +213,9 @@ class HolePunchServiceImpl implements HolePunchService {
 
     // If we can't tell the peer where to dial us, try to use any available addresses
     if (ownAddrs.isEmpty) {
-      _log.warning('No public addresses available for incoming hole punch, trying all available addresses. Peer: ${str.conn.remotePeer}');
+      _log.warning(
+        'No public addresses available for incoming hole punch, trying all available addresses. Peer: ${str.conn.remotePeer}',
+      );
       // Try to use any addresses we have - the peer can decide if they're reachable
       ownAddrs = _host.addrs.where((addr) => !isRelayAddress(addr)).toList();
       if (ownAddrs.isEmpty) {
@@ -218,7 +231,9 @@ class HolePunchServiceImpl implements HolePunchService {
       final msgBytes = await str.read();
       final msg = HolePunch.fromBuffer(msgBytes);
       if (msg.type != HolePunch_Type.CONNECT) {
-        throw Exception('Expected CONNECT message from initiator but got ${msg.type}');
+        throw Exception(
+          'Expected CONNECT message from initiator but got ${msg.type}',
+        );
       }
 
       var obsDial = removeRelayAddrs(addrsFromBytes(msg.obsAddrs));
@@ -226,9 +241,13 @@ class HolePunchServiceImpl implements HolePunchService {
         obsDial = _filter.filterRemote(str.conn.remotePeer, obsDial);
       }
 
-      _log.fine('Received hole punch request from ${str.conn.remotePeer} with addresses: $obsDial');
+      _log.fine(
+        'Received hole punch request from ${str.conn.remotePeer} with addresses: $obsDial',
+      );
       if (obsDial.isEmpty) {
-        throw Exception('Expected CONNECT message to contain at least one address');
+        throw Exception(
+          'Expected CONNECT message to contain at least one address',
+        );
       }
 
       // Write CONNECT message
@@ -244,7 +263,9 @@ class HolePunchServiceImpl implements HolePunchService {
       final syncMsgBytes = await str.read();
       final syncMsg = HolePunch.fromBuffer(syncMsgBytes);
       if (syncMsg.type != HolePunch_Type.SYNC) {
-        throw Exception('Expected SYNC message from initiator but got ${syncMsg.type}');
+        throw Exception(
+          'Expected SYNC message from initiator but got ${syncMsg.type}',
+        );
       }
 
       return IncomingHolePunchResult(
@@ -285,7 +306,7 @@ class HolePunchServiceImpl implements HolePunchService {
       await str.close();
     } catch (err) {
       _tracer?.protocolError(rp, err);
-      _log.fine('Error handling holepunching stream from ${rp}: $err');
+      _log.fine('Error handling holepunching stream from $rp: $err');
       await str.reset();
       return;
     }
@@ -302,13 +323,18 @@ class HolePunchServiceImpl implements HolePunchService {
       await _holePunchConnect(pi, false);
       final dt = DateTime.now().difference(start);
       _tracer?.endHolePunch(rp, dt, null);
-      _tracer?.holePunchFinished('receiver', 1, result.remoteAddrs, result.ownAddrs, getDirectConnection(_host, rp));
+      _tracer?.holePunchFinished(
+        'receiver',
+        1,
+        result.remoteAddrs,
+        result.ownAddrs,
+        getDirectConnection(_host, rp),
+      );
     } catch (err) {
       final dt = DateTime.now().difference(start);
       _tracer?.endHolePunch(rp, dt, err);
     }
   }
-
 
   /// Performs a hole punch connection
   Future<void> _holePunchConnect(PeerInfo pi, bool isClient) async {
@@ -334,10 +360,14 @@ class HolePunchServiceImpl implements HolePunchService {
     // Wait for service initialization to complete with a reasonable timeout
     try {
       await _hasPublicAddrsChan.future.timeout(
-        Duration(seconds: 10),
+        const Duration(seconds: 10),
         onTimeout: () {
-          _log.severe('Holepunch service initialization timed out after 10 seconds for host ${_host.id}');
-          throw Exception('Holepunch service initialization timeout - service may not have started properly');
+          _log.severe(
+            'Holepunch service initialization timed out after 10 seconds for host ${_host.id}',
+          );
+          throw Exception(
+            'Holepunch service initialization timeout - service may not have started properly',
+          );
         },
       );
     } catch (e) {
@@ -345,9 +375,12 @@ class HolePunchServiceImpl implements HolePunchService {
       rethrow;
     }
 
-    final holePuncher = await _holePuncherMutex.synchronized(() => _holePuncher);
+    final holePuncher =
+        await _holePuncherMutex.synchronized(() => _holePuncher);
     if (holePuncher == null) {
-      throw Exception('Holepunch service not initialized - holePuncher is null');
+      throw Exception(
+        'Holepunch service not initialized - holePuncher is null',
+      );
     }
 
     return holePuncher.directConnect(peerId);

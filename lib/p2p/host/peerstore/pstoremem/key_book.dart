@@ -1,21 +1,20 @@
 /// KeyBook implementation for the memory-based peerstore.
+library;
 
 import 'dart:collection';
 
+import 'package:dart_libp2p/core/crypto/keys.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:synchronized/synchronized.dart';
-import 'package:dart_libp2p/core/crypto/keys.dart';
-
 
 /// A memory-based implementation of the KeyBook interface.
 class MemoryKeyBook implements KeyBook {
+  /// Creates a new memory-based key book implementation.
+  MemoryKeyBook();
   final _pks = HashMap<String, PublicKey>();
   final _sks = HashMap<String, PrivateKey>();
   final _lock = Lock();
-
-  /// Creates a new memory-based key book implementation.
-  MemoryKeyBook();
 
   @override
   Future<List<PeerId>> peersWithKeys() async {

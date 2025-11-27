@@ -4,8 +4,20 @@ import 'package:dart_libp2p/core/network/context.dart';
 
 /// A mock implementation of Context for testing
 class MockContext implements Context {
+  /// Creates a new MockContext
+  MockContext({Duration? timeout}) : _timeout = timeout {
+    if (timeout != null) {
+      Timer(timeout, () {
+        if (!_doneCompleter.isCompleted) {
+          _doneCompleter
+              .completeError(TimeoutException('Context timed out', timeout));
+        }
+      });
+    }
+  }
+
   /// Whether the context is done
-  bool _isDone = false;
+  final bool _isDone = false;
 
   /// The completer for the done future
   final Completer<void> _doneCompleter = Completer<void>();
@@ -15,17 +27,6 @@ class MockContext implements Context {
 
   /// Timeout for the context
   final Duration? _timeout;
-
-  /// Creates a new MockContext
-  MockContext({Duration? timeout}) : _timeout = timeout {
-    if (timeout != null) {
-      Timer(timeout, () {
-        if (!_doneCompleter.isCompleted) {
-          _doneCompleter.completeError(TimeoutException('Context timed out', timeout));
-        }
-      });
-    }
-  }
 
   @override
   Future<void> get done => _doneCompleter.future;

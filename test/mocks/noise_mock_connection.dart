@@ -5,17 +5,16 @@ import 'base_mock_connection.dart';
 /// Mock connection specialized for noise protocol tests
 /// Handles message framing and bidirectional communication
 class NoiseMockConnection extends BaseMockConnection {
+  NoiseMockConnection(super.id);
   // Stream controllers for bidirectional communication
   final _incomingData = StreamController<List<int>>.broadcast();
   final _outgoingData = StreamController<List<int>>.broadcast();
-  
+
   // Buffer for incoming data
   final _buffer = <int>[];
-  
+
   // Stream subscription for cleanup
   StreamSubscription<List<int>>? _subscription;
-  
-  NoiseMockConnection(super.id);
 
   /// Creates a pair of connected noise mock connections
   static (NoiseMockConnection, NoiseMockConnection) createPair({
@@ -24,26 +23,32 @@ class NoiseMockConnection extends BaseMockConnection {
   }) {
     final conn1 = NoiseMockConnection(id1);
     final conn2 = NoiseMockConnection(id2);
-    
+
     // Wire up bidirectional communication
     conn1._subscription = conn2._outgoingData.stream.listen((data) {
       print('${conn1.id} received data: ${data.length} bytes');
       if (!conn1.isClosed) {
         conn1._buffer.addAll(data);
-        print('${conn1.id} buffered data, total buffer size: ${conn1._buffer.length}');
-        conn1._incomingData.add([]);  // Just trigger the stream to wake up waiters
+        print(
+          '${conn1.id} buffered data, total buffer size: ${conn1._buffer.length}',
+        );
+        conn1._incomingData
+            .add([]); // Just trigger the stream to wake up waiters
       }
     });
-    
+
     conn2._subscription = conn1._outgoingData.stream.listen((data) {
       print('${conn2.id} received data: ${data.length} bytes');
       if (!conn2.isClosed) {
         conn2._buffer.addAll(data);
-        print('${conn2.id} buffered data, total buffer size: ${conn2._buffer.length}');
-        conn2._incomingData.add([]);  // Just trigger the stream to wake up waiters
+        print(
+          '${conn2.id} buffered data, total buffer size: ${conn2._buffer.length}',
+        );
+        conn2._incomingData
+            .add([]); // Just trigger the stream to wake up waiters
       }
     });
-    
+
     return (conn1, conn2);
   }
 
@@ -51,13 +56,13 @@ class NoiseMockConnection extends BaseMockConnection {
   Future<void> close() async {
     if (isClosed) return;
     print('$id closing connection');
-    
+
     // Process any remaining buffered data
     if (_buffer.isNotEmpty) {
       print('$id has ${_buffer.length} bytes in buffer during close');
       _incomingData.add(_buffer);
     }
-    
+
     await _subscription?.cancel();
     await _incomingData.close();
     await _outgoingData.close();
@@ -69,7 +74,7 @@ class NoiseMockConnection extends BaseMockConnection {
   @override
   Future<Uint8List> read([int? length]) async {
     validateNotClosed();
-    print('$id reading' + (length != null ? ' $length bytes' : ''));
+    print('$id reading${length != null ? ' $length bytes' : ''}');
 
     try {
       // If length is specified, read exactly that many bytes
@@ -78,16 +83,21 @@ class NoiseMockConnection extends BaseMockConnection {
         if (_buffer.length >= length) {
           final result = Uint8List.fromList(_buffer.take(length).toList());
           _buffer.removeRange(0, length);
-          print('$id returning ${result.length} bytes from buffer, ${_buffer.length} bytes remaining');
+          print(
+            '$id returning ${result.length} bytes from buffer, ${_buffer.length} bytes remaining',
+          );
           return result;
         }
 
         // Wait until we have enough data
         while (_buffer.length < length) {
-          print('$id buffer has ${_buffer.length} bytes, waiting for more data to reach $length bytes');
+          print(
+            '$id buffer has ${_buffer.length} bytes, waiting for more data to reach $length bytes',
+          );
           final data = await _incomingData.stream.first.timeout(
-            Duration(seconds: 30),  // Long timeout for handshake
-            onTimeout: () => throw TimeoutException('Read timed out waiting for more data'),
+            const Duration(seconds: 30), // Long timeout for handshake
+            onTimeout: () =>
+                throw TimeoutException('Read timed out waiting for more data'),
           );
           print('$id received ${data.length} additional bytes');
           _buffer.addAll(data);
@@ -96,7 +106,9 @@ class NoiseMockConnection extends BaseMockConnection {
         // Return exactly the requested number of bytes
         final result = Uint8List.fromList(_buffer.take(length).toList());
         _buffer.removeRange(0, length);
-        print('$id returning ${result.length} bytes, ${_buffer.length} bytes remaining in buffer');
+        print(
+          '$id returning ${result.length} bytes, ${_buffer.length} bytes remaining in buffer',
+        );
         return result;
       }
 
@@ -111,8 +123,9 @@ class NoiseMockConnection extends BaseMockConnection {
       // Wait for next data chunk
       print('$id waiting for next data chunk');
       final data = await _incomingData.stream.first.timeout(
-        Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Read timed out waiting for data'),
+        const Duration(seconds: 30),
+        onTimeout: () =>
+            throw TimeoutException('Read timed out waiting for data'),
       );
       print('$id received ${data.length} bytes');
       return Uint8List.fromList(data);
@@ -126,9 +139,9 @@ class NoiseMockConnection extends BaseMockConnection {
   Future<void> write(Uint8List data) async {
     validateNotClosed();
     print('$id writing ${data.length} bytes');
-    
-    recordWrite(data);  // Record data for test verification
-    _outgoingData.add(data);  // Send data as-is
+
+    recordWrite(data); // Record data for test verification
+    _outgoingData.add(data); // Send data as-is
     print('$id wrote ${data.length} bytes');
   }
 
@@ -137,4 +150,4 @@ class NoiseMockConnection extends BaseMockConnection {
 
   /// For testing: get buffer contents
   List<int> debugGetBufferContents() => List<int>.from(_buffer);
-} 
+}

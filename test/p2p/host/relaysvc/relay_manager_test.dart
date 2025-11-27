@@ -1,13 +1,13 @@
 import 'dart:async';
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 
-import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/event/bus.dart';
 import 'package:dart_libp2p/core/event/reachability.dart';
+import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/network/network.dart';
 import 'package:dart_libp2p/p2p/host/relaysvc/relay_manager.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
 @GenerateMocks([Host, EventBus, Subscription])
 import 'relay_manager_test.mocks.dart';
@@ -16,7 +16,7 @@ void main() {
   group('RelayManager', () {
     late MockHost mockHost;
     late MockEventBus mockEventBus;
-    late MockSubscription mockSubscription;
+    late MockSubscription<Object> mockSubscription;
 
     setUp(() {
       mockHost = MockHost();
@@ -32,8 +32,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(mockHost);
@@ -49,8 +50,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(
@@ -72,8 +74,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(mockHost);
@@ -86,10 +89,12 @@ void main() {
     });
 
     group('Reachability Handling', () {
-      test('should start relay service when reachability becomes public', () async {
+      test('should start relay service when reachability becomes public',
+          () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -104,7 +109,7 @@ void main() {
         );
 
         // Give time for async processing
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should be started
         // We can't directly verify the internal state, but we can check
@@ -115,10 +120,12 @@ void main() {
         await reachabilityController.close();
       });
 
-      test('should not start relay service when reachability is private', () async {
+      test('should not start relay service when reachability is private',
+          () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -131,7 +138,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
 
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should not be started
         // No stream handler should be registered for private peers
@@ -141,10 +148,12 @@ void main() {
         await reachabilityController.close();
       });
 
-      test('should not start relay service when reachability is unknown', () async {
+      test('should not start relay service when reachability is unknown',
+          () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -157,7 +166,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.unknown),
         );
 
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should not be started for unknown reachability
         verifyNever(mockHost.setStreamHandler(any, any));
@@ -166,10 +175,13 @@ void main() {
         await reachabilityController.close();
       });
 
-      test('should stop relay service when reachability changes from public to private', () async {
+      test(
+          'should stop relay service when reachability changes from public to private',
+          () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -183,13 +195,13 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Then become private (stop relay)
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should be stopped
         verify(mockHost.removeStreamHandler(any)).called(greaterThan(0));
@@ -198,10 +210,12 @@ void main() {
         await reachabilityController.close();
       });
 
-      test('should not restart relay if already running on public event', () async {
+      test('should not restart relay if already running on public event',
+          () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -214,7 +228,7 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Clear invocations for second check
         clearInteractions(mockHost);
@@ -222,7 +236,7 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not register handler again (relay already running)
         verifyNever(mockHost.setStreamHandler(any, any));
@@ -237,19 +251,21 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         final manager = await RelayManager.create(mockHost);
 
         // Act & Assert - Should not throw
-        expect(() async => await manager.close(), returnsNormally);
+        expect(() async => manager.close(), returnsNormally);
       });
 
       test('should close cleanly when relay is running', () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -263,10 +279,10 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Act & Assert - Should close relay and clean up
-        expect(() async => await manager.close(), returnsNormally);
+        expect(() async => manager.close(), returnsNormally);
 
         await reachabilityController.close();
       });
@@ -275,8 +291,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
         when(mockSubscription.close()).thenAnswer((_) async {});
 
         final manager = await RelayManager.create(mockHost);
@@ -292,8 +309,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
         when(mockSubscription.close()).thenAnswer((_) async {});
 
         final manager = await RelayManager.create(mockHost);
@@ -303,15 +321,16 @@ void main() {
         await manager.close();
 
         // Assert - Should handle gracefully (second close is no-op)
-        verify(mockSubscription.close()).called(1);  // Only called once
+        verify(mockSubscription.close()).called(1); // Only called once
       });
     });
 
     group('Error Handling', () {
       test('should handle relay start errors gracefully', () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -325,11 +344,11 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        
-        await Future.delayed(Duration(milliseconds: 100));
+
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not crash, error logged internally
-        expect(true, isTrue);  // If we got here, error was handled
+        expect(true, isTrue); // If we got here, error was handled
 
         await manager.close();
         await reachabilityController.close();
@@ -337,8 +356,9 @@ void main() {
 
       test('should handle relay stop errors gracefully', () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -353,13 +373,13 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Act - Try to stop relay (will fail internally)
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not crash
         expect(true, isTrue);
@@ -370,8 +390,9 @@ void main() {
 
       test('should handle event stream errors gracefully', () async {
         // Arrange
-        final reachabilityController = StreamController<EvtLocalReachabilityChanged>.broadcast();
-        
+        final reachabilityController =
+            StreamController<EvtLocalReachabilityChanged>.broadcast();
+
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
         when(mockSubscription.stream)
@@ -381,7 +402,7 @@ void main() {
 
         // Act - Add error to stream
         reachabilityController.addError(Exception('Stream error'));
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should handle error gracefully
         expect(true, isTrue);
@@ -396,8 +417,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(
@@ -416,8 +438,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(
@@ -435,8 +458,9 @@ void main() {
         // Arrange
         when(mockEventBus.subscribe(EvtLocalReachabilityChanged))
             .thenReturn(mockSubscription);
-        when(mockSubscription.stream)
-            .thenAnswer((_) => Stream<EvtLocalReachabilityChanged>.empty());
+        when(mockSubscription.stream).thenAnswer(
+          (_) => const Stream<EvtLocalReachabilityChanged>.empty(),
+        );
 
         // Act
         final manager = await RelayManager.create(

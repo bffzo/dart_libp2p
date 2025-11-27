@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:dcid/dcid.dart';
-import 'package:dart_libp2p/p2p/discovery/routing/routing.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/discovery.dart';
-import 'package:dart_libp2p/core/routing/routing.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/core/routing/routing.dart';
+import 'package:dart_libp2p/p2p/discovery/routing/routing.dart';
+import 'package:dcid/dcid.dart';
 import 'package:test/test.dart';
 
 // Mock implementation of ContentRouting for testing
@@ -23,7 +23,9 @@ class MockContentRouting implements ContentRouting {
     lastAnnounce = announce;
 
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(
+        const Duration(seconds: 61),
+      ); // Force a timeout
     }
 
     if (shouldThrowError) {
@@ -34,7 +36,9 @@ class MockContentRouting implements ContentRouting {
   @override
   Stream<AddrInfo> findProvidersAsync(CID cid, int count) async* {
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(
+        const Duration(seconds: 61),
+      ); // Force a timeout
       return;
     }
 
@@ -43,8 +47,10 @@ class MockContentRouting implements ContentRouting {
     }
 
     // Generate some test peers
-    for (int i = 0; i < count && i < 3; i++) {
-      final peerId = await PeerId.fromString('QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx$i');
+    for (var i = 0; i < count && i < 3; i++) {
+      final peerId = PeerId.fromString(
+        'QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx$i',
+      );
       yield AddrInfo(peerId, []);
     }
   }
@@ -59,13 +65,18 @@ class MockDiscovery implements Discovery {
   bool shouldThrowError = false;
 
   @override
-  Future<Duration> advertise(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Duration> advertise(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     advertiseWasCalled = true;
     lastAdvertisedNs = ns;
     lastOptions = options;
 
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(
+        const Duration(seconds: 61),
+      ); // Force a timeout
     }
 
     if (shouldThrowError) {
@@ -76,7 +87,10 @@ class MockDiscovery implements Discovery {
   }
 
   @override
-  Future<Stream<AddrInfo>> findPeers(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Stream<AddrInfo>> findPeers(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     final controller = StreamController<AddrInfo>();
 
     if (shouldTimeout) {
@@ -91,8 +105,10 @@ class MockDiscovery implements Discovery {
     }
 
     // Generate some test peers
-    for (int i = 0; i < 3; i++) {
-      final peerId = await PeerId.fromString('QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx$i');
+    for (var i = 0; i < 3; i++) {
+      final peerId = PeerId.fromString(
+        'QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx$i',
+      );
       controller.add(AddrInfo(peerId, []));
     }
 
@@ -121,16 +137,17 @@ void main() {
 
     test('advertise respects provided TTL', () async {
       // Create a custom TTL option
-      final customTtl = const Duration(hours: 1);
+      const customTtl = Duration(hours: 1);
       final options = [
         (DiscoveryOptions opts) => DiscoveryOptions(
-          ttl: customTtl,
-          limit: opts.limit,
-          other: Map.from(opts.other),
-        ),
+              ttl: customTtl,
+              limit: opts.limit,
+              other: Map.from(opts.other),
+            ),
       ];
 
-      final duration = await routingDiscovery.advertise('test-namespace', options);
+      final duration =
+          await routingDiscovery.advertise('test-namespace', options);
 
       expect(duration, equals(customTtl));
     });

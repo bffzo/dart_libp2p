@@ -1,44 +1,35 @@
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:pointycastle/ecc/curves/secp256k1.dart';
-import 'package:pointycastle/key_generators/ec_key_generator.dart';
+import 'package:dart_libp2p/core/crypto/ed25519.dart' as ed;
+import 'package:dart_libp2p/core/crypto/keys.dart' as p2pkeys;
+import 'package:dart_libp2p/core/crypto/rsa.dart' as rsa;
 import 'package:pointycastle/key_generators/rsa_key_generator.dart';
 import 'package:pointycastle/pointycastle.dart' as pc;
-import 'package:pointycastle/random/fortuna_random.dart';
-import 'package:dart_libp2p/core/crypto/rsa.dart' as rsa;
-import 'package:dart_libp2p/core/crypto/ed25519.dart' as ed;
-
-import '../../core/crypto/keys.dart' as p2pkeys;
-
 
 class RsaKeyPair {
+  RsaKeyPair(this.publicKey, this.privateKey);
   final rsa.RsaPublicKey publicKey;
   final rsa.RsaPrivateKey privateKey;
-
-  RsaKeyPair(this.publicKey, this.privateKey);
 }
 
 /// Generates an RSA key pair using the pointycastle package
 // Future<pc.AsymmetricKeyPair<pc.PublicKey, pc.PrivateKey >> generateRSAKeyPair({int bits = 2048}) async {
 Future<p2pkeys.KeyPair> generateRSAKeyPair({int bits = 2048}) async {
-  var generator = RSAKeyGenerator();
+  final generator = RSAKeyGenerator();
 
-  var params = pc.RSAKeyGeneratorParameters(BigInt.from(65537), bits, 64);
-  generator.init(pc.ParametersWithRandom( params, fortunaRandom()));
+  final params = pc.RSAKeyGeneratorParameters(BigInt.from(65537), bits, 64);
+  generator.init(pc.ParametersWithRandom(params, fortunaRandom()));
 
   final rsaKeyPair = generator.generateKeyPair();
 
   // RsaKeyPair(RsaPublicKey(), RsaPrivateKey());
-  final pubKey = rsa.RsaPublicKey(rsaKeyPair.publicKey as pc.RSAPublicKey);
-  final privKey = rsa.RsaPrivateKey(rsaKeyPair.privateKey as pc.RSAPrivateKey, pubKey);
+  final pubKey = rsa.RsaPublicKey(rsaKeyPair.publicKey);
+  final privKey = rsa.RsaPrivateKey(rsaKeyPair.privateKey, pubKey);
 
   return p2pkeys.KeyPair(pubKey, privKey);
-
 }
-
 
 pc.SecureRandom fortunaRandom() {
   final secureRandom = pc.SecureRandom('Fortuna')
@@ -57,7 +48,6 @@ Uint8List generateSecureRandomBytes() {
   return bytes;
 }
 
-
 // class Ed25519KeyPair {
 //   final ed.Ed25519PublicKey publicKey;
 //   final ed.Ed25519PrivateKey privateKey;
@@ -69,12 +59,15 @@ Uint8List generateSecureRandomBytes() {
 Future<p2pkeys.KeyPair> generateEd25519KeyPair() async {
   final algorithm = Ed25519();
   final keyPair = await algorithm.newKeyPair();
-  final cryptoPubkey= await keyPair.extractPublicKey();
+  final cryptoPubkey = await keyPair.extractPublicKey();
   final cryptoPrivatekey = await keyPair.extractPrivateKeyBytes();
 
-
-  final edPubkey = await ed.Ed25519PublicKey.fromRawBytes(Uint8List.fromList(cryptoPubkey.bytes));
-  final edPrivkey = await ed.Ed25519PrivateKey.fromRawBytes(Uint8List.fromList(cryptoPrivatekey));
+  final edPubkey = ed.Ed25519PublicKey.fromRawBytes(
+    Uint8List.fromList(cryptoPubkey.bytes),
+  );
+  final edPrivkey = await ed.Ed25519PrivateKey.fromRawBytes(
+    Uint8List.fromList(cryptoPrivatekey),
+  );
 
   // return Ed25519KeyPair(edPubkey, edPrivkey);
   return p2pkeys.KeyPair(edPubkey, edPrivkey);

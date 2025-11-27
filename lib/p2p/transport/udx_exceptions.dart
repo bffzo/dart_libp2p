@@ -2,89 +2,80 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:dart_libp2p/core/exceptions.dart';
 import 'package:logging/logging.dart';
-
-import '../../core/exceptions.dart';
 
 final Logger _logger = Logger('UDXExceptions');
 
 /// UDX-specific transport exception
 class UDXTransportException extends ConnectionFailedException {
+  UDXTransportException(
+    super.message,
+    this.context,
+    this.originalError, {
+    this.isTransient = false,
+  });
   final String context;
   final dynamic originalError;
   final bool isTransient;
-  
-  UDXTransportException(
-    String message, 
-    this.context, 
-    this.originalError, {
-    this.isTransient = false,
-  }) : super(message);
-  
+
   @override
-  String toString() => 'UDXTransportException: $message (context: $context, transient: $isTransient)';
+  String toString() =>
+      'UDXTransportException: $message (context: $context, transient: $isTransient)';
 }
 
 /// UDX connection-specific exception
 class UDXConnectionException extends UDXTransportException {
   UDXConnectionException(
-    String message, 
-    String context, 
-    dynamic originalError, {
-    bool isTransient = false,
-  }) : super(message, context, originalError, isTransient: isTransient);
+    super.message,
+    super.context,
+    super.originalError, {
+    super.isTransient,
+  });
 }
 
 /// UDX stream-specific exception
 class UDXStreamException extends UDXTransportException {
-  final String streamId;
-  
   UDXStreamException(
-    String message, 
-    String context, 
+    String message,
+    String context,
     this.streamId,
     dynamic originalError, {
     bool isTransient = false,
   }) : super(message, context, originalError, isTransient: isTransient);
+  final String streamId;
 }
 
 /// UDX packet loss exception
 class UDXPacketLossException extends UDXConnectionException {
   UDXPacketLossException(
-    String context, 
+    String context,
     dynamic originalError,
   ) : super(
-    'UDX connection failed: Packet permanently lost after max retries', 
-    context, 
-    originalError,
-    isTransient: false, // Permanent packet loss is not transient
-  );
+          'UDX connection failed: Packet permanently lost after max retries',
+          context,
+          originalError,
+          isTransient: false, // Permanent packet loss is not transient
+        );
 }
 
 /// UDX timeout exception
 class UDXTimeoutException extends UDXConnectionException {
-  final Duration timeout;
-  
   UDXTimeoutException(
-    String context, 
+    String context,
     this.timeout,
     dynamic originalError,
   ) : super(
-    'UDX operation timed out after ${timeout.inMilliseconds}ms', 
-    context, 
-    originalError,
-    isTransient: true, // Timeouts might be transient
-  );
+          'UDX operation timed out after ${timeout.inMilliseconds}ms',
+          context,
+          originalError,
+          isTransient: true, // Timeouts might be transient
+        );
+  final Duration timeout;
 }
 
 /// Retry configuration for UDX operations
 class UDXRetryConfig {
-  final int maxRetries;
-  final Duration initialDelay;
-  final double backoffMultiplier;
-  final Duration maxDelay;
-  final bool enableJitter;
-  
   const UDXRetryConfig({
     this.maxRetries = 3,
     this.initialDelay = const Duration(milliseconds: 100),
@@ -92,57 +83,62 @@ class UDXRetryConfig {
     this.maxDelay = const Duration(seconds: 5),
     this.enableJitter = true,
   });
-  
+  final int maxRetries;
+  final Duration initialDelay;
+  final double backoffMultiplier;
+  final Duration maxDelay;
+  final bool enableJitter;
+
   /// Default retry config for bootstrap servers (more aggressive)
   static const UDXRetryConfig bootstrapServer = UDXRetryConfig(
     maxRetries: 5,
     initialDelay: Duration(milliseconds: 50),
     backoffMultiplier: 1.5,
     maxDelay: Duration(seconds: 3),
-    enableJitter: true,
   );
-  
+
   /// Default retry config for regular nodes
-  static const UDXRetryConfig regular = UDXRetryConfig(
-    maxRetries: 3,
-    initialDelay: Duration(milliseconds: 100),
-    backoffMultiplier: 2.0,
-    maxDelay: Duration(seconds: 5),
-    enableJitter: true,
-  );
+  static const UDXRetryConfig regular = UDXRetryConfig();
 }
 
 /// Centralized UDX exception handler with retry logic
 class UDXExceptionHandler {
   static final Random _random = Random();
-  
+
   /// Handles UDX operations with comprehensive exception handling and retry logic
   static Future<T> handleUDXOperation<T>(
     Future<T> Function() operation,
     String context, {
     UDXRetryConfig retryConfig = UDXRetryConfig.regular,
-    bool Function(dynamic error)? shouldRetry,
+    bool Function(Object error)? shouldRetry,
   }) async {
-    int attempt = 0;
-    Duration delay = retryConfig.initialDelay;
-    
+    var attempt = 0;
+    var delay = retryConfig.initialDelay;
+
     while (attempt <= retryConfig.maxRetries) {
       try {
-        _logger.fine('[UDXExceptionHandler] Executing operation: $context (attempt ${attempt + 1}/${retryConfig.maxRetries + 1})');
+        _logger.fine(
+          '[UDXExceptionHandler] Executing operation: $context (attempt ${attempt + 1}/${retryConfig.maxRetries + 1})',
+        );
         return await operation();
       } catch (error, stackTrace) {
-        final classifiedException = classifyUDXException(error, context, stackTrace);
-        
+        final classifiedException =
+            classifyUDXException(error, context, stackTrace);
+
         // If this is the last attempt or error is not retryable, throw
-        if (attempt >= retryConfig.maxRetries || 
+        if (attempt >= retryConfig.maxRetries ||
             !shouldRetryError(classifiedException, shouldRetry)) {
-          _logger.warning('[UDXExceptionHandler] Operation failed permanently: $context. Error: $classifiedException');
+          _logger.warning(
+            '[UDXExceptionHandler] Operation failed permanently: $context. Error: $classifiedException',
+          );
           throw classifiedException;
         }
-        
+
         // Log retry attempt
-        _logger.info('[UDXExceptionHandler] Operation failed, retrying: $context. Attempt ${attempt + 1}/${retryConfig.maxRetries + 1}. Error: $classifiedException');
-        
+        _logger.info(
+          '[UDXExceptionHandler] Operation failed, retrying: $context. Attempt ${attempt + 1}/${retryConfig.maxRetries + 1}. Error: $classifiedException',
+        );
+
         // Calculate delay with exponential backoff and optional jitter
         if (retryConfig.enableJitter) {
           final jitter = _random.nextDouble() * 0.1; // 10% jitter
@@ -150,57 +146,58 @@ class UDXExceptionHandler {
             milliseconds: (delay.inMilliseconds * (1 + jitter)).round(),
           );
         }
-        
-        await Future.delayed(delay);
-        
+
+        await Future<void>.delayed(delay);
+
         // Update delay for next iteration
         delay = Duration(
-          milliseconds: (delay.inMilliseconds * retryConfig.backoffMultiplier).round(),
+          milliseconds:
+              (delay.inMilliseconds * retryConfig.backoffMultiplier).round(),
         );
         if (delay > retryConfig.maxDelay) {
           delay = retryConfig.maxDelay;
         }
-        
+
         attempt++;
       }
     }
-    
+
     // This should never be reached, but just in case
     throw UDXTransportException('Max retries exceeded', context, null);
   }
-  
+
   /// Classifies UDX exceptions into appropriate exception types
   static UDXTransportException classifyUDXException(
-    dynamic error, 
-    String context, 
+    Object error,
+    String context,
     StackTrace stackTrace,
   ) {
     if (error is UDXTransportException) {
       return error; // Already classified
     }
-    
+
     if (error is StateError) {
       final message = error.message;
-      if (message.contains('permanently lost') || message.contains('packet.*lost')) {
+      if (message.contains('permanently lost') ||
+          message.contains('packet.*lost')) {
         return UDXPacketLossException(context, error);
       }
       return UDXConnectionException(
-        'UDX state error: $message', 
-        context, 
+        'UDX state error: $message',
+        context,
         error,
-        isTransient: false,
       );
     }
-    
+
     if (error is SocketException) {
       return UDXConnectionException(
-        'UDX socket error: ${error.message}', 
-        context, 
+        'UDX socket error: ${error.message}',
+        context,
         error,
         isTransient: _isTransientSocketError(error),
       );
     }
-    
+
     if (error is TimeoutException) {
       return UDXTimeoutException(
         context,
@@ -208,56 +205,55 @@ class UDXExceptionHandler {
         error,
       );
     }
-    
+
     if (error is OSError) {
       return UDXConnectionException(
-        'UDX OS error: ${error.message}', 
-        context, 
+        'UDX OS error: ${error.message}',
+        context,
         error,
         isTransient: _isTransientOSError(error),
       );
     }
-    
+
     // Generic UDX error
     return UDXTransportException(
-      'UDX operation failed: $error', 
-      context, 
+      'UDX operation failed: $error',
+      context,
       error,
-      isTransient: false,
     );
   }
-  
+
   /// Determines if an error should be retried
   static bool shouldRetryError(
-    UDXTransportException error, 
-    bool Function(dynamic error)? customShouldRetry,
+    UDXTransportException error,
+    bool Function(Object error)? customShouldRetry,
   ) {
     // Use custom retry logic if provided
     if (customShouldRetry != null) {
       return customShouldRetry(error);
     }
-    
+
     // Don't retry packet loss errors (they're permanent)
     if (error is UDXPacketLossException) {
       return false;
     }
-    
+
     // Retry transient errors
     return error.isTransient;
   }
-  
+
   /// Determines if a SocketException is transient
   static bool _isTransientSocketError(SocketException error) {
     final message = error.message.toLowerCase();
-    
+
     // Network unreachable, connection refused, etc. might be transient
     return message.contains('network unreachable') ||
-           message.contains('connection refused') ||
-           message.contains('connection reset') ||
-           message.contains('connection timed out') ||
-           message.contains('host unreachable');
+        message.contains('connection refused') ||
+        message.contains('connection reset') ||
+        message.contains('connection timed out') ||
+        message.contains('host unreachable');
   }
-  
+
   /// Determines if an OSError is transient
   static bool _isTransientOSError(OSError error) {
     // Common transient OS errors
@@ -283,21 +279,21 @@ class UDXExceptionUtils {
       await closeOperation();
       _logger.fine('[UDXExceptionUtils] Successfully closed $resourceName');
     } catch (error) {
-      _logger.warning('[UDXExceptionUtils] Error closing $resourceName: $error');
+      _logger
+          .warning('[UDXExceptionUtils] Error closing $resourceName: $error');
       // Don't rethrow - we want cleanup to continue
     }
   }
-  
+
   /// Safely closes multiple resources
   static Future<void> safeCloseAll(
     Map<String, Future<void> Function()> resources,
   ) async {
-    final futures = resources.entries.map((entry) => 
-      safeClose(entry.value, entry.key)
-    );
+    final futures =
+        resources.entries.map((entry) => safeClose(entry.value, entry.key));
     await Future.wait(futures);
   }
-  
+
   /// Creates a timeout wrapper for UDX operations
   static Future<T> withTimeout<T>(
     Future<T> operation,

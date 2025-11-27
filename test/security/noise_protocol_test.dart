@@ -1,36 +1,34 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:collection/collection.dart'; // For ListEquality
 import 'package:dart_libp2p/core/crypto/keys.dart' as libp2p_keys;
 import 'package:dart_libp2p/core/crypto/keys.dart';
-import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/transport_conn.dart';
-import 'package:dart_libp2p/core/network/context.dart';
-import 'package:dart_libp2p/core/network/stream.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/common.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart' show ConnScope, ScopeStat, ResourceScopeSpan, ResourceScope;
+import 'package:dart_libp2p/core/network/conn.dart';
+import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show ConnScope, ResourceScopeSpan, ScopeStat;
+import 'package:dart_libp2p/core/network/stream.dart';
+import 'package:dart_libp2p/core/network/transport_conn.dart';
 // Import the abstract PeerId directly
 // Import the concrete PeerId implementation
 import 'package:dart_libp2p/core/peer/peer_id.dart' as concrete_peer_id;
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/p2p/crypto/key_generator.dart';
+import 'package:dart_libp2p/p2p/security/noise/noise_protocol.dart';
 import 'package:dart_libp2p/p2p/security/secured_connection.dart';
 import 'package:test/test.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/p2p/security/noise/noise_protocol.dart';
-import 'package:dart_libp2p/p2p/security/security_protocol.dart';
-import 'package:dart_libp2p/p2p/security/noise/pb/payload.pb.dart';
+
 import '../mocks/noise_mock_connection.dart';
-import 'package:dart_libp2p/p2p/security/noise/xx_pattern.dart';
-import 'package:collection/collection.dart'; // For ListEquality
 
 /// Simple adapter to make NoiseMockConnection compatible with TransportConn
 class NoiseTransportAdapter implements TransportConn {
-  final NoiseMockConnection _conn;
-
   NoiseTransportAdapter(this._conn);
+  final NoiseMockConnection _conn;
 
   @override
   Future<void> close() => _conn.close();
@@ -107,9 +105,8 @@ class NoiseTransportAdapter implements TransportConn {
 
 /// Adapter to make _TrackedConnection compatible with TransportConn
 class TrackedTransportAdapter implements TransportConn {
-  final _TrackedConnection _conn;
-
   TrackedTransportAdapter(this._conn);
+  final _TrackedConnection _conn;
 
   // Access to the tracked reads for testing
   List<int> get reads => _conn.reads;
@@ -137,7 +134,8 @@ class TrackedTransportAdapter implements TransportConn {
   PeerId get remotePeer => _conn._inner.remotePeer; // Use direct PeerId type
 
   @override
-  Future<libp2p_keys.PublicKey?> get remotePublicKey => _conn._inner.remotePublicKey;
+  Future<libp2p_keys.PublicKey?> get remotePublicKey =>
+      _conn._inner.remotePublicKey;
 
   @override
   ConnState get state => _conn._inner.state;
@@ -181,13 +179,13 @@ class TrackedTransportAdapter implements TransportConn {
   void notifyActivity() {
     // If _conn implements notifyActivity, call it.
     // Otherwise, this mock might not need to do anything specific for activity.
-    if (_conn is TransportConn) {
-      (_conn as TransportConn).notifyActivity();
-    }
+    (_conn as TransportConn).notifyActivity();
   }
 }
 
 class MockConnection implements TransportConn {
+  MockConnection(this.id);
+  @override
   final String id;
   bool _closed = false;
 
@@ -207,8 +205,6 @@ class MockConnection implements TransportConn {
   // Callback for connection closure
   void Function()? onClose;
 
-  MockConnection(this.id);
-
   /// Creates a pair of connected mock connections
   static (MockConnection, MockConnection) createPair() {
     final conn1 = MockConnection('conn1');
@@ -218,18 +214,22 @@ class MockConnection implements TransportConn {
     conn1._subscription = conn2._outgoingData.stream.listen((data) {
       print('${conn1.id} received data: ${data.length} bytes');
       if (!conn1._closed) {
-        conn1._buffer.addAll(data);  // Add to continuous buffer
+        conn1._buffer.addAll(data); // Add to continuous buffer
         conn1._incomingData.add(data);
-        print('${conn1.id} buffered data, total buffer size: ${conn1._buffer.length}');
+        print(
+          '${conn1.id} buffered data, total buffer size: ${conn1._buffer.length}',
+        );
       }
     });
 
     conn2._subscription = conn1._outgoingData.stream.listen((data) {
       print('${conn2.id} received data: ${data.length} bytes');
       if (!conn2._closed) {
-        conn2._buffer.addAll(data);  // Add to continuous buffer
+        conn2._buffer.addAll(data); // Add to continuous buffer
         conn2._incomingData.add(data);
-        print('${conn2.id} buffered data, total buffer size: ${conn2._buffer.length}');
+        print(
+          '${conn2.id} buffered data, total buffer size: ${conn2._buffer.length}',
+        );
       }
     });
 
@@ -252,29 +252,33 @@ class MockConnection implements TransportConn {
     await _incomingData.close();
     await _outgoingData.close();
     _buffer.clear();
-    onClose?.call();  // Call the closure callback if set
+    onClose?.call(); // Call the closure callback if set
     print('$id connection closed');
   }
 
   @override
   Future<Uint8List> read([int? length]) async {
     if (_closed) throw StateError('Connection is closed');
-    print('$id reading' + (length != null ? ' $length bytes' : ''));
+    print('$id reading${length != null ? ' $length bytes' : ''}');
 
     try {
       // If no length specified, return whatever is in buffer or wait for more data
       if (length == null) {
         if (_buffer.isEmpty) {
           final data = await _incomingData.stream.first.timeout(
-            Duration(seconds: 30),  // Increased timeout for handshake
+            const Duration(seconds: 30), // Increased timeout for handshake
             onTimeout: () => throw TimeoutException('Read timed out'),
           );
-          print('$id read ${data.length} bytes from stream (no length specified)');
+          print(
+            '$id read ${data.length} bytes from stream (no length specified)',
+          );
           return Uint8List.fromList(data);
         }
         final result = Uint8List.fromList(_buffer);
         _buffer.clear();
-        print('$id returning ${result.length} bytes from buffer (no length specified)');
+        print(
+          '$id returning ${result.length} bytes from buffer (no length specified)',
+        );
         return result;
       }
 
@@ -282,16 +286,21 @@ class MockConnection implements TransportConn {
       if (_buffer.length >= length) {
         final result = Uint8List.fromList(_buffer.take(length).toList());
         _buffer.removeRange(0, length);
-        print('$id returning ${result.length} bytes from buffer, ${_buffer.length} bytes remaining');
+        print(
+          '$id returning ${result.length} bytes from buffer, ${_buffer.length} bytes remaining',
+        );
         return result;
       }
 
       // Wait until we have enough data
       while (_buffer.length < length) {
-        print('$id buffer has ${_buffer.length} bytes, waiting for more data to reach $length bytes');
+        print(
+          '$id buffer has ${_buffer.length} bytes, waiting for more data to reach $length bytes',
+        );
         final data = await _incomingData.stream.first.timeout(
-          Duration(seconds: 30),  // Increased timeout for handshake
-          onTimeout: () => throw TimeoutException('Read timed out waiting for more data'),
+          const Duration(seconds: 30), // Increased timeout for handshake
+          onTimeout: () =>
+              throw TimeoutException('Read timed out waiting for more data'),
         );
         print('$id received ${data.length} additional bytes');
         _buffer.addAll(data);
@@ -300,7 +309,9 @@ class MockConnection implements TransportConn {
       // Return exactly the requested number of bytes
       final result = Uint8List.fromList(_buffer.take(length).toList());
       _buffer.removeRange(0, length);
-      print('$id returning ${result.length} bytes, ${_buffer.length} bytes remaining in buffer');
+      print(
+        '$id returning ${result.length} bytes, ${_buffer.length} bytes remaining in buffer',
+      );
       return result;
     } catch (e) {
       print('$id error during read: $e');
@@ -313,7 +324,7 @@ class MockConnection implements TransportConn {
     if (_closed) throw StateError('Connection is closed');
     print('$id writing ${data.length} bytes');
 
-    writes.add(data);  // For test verification only
+    writes.add(data); // For test verification only
     _outgoingData.add(data);
     print('$id wrote ${data.length} bytes to outgoing stream');
   }
@@ -345,37 +356,43 @@ class MockConnection implements TransportConn {
   // Additional methods required by Conn interface
   @override
   Future<P2PStream> newStream(Context context) {
-    throw UnimplementedError('Stream multiplexing not implemented in mock connection');
+    throw UnimplementedError(
+      'Stream multiplexing not implemented in mock connection',
+    );
   }
 
   @override
   Future<List<P2PStream>> get streams async => [];
 
   @override
-  PeerId get localPeer => throw UnimplementedError('localPeer not implemented in mock connection'); // Use direct PeerId type
+  PeerId get localPeer => throw UnimplementedError(
+        'localPeer not implemented in mock connection',
+      ); // Use direct PeerId type
 
   @override
-  PeerId get remotePeer => throw UnimplementedError('remotePeer not implemented in mock connection'); // Use direct PeerId type
+  PeerId get remotePeer => throw UnimplementedError(
+        'remotePeer not implemented in mock connection',
+      ); // Use direct PeerId type
 
   @override
   Future<libp2p_keys.PublicKey?> get remotePublicKey async => null;
 
   @override
-  ConnState get state => ConnState(
-    streamMultiplexer: 'mock-muxer/1.0.0',
-    security: 'mock-security/1.0.0',
-    transport: 'mock',
-    usedEarlyMuxerNegotiation: false,
-  );
+  ConnState get state => const ConnState(
+        streamMultiplexer: 'mock-muxer/1.0.0',
+        security: 'mock-security/1.0.0',
+        transport: 'mock',
+        usedEarlyMuxerNegotiation: false,
+      );
 
   @override
   ConnStats get stat => _MockConnStats(
-    stats: Stats(
-      direction: Direction.outbound,
-      opened: DateTime.now(),
-    ),
-    numStreams: 0,
-  );
+        stats: Stats(
+          direction: Direction.outbound,
+          opened: DateTime.now(),
+        ),
+        numStreams: 0,
+      );
 
   @override
   ConnScope get scope => _MockConnScope();
@@ -386,16 +403,15 @@ class MockConnection implements TransportConn {
 
 /// Mock implementation of ConnStats
 class _MockConnStats implements ConnStats {
+  const _MockConnStats({
+    required this.stats,
+    required this.numStreams,
+  });
   @override
   final Stats stats;
 
   @override
   final int numStreams;
-
-  const _MockConnStats({
-    required this.stats,
-    required this.numStreams,
-  });
 }
 
 /// Mock implementation of ConnScope
@@ -416,9 +432,11 @@ class _MockConnScope implements ConnScope {
 }
 
 /// Mock implementation of ResourceScopeSpan
-class _MockResourceScopeSpan implements ResourceScopeSpan { // Implements ResourceScopeSpan from rcmgr
+class _MockResourceScopeSpan implements ResourceScopeSpan {
+  // Implements ResourceScopeSpan from rcmgr
   @override
-  Future<ResourceScopeSpan> beginSpan() async { // Returns ResourceScopeSpan from rcmgr
+  Future<ResourceScopeSpan> beginSpan() async {
+    // Returns ResourceScopeSpan from rcmgr
     return this;
   }
 
@@ -432,16 +450,16 @@ class _MockResourceScopeSpan implements ResourceScopeSpan { // Implements Resour
   Future<void> reserveMemory(int size, int priority) async {}
 
   @override
-  ScopeStat get stat => const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr
+  ScopeStat get stat =>
+      const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr
 }
 
 /// A connection wrapper that monitors reads
 class _MonitoredConnection implements TransportConn {
+  _MonitoredConnection(this._inner, {required this.onRead});
   final TransportConn _inner;
   final void Function(int readNum, int? length, Uint8List result) onRead;
   int _readCount = 0;
-
-  _MonitoredConnection(this._inner, {required this.onRead});
 
   @override
   Future<Uint8List> read([int? length]) async {
@@ -517,10 +535,9 @@ class _MonitoredConnection implements TransportConn {
 
 /// A connection wrapper that tracks reads
 class _TrackedConnection implements TransportConn {
+  _TrackedConnection(this._inner);
   final TransportConn _inner;
   final reads = <int>[];
-
-  _TrackedConnection(this._inner);
 
   @override
   Future<Uint8List> read([int? length]) async {
@@ -543,8 +560,10 @@ class _TrackedConnection implements TransportConn {
 
   MultiAddr get remoteAddr => _inner.remoteMultiaddr;
 
+  @override
   MultiAddr get localMultiaddr => _inner.localMultiaddr;
 
+  @override
   MultiAddr get remoteMultiaddr => _inner.remoteMultiaddr;
 
   @override
@@ -605,14 +624,17 @@ void main() {
 
     test('verifies identity key type', () async {
       //Noise needs an Ed25519 keypair. Let's see if it detects the wrong type
-      KeyPair wrongKey = await generateRSAKeyPair() ;
+      final wrongKey = await generateRSAKeyPair();
 
       try {
         await NoiseSecurity.create(wrongKey);
         fail('Should have thrown NoiseProtocolException');
       } catch (e) {
         expect(e, isA<NoiseProtocolException>());
-        expect((e as NoiseProtocolException).message, contains('Ed25519 compatible'));
+        expect(
+          (e as NoiseProtocolException).message,
+          contains('Ed25519 compatible'),
+        );
       }
     });
 
@@ -626,14 +648,18 @@ void main() {
 
       await expectLater(
         () => protocol.secureOutbound(transportConn),
-        throwsA(isA<NoiseProtocolException>()
-          .having((e) => e.message, 'message', contains('disposed'))),
+        throwsA(
+          isA<NoiseProtocolException>()
+              .having((e) => e.message, 'message', contains('disposed')),
+        ),
       );
 
       await expectLater(
         () => protocol.secureInbound(transportConn),
-        throwsA(isA<NoiseProtocolException>()
-          .having((e) => e.message, 'message', contains('disposed'))),
+        throwsA(
+          isA<NoiseProtocolException>()
+              .having((e) => e.message, 'message', contains('disposed')),
+        ),
       );
     });
 
@@ -647,7 +673,11 @@ void main() {
         throwsA(isA<NoiseProtocolException>()),
       );
 
-      expect(conn.isClosed, isTrue, reason: 'Connection should be closed after error');
+      expect(
+        conn.isClosed,
+        isTrue,
+        reason: 'Connection should be closed after error',
+      );
     });
 
     test('provides correct protocol identifier', () {
@@ -674,10 +704,13 @@ void main() {
 
       try {
         // Perform handshake
-        final [secured1, secured2] = await Future.wait<SecuredConnection>([
-          protocol1.secureOutbound(transportConn1),
-          protocol2.secureInbound(trackedConn2),
-        ], eagerError: true);
+        final [secured1, secured2] = await Future.wait<SecuredConnection>(
+          [
+            protocol1.secureOutbound(transportConn1),
+            protocol2.secureInbound(trackedConn2),
+          ],
+          eagerError: true,
+        );
 
         print('\nMessage sizes during handshake:');
         print('Responder reads: ${trackedConn2.reads}');
@@ -687,14 +720,23 @@ void main() {
         final testMessage = Uint8List.fromList([1, 2, 3, 4, 5]);
         await secured1.write(testMessage);
         final received = await secured2.read();
-        expect(received, equals(testMessage), reason: 'Received message should match sent message');
+        expect(
+          received,
+          equals(testMessage),
+          reason: 'Received message should match sent message',
+        );
 
         // Test large message exchange
         final random = Random.secure();
-        final largeMessage = Uint8List.fromList(List.generate(4096, (_) => random.nextInt(256)));
+        final largeMessage =
+            Uint8List.fromList(List.generate(4096, (_) => random.nextInt(256)));
         await secured1.write(largeMessage);
         final receivedLarge = await secured2.read();
-        expect(receivedLarge, equals(largeMessage), reason: 'Large message should be received correctly');
+        expect(
+          receivedLarge,
+          equals(largeMessage),
+          reason: 'Large message should be received correctly',
+        );
 
         await secured1.close();
         await secured2.close();
@@ -705,13 +747,16 @@ void main() {
     });
 
     test('handles concurrent handshakes correctly', () async {
-      final pairs = List.generate(3, (i) => NoiseMockConnection.createPair(
-        id1: 'initiator$i',
-        id2: 'responder$i',
-      ));
+      final pairs = List.generate(
+        3,
+        (i) => NoiseMockConnection.createPair(
+          id1: 'initiator$i',
+          id2: 'responder$i',
+        ),
+      );
 
       final protocols = await Future.wait(
-        List.generate(6, (_) => NoiseSecurity.create(identityKey))
+        List.generate(6, (_) => NoiseSecurity.create(identityKey)),
       );
 
       try {
@@ -722,8 +767,8 @@ void main() {
           // Create transport adapters
           final transportConn1 = NoiseTransportAdapter(conn1);
           final transportConn2 = NoiseTransportAdapter(conn2);
-          futures.add(protocols[i*2].secureOutbound(transportConn1));
-          futures.add(protocols[i*2+1].secureInbound(transportConn2));
+          futures.add(protocols[i * 2].secureOutbound(transportConn1));
+          futures.add(protocols[i * 2 + 1].secureInbound(transportConn2));
         }
 
         final connections = await Future.wait(futures, eagerError: true);
@@ -735,7 +780,9 @@ void main() {
       }
     });
 
-    test('correctly encrypts/decrypts specific Yamux SYN frame after initial nonce usage', () async {
+    test(
+        'correctly encrypts/decrypts specific Yamux SYN frame after initial nonce usage',
+        () async {
       final (connInitiator, connResponder) = NoiseMockConnection.createPair(
         id1: 'initiator-yamux-test',
         id2: 'responder-yamux-test',
@@ -743,13 +790,17 @@ void main() {
       final transportConnInitiator = NoiseTransportAdapter(connInitiator);
       final transportConnResponder = NoiseTransportAdapter(connResponder);
 
-      final noiseInitiator = await NoiseSecurity.create(identityKey); // Use the setUp identityKey
-      final responderIdentityKey = await generateEd25519KeyPair(); // Different key for responder
+      final noiseInitiator =
+          await NoiseSecurity.create(identityKey); // Use the setUp identityKey
+      final responderIdentityKey =
+          await generateEd25519KeyPair(); // Different key for responder
       final noiseResponder = await NoiseSecurity.create(responderIdentityKey);
       // Use the concrete PeerId class for instantiation
-      final responderPeerId = await concrete_peer_id.PeerId.fromPublicKey(responderIdentityKey.publicKey);
-      final initiatorPeerId = await concrete_peer_id.PeerId.fromPublicKey(identityKey.publicKey);
-
+      final responderPeerId = concrete_peer_id.PeerId.fromPublicKey(
+        responderIdentityKey.publicKey,
+      );
+      final initiatorPeerId =
+          concrete_peer_id.PeerId.fromPublicKey(identityKey.publicKey);
 
       SecuredConnection securedInitiator;
       SecuredConnection securedResponder;
@@ -758,10 +809,13 @@ void main() {
         // Perform handshake
         // Pass remotePeerId to secureOutbound and localPeerId to secureInbound for full context
         // Use the adapters transportConnInitiator and transportConnResponder
-        final handshakeResult = await Future.wait<SecuredConnection>([
-          noiseInitiator.secureOutbound(transportConnInitiator),
-          noiseResponder.secureInbound(transportConnResponder),
-        ], eagerError: true);
+        final handshakeResult = await Future.wait<SecuredConnection>(
+          [
+            noiseInitiator.secureOutbound(transportConnInitiator),
+            noiseResponder.secureInbound(transportConnResponder),
+          ],
+          eagerError: true,
+        );
         securedInitiator = handshakeResult[0];
         securedResponder = handshakeResult[1];
 
@@ -769,61 +823,76 @@ void main() {
         // Initiator sends 2 messages, Responder reads them.
         // Responder sends 2 messages, Initiator reads them.
         // This should increment send/recv nonces on both sides past 0 and 1.
-        final dummyMsg1 = Uint8List.fromList([10, 20, 30]); // Represents e.g. multistream select for identify
-        final dummyMsg2 = Uint8List.fromList([40, 50, 60]); // Represents e.g. multistream select for yamux
+        final dummyMsg1 = Uint8List.fromList(
+          [10, 20, 30],
+        ); // Represents e.g. multistream select for identify
+        final dummyMsg2 = Uint8List.fromList(
+          [40, 50, 60],
+        ); // Represents e.g. multistream select for yamux
 
         // Exchange 1: Initiator -> Responder
         print('Test: Initiator sending dummyMsg1');
         await securedInitiator.write(dummyMsg1);
         print('Test: Responder reading dummyMsg1');
-        await securedResponder.read(); 
+        await securedResponder.read();
 
         // Exchange 2: Responder -> Initiator
         print('Test: Responder sending dummyMsg1');
-        await securedResponder.write(dummyMsg1); 
+        await securedResponder.write(dummyMsg1);
         print('Test: Initiator reading dummyMsg1');
-        await securedInitiator.read();          
+        await securedInitiator.read();
 
         // Exchange 3: Initiator -> Responder
         print('Test: Initiator sending dummyMsg2');
         await securedInitiator.write(dummyMsg2);
         print('Test: Responder reading dummyMsg2');
-        await securedResponder.read(); 
+        await securedResponder.read();
 
         // Exchange 4: Responder -> Initiator
         print('Test: Responder sending dummyMsg2');
-        await securedResponder.write(dummyMsg2); 
+        await securedResponder.write(dummyMsg2);
         print('Test: Initiator reading dummyMsg2');
-        await securedInitiator.read();          
+        await securedInitiator.read();
 
-        // After these 4 exchanges (2 in each direction), 
+        // After these 4 exchanges (2 in each direction),
         // initiator's sendNonce for the next write should be 2.
         // responder's recvNonce for the next read should be 2.
 
-        final yamuxSynFrame = Uint8List.fromList([0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]); // Flag SYN (0x01)
-        final expectedCorruptedFrame = Uint8List.fromList([0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 0]); // Flag SYN|ACK (0x03)
+        final yamuxSynFrame = Uint8List.fromList(
+          [0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
+        ); // Flag SYN (0x01)
+        final expectedCorruptedFrame = Uint8List.fromList(
+          [0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 0],
+        ); // Flag SYN|ACK (0x03)
 
-        print('Test: Initiator (expecting sendNonce 2) writing Yamux SYN: $yamuxSynFrame');
+        print(
+          'Test: Initiator (expecting sendNonce 2) writing Yamux SYN: $yamuxSynFrame',
+        );
         await securedInitiator.write(yamuxSynFrame);
 
         print('Test: Responder (expecting recvNonce 2) reading Yamux SYN...');
         final receivedFrame = await securedResponder.read();
         print('Test: Responder received Yamux SYN: $receivedFrame');
 
-        expect(receivedFrame, orderedEquals(yamuxSynFrame),
-            reason: 'Yamux SYN frame should be received uncorrupted. '
-                    'If it is ${expectedCorruptedFrame}, the corruption bug is present.');
-        
-        // Additional check to be very explicit if the primary one fails.
-        if (!ListEquality().equals(receivedFrame, yamuxSynFrame)) {
-            print('Test: Frame was corrupted!');
-            if (ListEquality().equals(receivedFrame, expectedCorruptedFrame)) {
-                print('Test: Corruption matches known pattern (SYN -> SYN|ACK).');
-            } else {
-                print('Test: Corruption does NOT match known SYN -> SYN|ACK pattern. Different corruption.');
-            }
-        }
+        expect(
+          receivedFrame,
+          orderedEquals(yamuxSynFrame),
+          reason: 'Yamux SYN frame should be received uncorrupted. '
+              'If it is $expectedCorruptedFrame, the corruption bug is present.',
+        );
 
+        // Additional check to be very explicit if the primary one fails.
+        if (!const ListEquality().equals(receivedFrame, yamuxSynFrame)) {
+          print('Test: Frame was corrupted!');
+          if (const ListEquality()
+              .equals(receivedFrame, expectedCorruptedFrame)) {
+            print('Test: Corruption matches known pattern (SYN -> SYN|ACK).');
+          } else {
+            print(
+              'Test: Corruption does NOT match known SYN -> SYN|ACK pattern. Different corruption.',
+            );
+          }
+        }
 
         await securedInitiator.close();
         await securedResponder.close();

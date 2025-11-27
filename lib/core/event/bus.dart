@@ -2,6 +2,7 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/core/event/bus.go
 /// to Dart, using native Dart idioms like Stream Controllers instead of Go channels.
+library;
 
 import 'dart:async';
 
@@ -79,7 +80,10 @@ abstract class EventBus {
   ///     }
   ///   });
   ///   await sub.close();
-  Subscription subscribe(Object eventType , {List<SubscriptionOpt>? opts});
+  Subscription<Object> subscribe(
+    Object eventType, {
+    List<SubscriptionOpt>? opts,
+  });
 
   /// Creates a new event emitter.
   ///

@@ -1,4 +1,5 @@
 /// Package backoff provides an exponential backoff implementation.
+library;
 
 import 'dart:async';
 
@@ -10,6 +11,12 @@ const Duration defaultMaxDelay = Duration(minutes: 1);
 
 /// ExpBackoff implements an exponential backoff mechanism.
 class ExpBackoff {
+  /// Creates a new ExpBackoff instance with optional delay and maxDelay parameters.
+  ExpBackoff({
+    this.delay = defaultDelay,
+    this.maxDelay = defaultMaxDelay,
+  });
+
   /// Initial delay duration
   Duration delay;
 
@@ -21,12 +28,6 @@ class ExpBackoff {
 
   /// Timestamp of the last run
   DateTime? _lastRun;
-
-  /// Creates a new ExpBackoff instance with optional delay and maxDelay parameters.
-  ExpBackoff({
-    this.delay = defaultDelay,
-    this.maxDelay = defaultMaxDelay,
-  });
 
   /// Initializes default values if not set
   void _init() {
@@ -46,7 +47,7 @@ class ExpBackoff {
   }
 
   /// Runs the provided function with exponential backoff.
-  /// 
+  ///
   /// Returns a tuple containing the error (if any) and a boolean indicating
   /// whether the function was actually run.
   Future<(Object?, bool)> run(Future<void> Function() f) async {

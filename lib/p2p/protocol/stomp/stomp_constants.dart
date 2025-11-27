@@ -1,4 +1,5 @@
 /// Constants for the STOMP protocol implementation.
+library;
 
 /// Protocol IDs for STOMP
 class StompProtocols {
@@ -128,7 +129,7 @@ class StompEscaping {
     '\r': r'\r',
     '\n': r'\n',
     ':': r'\c',
-    '\\': r'\\',
+    r'\': r'\\',
   };
 
   /// Reverse escape sequences mapping
@@ -136,7 +137,7 @@ class StompEscaping {
     r'\r': '\r',
     r'\n': '\n',
     r'\c': ':',
-    r'\\': '\\',
+    r'\\': r'\',
   };
 
   /// Escapes header value according to STOMP specification

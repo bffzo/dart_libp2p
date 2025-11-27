@@ -2,23 +2,25 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
-import 'package:dcid/dcid.dart';
 
+import 'package:crypto/crypto.dart';
 import 'package:dart_libp2p/core/discovery.dart';
 import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/routing/routing.dart';
+import 'package:dcid/dcid.dart';
 
 /// RoutingDiscovery is an implementation of discovery using ContentRouting.
 /// Namespaces are translated to Cids using the SHA256 hash.
 class RoutingDiscovery implements Discovery {
-  final ContentRouting _router;
-
   /// Creates a new RoutingDiscovery
   RoutingDiscovery(this._router);
+  final ContentRouting _router;
 
   @override
-  Future<Duration> advertise(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Duration> advertise(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     final opts = DiscoveryOptions().apply(options);
 
     var ttl = opts.ttl;
@@ -62,9 +64,13 @@ class RoutingDiscovery implements Discovery {
   }
 
   @override
-  Future<Stream<AddrInfo>> findPeers(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Stream<AddrInfo>> findPeers(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     final opts = DiscoveryOptions().apply(options);
-    final limit = opts.limit ?? 100; // default limit if not specified in options
+    final limit =
+        opts.limit ?? 100; // default limit if not specified in options
 
     final cid = await nsToCid(ns);
 
@@ -78,7 +84,7 @@ class RoutingDiscovery implements Discovery {
         final providerStream = _router.findProvidersAsync(cid, limit);
 
         // Set up a timeout for the initial lookup
-        final timeout = const Duration(seconds: 60);
+        const timeout = Duration(seconds: 60);
         final timer = Timer(timeout, () {
           // If we reach the timeout, we'll close the controller
           // but we won't consider it an error - we just stop looking for more providers
@@ -139,11 +145,10 @@ class RoutingDiscovery implements Discovery {
 
 /// DiscoveryRouting is an implementation of ContentRouting using Discovery.
 class DiscoveryRouting implements ContentRouting {
-  final Discovery _discovery;
-  final List<DiscoveryOption> _opts;
-
   /// Creates a new DiscoveryRouting
   DiscoveryRouting(this._discovery, [this._opts = const []]);
+  final Discovery _discovery;
+  final List<DiscoveryOption> _opts;
 
   @override
   Future<void> provide(CID cid, bool announce) async {
@@ -168,6 +173,6 @@ class DiscoveryRouting implements ContentRouting {
 
   /// Converts a CID to a namespace string
   static String cidToNs(CID cid) {
-    return '/provider/${cid.toString()}';
+    return '/provider/$cid';
   }
 }

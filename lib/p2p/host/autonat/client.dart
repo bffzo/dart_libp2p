@@ -1,58 +1,70 @@
 import 'dart:async';
-import 'dart:typed_data';
 
-import '../../../core/host/host.dart';
-import '../../../core/network/context.dart'; // Added import for Context
-import '../../../core/network/network.dart';
-import '../../../core/network/stream.dart';
-import '../../../core/peer/peer_id.dart';
-import '../../../core/protocol/autonatv1/autonatv1.dart';
-import './pb/autonat.pb.dart' as pb; // Corrected relative path
-import '../../../core/peer/addr_info.dart';
-import '../../../core/multiaddr.dart';
-import '../../../utils/protobuf_utils.dart'; // Import for delimited messaging
-
+import 'package:dart_libp2p/core/host/host.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/context.dart'; // Added import for Context
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show ReservationPriority; // For stream scoping
+import 'package:dart_libp2p/core/network/stream.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/core/protocol/autonatv1/autonatv1.dart';
 // Assuming these constants are defined elsewhere or need to be defined.
 // For now, using placeholders.
-import './metrics.dart' show MetricsTracer; // Moved import to top
-import '../../../core/network/rcmgr.dart' show ReservationPriority; // For stream scoping
+import 'package:dart_libp2p/p2p/host/autonat/metrics.dart'
+    show MetricsTracer; // Moved import to top
+import 'package:dart_libp2p/p2p/host/autonat/pb/autonat.pb.dart'
+    as pb; // Corrected relative path
+import 'package:dart_libp2p/utils/protobuf_utils.dart'; // Import for delimited messaging
 
-const String serviceName = 'libp2p.autonat'; // From Go: s.Scope().SetService(ServiceName)
-const int _autoNATClientMaxMessageScopeReservation = 8192; // 8KB for client-side stream scope
+const String serviceName =
+    'libp2p.autonat'; // From Go: s.Scope().SetService(ServiceName)
+const int _autoNATClientMaxMessageScopeReservation =
+    8192; // 8KB for client-side stream scope
 const Duration streamTimeout = Duration(seconds: 60); // From Go: streamTimeout
-
 
 /// Function type for providing addresses.
 typedef AddrFunc = List<MultiAddr> Function();
 
 class AutoNATV1ClientImpl implements AutoNATV1Client {
+  AutoNATV1ClientImpl(
+    this._host,
+    AddrFunc? addrFunc,
+    this._metricsTracer,
+    this._requestTimeout,
+  ) : _addrFunc = addrFunc ?? (() => _host.addrs);
   final Host _host;
   final AddrFunc _addrFunc;
   final MetricsTracer? _metricsTracer;
   final Duration _requestTimeout;
 
-  AutoNATV1ClientImpl(this._host, AddrFunc? addrFunc, this._metricsTracer, this._requestTimeout)
-      : _addrFunc = addrFunc ?? (() => _host.addrs);
-
   @override
   Future<void> dialBack(PeerId peer) async {
     P2PStream? stream;
     try {
-      final ctx = Context(); // No timeout in Context to avoid unhandled exceptions
-      stream = await _host.newStream(peer, [autoNATV1Proto], ctx).timeout(_requestTimeout); 
-      
+      final ctx =
+          Context(); // No timeout in Context to avoid unhandled exceptions
+      stream = await _host
+          .newStream(peer, [autoNATV1Proto], ctx)
+          .timeout(_requestTimeout);
+
       await stream.scope().setService(serviceName);
-      await stream.scope().reserveMemory(_autoNATClientMaxMessageScopeReservation, ReservationPriority.always);
+      await stream.scope().reserveMemory(
+            _autoNATClientMaxMessageScopeReservation,
+            ReservationPriority.always,
+          );
 
       // Determine the effective deadline: earlier of context timeout and stream I/O timeout
       final now = DateTime.now();
       final contextAbsoluteDeadline = now.add(_requestTimeout);
-      final streamIoAbsoluteDeadline = now.add(streamTimeout); // streamTimeout is the 60s constant
+      final streamIoAbsoluteDeadline =
+          now.add(streamTimeout); // streamTimeout is the 60s constant
 
-      final effectiveDeadline = contextAbsoluteDeadline.isBefore(streamIoAbsoluteDeadline)
-          ? contextAbsoluteDeadline
-          : streamIoAbsoluteDeadline;
-      
+      final effectiveDeadline =
+          contextAbsoluteDeadline.isBefore(streamIoAbsoluteDeadline)
+              ? contextAbsoluteDeadline
+              : streamIoAbsoluteDeadline;
+
       await stream.setDeadline(effectiveDeadline);
 
       final localPeerInfo = AddrInfo(_host.id, _addrFunc()); // Used _host.id
@@ -61,7 +73,10 @@ class AutoNATV1ClientImpl implements AutoNATV1Client {
       await writeDelimited(stream, req); // Pass stream directly, and await
 
       // Read the response using the delimited reader
-      final res = await readDelimited(stream, pb.Message.fromBuffer); // Pass stream directly
+      final res = await readDelimited(
+        stream,
+        pb.Message.fromBuffer,
+      ); // Pass stream directly
 
       if (res.type != pb.Message_MessageType.DIAL_RESPONSE) {
         throw Exception('Unexpected response: ${res.type}');
@@ -105,10 +120,9 @@ class AutoNATV1ClientImpl implements AutoNATV1Client {
 
 /// Error wraps errors signalled by AutoNAT services
 class AutoNATError implements Exception {
+  AutoNATError(this.status, String? statusText) : text = statusText ?? '';
   final pb.Message_ResponseStatus status;
   final String text;
-
-  AutoNATError(this.status, String? statusText) : text = statusText ?? '';
 
   @override
   String toString() {

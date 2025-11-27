@@ -1,19 +1,19 @@
-import 'package:test/test.dart';
-import 'package:dart_libp2p/p2p/host/eventbus/eventbus.dart';
 import 'package:dart_libp2p/core/event/bus.dart';
+import 'package:dart_libp2p/p2p/host/eventbus/eventbus.dart';
+import 'package:test/test.dart';
 
 // Test event classes
 class TestEvent {
-  final String message;
   TestEvent(this.message);
+  final String message;
 
   @override
   String toString() => 'TestEvent';
 }
 
 class AnotherTestEvent {
-  final int value;
   AnotherTestEvent(this.value);
+  final int value;
 
   @override
   String toString() => 'AnotherTestEvent';
@@ -31,7 +31,7 @@ void main() {
       final evBus = BasicBus();
 
       // Subscribe to TestEvent
-      final subscription = await evBus.subscribe(TestEvent);
+      final subscription = evBus.subscribe(TestEvent);
 
       // Create an emitter for TestEvent
       final emitter = await evBus.emitter(TestEvent);
@@ -48,7 +48,7 @@ void main() {
       await emitter.emit(event);
 
       // Wait for events to be processed
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that the event was received
       expect(events.length, equals(1));
@@ -67,13 +67,11 @@ void main() {
       final anotherEmitter = await bus.emitter(AnotherTestEvent);
 
       // Subscribe to both event types
-      final subscription = await bus.subscribe([TestEvent, AnotherTestEvent]);
+      final subscription = bus.subscribe([TestEvent, AnotherTestEvent]);
 
       // Collect events
       final events = <Object>[];
-      final subscription2 = subscription.stream.listen((event) {
-        events.add(event);
-      });
+      final subscription2 = subscription.stream.listen(events.add);
 
       // Emit events
       await testEmitter.emit(TestEvent('Event 1'));
@@ -81,7 +79,7 @@ void main() {
       await testEmitter.emit(TestEvent('Event 2'));
 
       // Wait for events to be processed
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that all events were received
       expect(events.length, equals(3));
@@ -105,20 +103,18 @@ void main() {
       final anotherEmitter = await bus.emitter(AnotherTestEvent);
 
       // Subscribe to all events
-      final subscription = await bus.subscribe(WildcardSubscription);
+      final subscription = bus.subscribe(WildcardSubscription);
 
       // Collect events
       final events = <Object>[];
-      final subscription2 = subscription.stream.listen((event) {
-        events.add(event);
-      });
+      final subscription2 = subscription.stream.listen(events.add);
 
       // Emit events
       await testEmitter.emit(TestEvent('Event 1'));
       await anotherEmitter.emit(AnotherTestEvent(42));
 
       // Wait for events to be processed
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that all events were received
       expect(events.length, equals(2));
@@ -141,7 +137,7 @@ void main() {
       await emitter.emit(event);
 
       // Subscribe after the event was emitted
-      final subscription = await bus.subscribe(TestEvent);
+      final subscription = bus.subscribe(TestEvent);
 
       // Collect events
       final events = <Object>[];
@@ -151,7 +147,7 @@ void main() {
       });
 
       // Wait for events to be processed
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
       // Print events for debugging
       print('[DEBUG_LOG] Events in stateful emitter test: ${events.length}');
@@ -178,7 +174,7 @@ void main() {
 
       // Create an emitter and subscription
       final emitter = await metricsBus.emitter(TestEvent);
-      final subscription = await metricsBus.subscribe(TestEvent);
+      final subscription = metricsBus.subscribe(TestEvent);
 
       // Emit events
       await emitter.emit(TestEvent('Event 1'));

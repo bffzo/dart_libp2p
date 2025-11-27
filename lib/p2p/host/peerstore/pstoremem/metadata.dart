@@ -1,4 +1,5 @@
 /// Metadata implementation for the memory-based peerstore.
+library;
 
 import 'dart:collection';
 
@@ -6,19 +7,17 @@ import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:synchronized/synchronized.dart';
 
-
 /// A memory-based implementation of the PeerMetadata interface.
 class MemoryPeerMetadata implements PeerMetadata {
-  final _ds = HashMap<String, Map<String, dynamic>>();
-  final _lock = Lock();
-
   /// Creates a new memory-based peer metadata implementation.
   MemoryPeerMetadata();
+  final _ds = HashMap<String, Map<String, dynamic>>();
+  final _lock = Lock();
 
   @override
   Future<dynamic> get(PeerId p, String key) async {
     // Using synchronous lock to match interface
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final m = _ds[p.toString()];
       if (m == null) {
         throw const ErrNotFound();
@@ -53,12 +52,12 @@ class MemoryPeerMetadata implements PeerMetadata {
     });
   }
 
+  @override
   Future<Map<String, dynamic>?> getAll(PeerId peerId) async {
     return _lock.synchronized(() {
       return _ds[peerId.toString()];
     });
   }
-  
 }
 
 /// Creates a new memory-based peer metadata implementation.

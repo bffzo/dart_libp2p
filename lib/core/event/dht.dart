@@ -2,6 +2,7 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/core/event/dht.go
 /// to Dart, using native Dart idioms.
+library;
 
 /// RawJSON is a type that contains a raw JSON string.
 typedef RawJSON = String;
@@ -16,21 +17,20 @@ typedef RawJSON = String;
 /// EXPERIMENTAL: this will likely be removed if/when the DHT event types are
 /// hoisted to core, and the DHT event system is reconciled with the eventbus.
 class GenericDHTEvent {
+  /// Creates a new GenericDHTEvent.
+  GenericDHTEvent({
+    required this.type,
+    required this.raw,
+  });
+
   /// Type is the type of the DHT event that occurred.
   final String type;
 
   /// Raw is the raw JSON representation of the event payload.
   final RawJSON raw;
 
-
   @override
   String toString() {
-    return "GenericDHTEvent";
+    return 'GenericDHTEvent';
   }
-
-  /// Creates a new GenericDHTEvent.
-  GenericDHTEvent({
-    required this.type,
-    required this.raw,
-  });
 }

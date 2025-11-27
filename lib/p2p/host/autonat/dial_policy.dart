@@ -1,20 +1,19 @@
 import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/network/network.dart'; // For Reachability, if needed, or other network consts
+// For Reachability, if needed, or other network consts
 // Assuming DialPolicy abstract class is in options.dart or a common place
-import './options.dart' show DialPolicy;
-
+import 'package:dart_libp2p/p2p/host/autonat/options.dart' show DialPolicy;
 
 class DialPolicyImpl implements DialPolicy {
+  DialPolicyImpl({required this.host, this.allowSelfDials = false});
   final bool allowSelfDials;
   final Host host;
-
-  DialPolicyImpl({required this.host, this.allowSelfDials = false});
 
   @override
   bool skipDial(MultiAddr addr) {
     // skip relay addresses
-    if (addr.hasProtocol('p2p-circuit')) { // Check for circuit relay protocol
+    if (addr.hasProtocol('p2p-circuit')) {
+      // Check for circuit relay protocol
       return true;
     }
 
@@ -26,7 +25,7 @@ class DialPolicyImpl implements DialPolicy {
     if (!addr.isPublic()) {
       return true;
     }
-    
+
     final candidateIP = addr.toIP();
     if (candidateIP == null) {
       return true; // Not an IP address
@@ -42,8 +41,9 @@ class DialPolicyImpl implements DialPolicy {
     return false;
   }
 
+  @override
   bool skipPeer(List<MultiAddr> addrs) {
-    final List<String> localPublicIPs = [];
+    final localPublicIPs = <String>[];
     for (final lAddr in host.addrs) {
       if (!lAddr.hasProtocol('p2p-circuit') && lAddr.isPublic()) {
         final lIP = lAddr.toIP();
@@ -53,7 +53,7 @@ class DialPolicyImpl implements DialPolicy {
       }
     }
 
-    bool goodPublicFound = false;
+    var goodPublicFound = false;
     for (final addr in addrs) {
       if (!addr.hasProtocol('p2p-circuit') && addr.isPublic()) {
         final aIP = addr.toIP();

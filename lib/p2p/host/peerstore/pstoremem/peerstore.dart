@@ -1,27 +1,21 @@
 /// Peerstore implementation for the memory-based peerstore.
+library;
 
 import 'dart:async';
 
-import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
-
-import 'addr_book.dart';
-import 'key_book.dart';
-import 'metadata.dart';
-import 'metrics.dart';
-import 'proto_book.dart';
+import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
+import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/addr_book.dart';
+import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/key_book.dart';
+import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/metadata.dart';
+import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/metrics.dart';
+import 'package:dart_libp2p/p2p/host/peerstore/pstoremem/proto_book.dart';
 
 /// A memory-based implementation of the Peerstore interface.
 class MemoryPeerstore implements Peerstore {
-  final MemoryMetrics _metrics;
-  final MemoryKeyBook _keyBook;
-  final MemoryAddrBook _addrBook;
-  final MemoryProtoBook _protoBook;
-  final MemoryPeerMetadata _peerMetadata;
-
   /// Creates a new memory-based peerstore implementation.
   MemoryPeerstore({
     MemoryMetrics? metrics,
@@ -29,12 +23,16 @@ class MemoryPeerstore implements Peerstore {
     MemoryAddrBook? addrBook,
     MemoryProtoBook? protoBook,
     MemoryPeerMetadata? peerMetadata,
-  }) : 
-    _metrics = metrics ?? newMetrics(),
-    _keyBook = keyBook ?? newKeyBook(),
-    _addrBook = addrBook ?? newAddrBook(),
-    _protoBook = protoBook ?? newProtoBook(),
-    _peerMetadata = peerMetadata ?? newPeerMetadata();
+  })  : _metrics = metrics ?? newMetrics(),
+        _keyBook = keyBook ?? newKeyBook(),
+        _addrBook = addrBook ?? newAddrBook(),
+        _protoBook = protoBook ?? newProtoBook(),
+        _peerMetadata = peerMetadata ?? newPeerMetadata();
+  final MemoryMetrics _metrics;
+  final MemoryKeyBook _keyBook;
+  final MemoryAddrBook _addrBook;
+  final MemoryProtoBook _protoBook;
+  final MemoryPeerMetadata _peerMetadata;
 
   @override
   AddrBook get addrBook => _addrBook;
@@ -58,10 +56,7 @@ class MemoryPeerstore implements Peerstore {
 
   @override
   Future<AddrInfo> peerInfo(PeerId id) async {
-    return AddrInfo(
-      id,
-      await _addrBook.addrs(id)
-    );
+    return AddrInfo(id, await _addrBook.addrs(id));
   }
 
   @override
@@ -96,7 +91,12 @@ class MemoryPeerstore implements Peerstore {
   }
 
   @override
-  Future<void> addOrUpdatePeer(PeerId peerId, {List<MultiAddr>? addrs, List<String>? protocols, Map<String, dynamic>? metadata}) async {
+  Future<void> addOrUpdatePeer(
+    PeerId peerId, {
+    List<MultiAddr>? addrs,
+    List<String>? protocols,
+    Map<String, dynamic>? metadata,
+  }) async {
     if (addrs != null) {
       // Use a default TTL for addresses added via this general method.
       // AddressTTL.addressTTL (1 hour) seems like a reasonable default.
@@ -108,7 +108,7 @@ class MemoryPeerstore implements Peerstore {
     }
 
     if (metadata != null) {
-      for (var entry in metadata.entries) {
+      for (final entry in metadata.entries) {
         _peerMetadata.put(peerId, entry.key, entry.value);
       }
     }
@@ -120,7 +120,9 @@ class MemoryPeerstore implements Peerstore {
     final protocols = await _protoBook.getProtocols(peerId);
     final metadata = await _peerMetadata.getAll(peerId);
 
-    if (addrs.isEmpty && protocols.isEmpty && (metadata?.values.isEmpty ?? true)) {
+    if (addrs.isEmpty &&
+        protocols.isEmpty &&
+        (metadata?.values.isEmpty ?? true)) {
       return null;
     }
 

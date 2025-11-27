@@ -2,10 +2,7 @@ import 'dart:io' show InternetAddress, InternetAddressType;
 
 /// Represents a multiaddr protocol
 class Protocol {
-  final String name;
-  final int code;
-  final int size; // -1 for variable size
-  final String? path; // true if protocol has a path component
+  // true if protocol has a path component
   // final String? _value = null;
 
   const Protocol({
@@ -14,6 +11,10 @@ class Protocol {
     required this.size,
     this.path,
   });
+  final String name;
+  final int code;
+  final int size; // -1 for variable size
+  final String? path;
 
   /// Returns true if this protocol has a variable size value
   bool get isVariableSize => size == -1;
@@ -34,7 +35,9 @@ class Protocol {
       case 'ip6':
         return InternetAddress(value, type: InternetAddressType.IPv6);
       default:
-        throw ArgumentError('Protocol $name does not support conversion to InternetAddress');
+        throw ArgumentError(
+          'Protocol $name does not support conversion to InternetAddress',
+        );
     }
   }
 
@@ -135,7 +138,7 @@ class Protocols {
     size: 0,
   );
 
-  static const _protocols = {
+  static const Map<String, Protocol> _protocols = {
     'ip4': ip4,
     'tcp': tcp,
     'udp': udp,

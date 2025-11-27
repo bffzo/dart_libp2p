@@ -1,14 +1,11 @@
-import 'dart:async';
-
 import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/network/network.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
-
+import 'package:dart_libp2p/core/network/network.dart';
+import 'package:dart_libp2p/p2p/host/autonat/client.dart'
+    show AddrFunc; // Keep AddrFunc import if it's defined there and not moved
 // Assuming AddrFunc is defined/imported from elsewhere (e.g. client.dart or a common types file)
 // MetricsTracer is now imported from ./metrics.dart
-import './metrics.dart' show MetricsTracer;
-import './client.dart' show AddrFunc; // Keep AddrFunc import if it's defined there and not moved
-
+import 'package:dart_libp2p/p2p/host/autonat/metrics.dart' show MetricsTracer;
 
 // Placeholder for DialPolicy, should be defined in its own file
 abstract class DialPolicy {
@@ -18,12 +15,21 @@ abstract class DialPolicy {
 }
 
 class AutoNATOption {
-  final Function(AutoNATConfig) _apply;
   AutoNATOption(this._apply);
+  final Function(AutoNATConfig) _apply;
   void apply(AutoNATConfig config) => _apply(config);
 }
 
 class AutoNATConfig {
+  AutoNATConfig({
+    required this.host,
+    required this.dialPolicy,
+    // Other fields will be set by defaults or options
+  }) {
+    // Apply defaults (can be a separate static method too)
+    // addressFunc is set if UsingAddresses is not called, or defaults to host.addrs in New()
+    // dialer is set by EnableService
+  }
   Host host; // Made non-final to be modifiable by options
 
   AddrFunc? addressFunc;
@@ -49,16 +55,6 @@ class AutoNATConfig {
   Duration throttleResetJitter = const Duration(seconds: 15);
 
   static const Duration maxRefreshInterval = Duration(hours: 24);
-
-  AutoNATConfig({
-    required this.host,
-    required this.dialPolicy,
-    // Other fields will be set by defaults or options
-  }) {
-    // Apply defaults (can be a separate static method too)
-    // addressFunc is set if UsingAddresses is not called, or defaults to host.addrs in New()
-    // dialer is set by EnableService
-  }
 }
 
 // Option functions - Dart style
@@ -66,7 +62,9 @@ class AutoNATConfig {
 AutoNATOption enableService(Network dialer) {
   return AutoNATOption((AutoNATConfig c) {
     if (dialer == c.host.network || dialer.peerstore == c.host.peerStore) {
-      throw ArgumentError("Dialer should not be that of the host or share its peerstore");
+      throw ArgumentError(
+        'Dialer should not be that of the host or share its peerstore',
+      );
     }
     c.dialer = dialer;
   });
@@ -108,7 +106,8 @@ AutoNATOption withThrottling(int amount, Duration interval) {
   return AutoNATOption((AutoNATConfig c) {
     c.throttleGlobalMax = amount;
     c.throttleResetPeriod = interval;
-    c.throttleResetJitter = Duration(microseconds: interval.inMicroseconds ~/ 4);
+    c.throttleResetJitter =
+        Duration(microseconds: interval.inMicroseconds ~/ 4);
   });
 }
 
@@ -126,7 +125,7 @@ AutoNATOption withMetricsTracer(MetricsTracer mt) {
 
 // Helper to apply multiple options
 void applyOptions(AutoNATConfig config, List<AutoNATOption> options) {
-  for (var opt in options) {
+  for (final opt in options) {
     opt.apply(config);
   }
 }

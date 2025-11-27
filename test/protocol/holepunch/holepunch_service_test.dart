@@ -1,30 +1,24 @@
-import 'dart:async';
-import 'dart:typed_data';
-
 import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/network/network.dart';
-import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/stream.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
+import 'package:dart_libp2p/core/network/network.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart';
+import 'package:dart_libp2p/core/network/stream.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
-import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
-import 'package:dart_libp2p/p2p/protocol/holepunch/holepunch_service.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/service.dart';
-import 'package:dart_libp2p/p2p/protocol/holepunch/pb/holepunch.pb.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart';
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
+import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
 import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
 @GenerateMocks([
-  Host, 
-  Network, 
-  Conn, 
-  P2PStream, 
-  IDService, 
+  Host,
+  Network,
+  Conn,
+  P2PStream,
+  IDService,
   Peerstore,
   AddrBook,
   StreamManagementScope,
@@ -50,12 +44,12 @@ void main() {
       mockAddrBook = MockAddrBook();
       testPeerId = await PeerId.random();
       service = null; // Initialize as null
-      
+
       listenAddrs = () => [
-        MultiAddr('/ip4/127.0.0.1/tcp/4001'),
-        MultiAddr('/ip6/::1/tcp/4002'),
-      ];
-      
+            MultiAddr('/ip4/127.0.0.1/tcp/4001'),
+            MultiAddr('/ip6/::1/tcp/4002'),
+          ];
+
       // Setup basic mock stubs
       when(mockHost.network).thenReturn(mockNetwork);
       when(mockHost.peerStore).thenReturn(mockPeerstore);
@@ -63,21 +57,23 @@ void main() {
       when(mockNetwork.localPeer).thenReturn(testPeerId);
       when(mockHost.setStreamHandler(any, any)).thenReturn(null);
       when(mockHost.removeStreamHandler(any)).thenReturn(null);
-      
+
       // Setup peerstore mocks
       when(mockPeerstore.addrBook).thenReturn(mockAddrBook);
       when(mockAddrBook.addrs(any)).thenAnswer((_) async => <MultiAddr>[]);
-      
+
       // Setup network mocks
       when(mockNetwork.connsToPeer(any)).thenReturn([]);
-      
+
       // Setup host.newStream mock (used by holepuncher)
-      when(mockHost.newStream(any, any, any))
-        .thenAnswer((_) async => throw Exception('Connection failed (expected in test)'));
-      
-      // Setup host.connect mock (used by holepuncher) 
-      when(mockHost.connect(any, context: anyNamed('context')))
-        .thenAnswer((_) async => throw Exception('Connection failed (expected in test)'));
+      when(mockHost.newStream(any, any, any)).thenAnswer(
+        (_) async => throw Exception('Connection failed (expected in test)'),
+      );
+
+      // Setup host.connect mock (used by holepuncher)
+      when(mockHost.connect(any, context: anyNamed('context'))).thenAnswer(
+        (_) async => throw Exception('Connection failed (expected in test)'),
+      );
     });
 
     tearDown(() async {
@@ -99,16 +95,19 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         expect(service, isNotNull);
       });
 
       test('should throw error when identify service is null', () {
-        expect(() => HolePunchServiceImpl(
-          mockHost,
-          mockIdService,
-          listenAddrs,
-        ), returnsNormally);
+        expect(
+          () => HolePunchServiceImpl(
+            mockHost,
+            mockIdService,
+            listenAddrs,
+          ),
+          returnsNormally,
+        );
       });
 
       test('should start service successfully', () async {
@@ -118,7 +117,7 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         await expectLater(service!.start(), completes);
       });
 
@@ -137,7 +136,7 @@ void main() {
 
     group('Direct Connect', () {
       late PeerId remotePeerId;
-      
+
       setUp(() async {
         remotePeerId = await PeerId.random();
         service = HolePunchServiceImpl(
@@ -146,16 +145,18 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         await service!.start();
       });
 
       test('should handle direct connection request', () async {
         // Mock that peer has some addresses to check
-        when(mockAddrBook.addrs(remotePeerId)).thenAnswer((_) async => [
-          MultiAddr('/ip4/192.168.1.100/tcp/4001'),
-        ]);
-        
+        when(mockAddrBook.addrs(remotePeerId)).thenAnswer(
+          (_) async => [
+            MultiAddr('/ip4/192.168.1.100/tcp/4001'),
+          ],
+        );
+
         // Direct connect should complete even if the actual connection fails
         // (the service should handle connection failures gracefully)
         await expectLater(
@@ -166,8 +167,9 @@ void main() {
 
       test('should handle peer with no addresses', () async {
         // Mock that peer has no addresses
-        when(mockAddrBook.addrs(remotePeerId)).thenAnswer((_) async => <MultiAddr>[]);
-        
+        when(mockAddrBook.addrs(remotePeerId))
+            .thenAnswer((_) async => <MultiAddr>[]);
+
         // Should handle the case gracefully even with no addresses
         await expectLater(
           service!.directConnect(remotePeerId).catchError((_) => null),
@@ -176,7 +178,7 @@ void main() {
       });
     });
 
-    group('Service Behavior', () {      
+    group('Service Behavior', () {
       // Use a fresh service for each test in this group to avoid lifecycle conflicts
       late HolePunchServiceImpl localService;
 
@@ -187,12 +189,12 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         await localService.start();
-        
+
         // Verify the service registered a stream handler for the DCUtR protocol
         verify(mockHost.setStreamHandler(protocolId, any)).called(1);
-        
+
         await localService.close();
       });
 
@@ -203,10 +205,10 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         await localService.start();
         await localService.close();
-        
+
         // Verify the service removed its stream handler
         verify(mockHost.removeStreamHandler(protocolId)).called(1);
       });
@@ -218,11 +220,11 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         // Should be able to start and close without error
         await localService.start();
         await localService.close();
-        
+
         // Verify both setup and cleanup happened
         verify(mockHost.setStreamHandler(any, any)).called(1);
         verify(mockHost.removeStreamHandler(any)).called(1);
@@ -235,8 +237,8 @@ void main() {
       });
 
       test('should have reasonable timeouts', () {
-        expect(streamTimeout, equals(Duration(minutes: 1)));
-        expect(dialTimeout, equals(Duration(seconds: 5)));
+        expect(streamTimeout, equals(const Duration(minutes: 1)));
+        expect(dialTimeout, equals(const Duration(seconds: 5)));
       });
 
       test('should have reasonable message size limits', () {
@@ -246,18 +248,15 @@ void main() {
 
     group('Options and Configuration', () {
       test('should accept custom options', () {
-        final customOptions = HolePunchOptions(
-          tracer: null,
-          filter: null,
-        );
-        
+        const customOptions = HolePunchOptions();
+
         service = HolePunchServiceImpl(
           mockHost,
           mockIdService,
           listenAddrs,
           options: customOptions,
         );
-        
+
         expect(service, isNotNull);
       });
 
@@ -267,7 +266,7 @@ void main() {
           mockIdService,
           listenAddrs,
         );
-        
+
         expect(service, isNotNull);
       });
     });

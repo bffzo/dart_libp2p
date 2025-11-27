@@ -2,48 +2,59 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/network/network.dart' show Connectedness, EvtPeerConnectednessChanged, ConnectionManager;
-import 'package:dart_libp2p/core/network/conn.dart' show Conn; // Direct import for Conn
+import 'package:dart_libp2p/core/network/network.dart'
+    show Connectedness, ConnectionManager, EvtPeerConnectednessChanged;
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/p2p/transport/upgrader.dart' show Upgrader; // Import Upgrader
-
-// Circuit V2 client imports
-import 'package:dart_libp2p/p2p/protocol/circuitv2/client/client.dart' show CircuitV2Client; // Changed Client to CircuitV2Client
-import 'package:dart_libp2p/p2p/protocol/circuitv2/client/reservation.dart';
-import 'package:dart_libp2p/p2p/protocol/circuitv2/proto.dart' show CircuitV2Protocol;
-
-import 'package:meta/meta.dart'; // For @visibleForTesting
-import 'package:logging/logging.dart';
-
-import 'package:synchronized/synchronized.dart';
+import 'package:dart_libp2p/p2p/host/autorelay/autorelay_config.dart';
+import 'package:dart_libp2p/p2p/host/autorelay/autorelay_metrics.dart';
 import 'package:dart_libp2p/p2p/multiaddr/protocol.dart'; // For Protocols class
-import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart' show isRelayAddress; // For isRelayAddress
-
-import './autorelay_config.dart';
-import './autorelay_metrics.dart';
-import './autorelay_address_utils.dart' as address_utils;
+// Circuit V2 client imports
+import 'package:dart_libp2p/p2p/protocol/circuitv2/client/client.dart'
+    show CircuitV2Client; // Changed Client to CircuitV2Client
+import 'package:dart_libp2p/p2p/protocol/circuitv2/client/reservation.dart';
+import 'package:dart_libp2p/p2p/protocol/circuitv2/proto.dart'
+    show CircuitV2Protocol;
+import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart'
+    show isRelayAddress; // For isRelayAddress
+import 'package:dart_libp2p/p2p/transport/upgrader.dart'
+    show Upgrader; // Import Upgrader
+import 'package:logging/logging.dart';
+import 'package:meta/meta.dart'; // For @visibleForTesting
+import 'package:synchronized/synchronized.dart';
 
 const rsvpRefreshInterval = Duration(minutes: 1);
-const rsvpExpirationSlack = Duration(minutes: 2); 
+const rsvpExpirationSlack = Duration(minutes: 2);
 const autorelayTag = 'autorelay';
 
 class Candidate {
-  final DateTime added;
-  final bool supportsRelayV2;
-  final AddrInfo addrInfo;
-
   Candidate({
     required this.added,
     required this.supportsRelayV2,
     required this.addrInfo,
   });
+  final DateTime added;
+  final bool supportsRelayV2;
+  final AddrInfo addrInfo;
 }
 
 class RelayFinder {
+  RelayFinder(this.host, this.upgrader, this.config)
+      : _peerSource = config.effectivePeerSource,
+        metricsTracer = WrappedMetricsTracer(config.metricsTracer),
+        _bootTime = config.clock.now(),
+        _scheduledWorkTimes = ScheduledWorkTimes.initial() {
+    _scheduledWorkTimes = ScheduledWorkTimes(
+      nextAllowedCallToPeerSource:
+          config.clock.now().subtract(const Duration(seconds: 1)),
+      nextRefresh: config.clock.now().add(rsvpRefreshInterval),
+      nextBackoff: config.clock.now().add(config.backoff),
+      nextOldCandidateCheck: config.clock.now().add(config.maxCandidateAge),
+    );
+  }
   static final Logger _log = Logger('RelayFinder');
-  
+
   final Host host;
   final Upgrader upgrader;
   final AutoRelayConfig config;
@@ -65,31 +76,23 @@ class RelayFinder {
   List<MultiAddr> _cachedAddrs = [];
   DateTime _cachedAddrsExpiry = DateTime.now();
 
-  final StreamController<void> _candidateFoundController = StreamController.broadcast();
-  final StreamController<void> _maybeConnectToRelayTriggerController = StreamController.broadcast();
-  final StreamController<void> _maybeRequestNewCandidatesController = StreamController.broadcast();
-  final StreamController<void> _relayUpdatedController = StreamController.broadcast();
-  final StreamController<void> _triggerRunScheduledWorkController = StreamController.broadcast();
+  final StreamController<void> _candidateFoundController =
+      StreamController.broadcast();
+  final StreamController<void> _maybeConnectToRelayTriggerController =
+      StreamController.broadcast();
+  final StreamController<void> _maybeRequestNewCandidatesController =
+      StreamController.broadcast();
+  final StreamController<void> _relayUpdatedController =
+      StreamController.broadcast();
+  final StreamController<void> _triggerRunScheduledWorkController =
+      StreamController.broadcast();
 
   Stream<void> get onRelaysUpdated => _relayUpdatedController.stream;
-  
+
   Timer? _workTimer;
   ScheduledWorkTimes _scheduledWorkTimes;
 
   bool _isRunning = false;
-
-  RelayFinder(this.host, this.upgrader, this.config)
-      : _peerSource = config.effectivePeerSource,
-        metricsTracer = WrappedMetricsTracer(config.metricsTracer),
-        _bootTime = config.clock.now(),
-        _scheduledWorkTimes = ScheduledWorkTimes.initial() {
-     _scheduledWorkTimes = ScheduledWorkTimes(
-        nextAllowedCallToPeerSource: config.clock.now().subtract(const Duration(seconds: 1)),
-        nextRefresh: config.clock.now().add(rsvpRefreshInterval),
-        nextBackoff: config.clock.now().add(config.backoff),
-        nextOldCandidateCheck: config.clock.now().add(config.maxCandidateAge),
-    );
-  }
 
   Future<void> start() async {
     if (_isRunning) {
@@ -98,23 +101,26 @@ class RelayFinder {
     }
     _log.fine('RelayFinder starting');
     _isRunning = true;
-    _stopController = StreamController<void>.broadcast(); // Broadcast to allow multiple listeners
+    _stopController = StreamController<
+        void>.broadcast(); // Broadcast to allow multiple listeners
     _backgroundCompleter = Completer<void>();
     _initMetrics();
     _background(_stopController!.stream);
     _backgroundCompleter!.future.whenComplete(() {
-        _isRunning = false;
+      _isRunning = false;
     });
     _log.fine('RelayFinder started, background task running');
   }
 
   Future<void> stop() async {
-    if (!_isRunning || _stopController == null || _stopController!.isClosed) return;
+    if (!_isRunning || _stopController == null || _stopController!.isClosed) {
+      return;
+    }
     _stopController!.add(null);
     await _backgroundCompleter?.future;
     _stopController!.close();
     _workTimer?.cancel();
-    
+
     _candidateFoundController.close();
     _maybeConnectToRelayTriggerController.close();
     _maybeRequestNewCandidatesController.close();
@@ -136,7 +142,7 @@ class RelayFinder {
   }
 
   void _resetMetrics() {
-     _relayMx.synchronized(() {
+    _relayMx.synchronized(() {
       metricsTracer.reservationEnded(_relays.length);
     });
     _candidateMx.synchronized(() {
@@ -146,17 +152,21 @@ class RelayFinder {
     metricsTracer.scheduledWorkUpdated(ScheduledWorkTimes.initial());
   }
 
-  void _background(Stream<void> stopSignal) async {
-    _log.fine('RelayFinder background task started. Boot delay: ${config.bootDelay}');
+  Future<void> _background(Stream<void> stopSignal) async {
+    _log.fine(
+      'RelayFinder background task started. Boot delay: ${config.bootDelay}',
+    );
     final peerSourceRateLimiter = StreamController<void>();
-    peerSourceRateLimiter.add(null); 
+    peerSourceRateLimiter.add(null);
 
     _findNodes(stopSignal, peerSourceRateLimiter.stream);
     _handleNewCandidates(stopSignal);
     _cleanupDisconnectedPeers(stopSignal);
 
     final bootDelayTimer = Timer(config.bootDelay, () {
-      _log.fine('RelayFinder boot delay expired, notifying to check for relays');
+      _log.fine(
+        'RelayFinder boot delay expired, notifying to check for relays',
+      );
       if (!(_stopController?.isClosed ?? true)) _notifyMaybeConnectToRelay();
     });
 
@@ -169,136 +179,185 @@ class RelayFinder {
     });
 
     _triggerRunScheduledWorkController.stream.takeUntil(stopSignal).listen((_) {
-       _runScheduledWork(config.clock.now(), peerSourceRateLimiter);
+      _runScheduledWork(config.clock.now(), peerSourceRateLimiter);
     });
-    
+
     await stopSignal.first;
     if (!(_backgroundCompleter?.isCompleted ?? true)) {
-         _backgroundCompleter!.complete();
+      _backgroundCompleter!.complete();
     }
   }
 
   void _scheduleNextWork(StreamController<void> peerSourceRateLimiter) {
     _workTimer?.cancel();
-    final nextRunTime = _runScheduledWork(config.clock.now(), peerSourceRateLimiter);
+    final nextRunTime =
+        _runScheduledWork(config.clock.now(), peerSourceRateLimiter);
     final delay = nextRunTime.difference(config.clock.now());
     _workTimer = Timer(delay > Duration.zero ? delay : Duration.zero, () {
-        if (_isRunning) _scheduleNextWork(peerSourceRateLimiter);
+      if (_isRunning) _scheduleNextWork(peerSourceRateLimiter);
     });
   }
-  
-  DateTime _runScheduledWork(DateTime now, StreamController<void> peerSourceRateLimiter) {
-    DateTime nextGlobalTime = now.add(_getLeastFrequentInterval());
+
+  DateTime _runScheduledWork(
+    DateTime now,
+    StreamController<void> peerSourceRateLimiter,
+  ) {
+    var nextGlobalTime = now.add(_getLeastFrequentInterval());
 
     if (now.isAfter(_scheduledWorkTimes.nextRefresh)) {
       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource: _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: now.add(rsvpRefreshInterval),
-          nextBackoff: _scheduledWorkTimes.nextBackoff,
-          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck);
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: now.add(rsvpRefreshInterval),
+        nextBackoff: _scheduledWorkTimes.nextBackoff,
+        nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+      );
       // Call _refreshReservations; it handles _clearCachedAddrsAndSignalAddressChange internally
-      _refreshReservations(now); 
+      _refreshReservations(now);
     }
 
     if (now.isAfter(_scheduledWorkTimes.nextBackoff)) {
       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource: _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: _scheduledWorkTimes.nextRefresh,
-          nextBackoff: _clearBackoff(now),
-          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck);
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: _scheduledWorkTimes.nextRefresh,
+        nextBackoff: _clearBackoff(now),
+        nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+      );
     }
 
     if (now.isAfter(_scheduledWorkTimes.nextOldCandidateCheck)) {
-       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource: _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: _scheduledWorkTimes.nextRefresh,
-          nextBackoff: _scheduledWorkTimes.nextBackoff,
-          nextOldCandidateCheck: _clearOldCandidates(now));
-    }
-    
-    if (now.isAfter(_scheduledWorkTimes.nextAllowedCallToPeerSource)) {
-        if (!peerSourceRateLimiter.isClosed && !peerSourceRateLimiter.hasListener) {
-            try { peerSourceRateLimiter.add(null); } catch (e) { /* already closed or full */ }
-            _scheduledWorkTimes = ScheduledWorkTimes(
-                nextAllowedCallToPeerSource: now.add(config.minInterval),
-                nextRefresh: _scheduledWorkTimes.nextRefresh,
-                nextBackoff: _scheduledWorkTimes.nextBackoff,
-                nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck);
-            if (_scheduledWorkTimes.nextAllowedCallToPeerSource.isBefore(nextGlobalTime)) {
-                 nextGlobalTime = _scheduledWorkTimes.nextAllowedCallToPeerSource;
-            }
-        }
-    } else {
-        if (_scheduledWorkTimes.nextAllowedCallToPeerSource.isBefore(nextGlobalTime)) {
-            nextGlobalTime = _scheduledWorkTimes.nextAllowedCallToPeerSource;
-        }
+      _scheduledWorkTimes = ScheduledWorkTimes(
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: _scheduledWorkTimes.nextRefresh,
+        nextBackoff: _scheduledWorkTimes.nextBackoff,
+        nextOldCandidateCheck: _clearOldCandidates(now),
+      );
     }
 
-    if (_scheduledWorkTimes.nextRefresh.isBefore(nextGlobalTime)) nextGlobalTime = _scheduledWorkTimes.nextRefresh;
-    if (_scheduledWorkTimes.nextBackoff.isBefore(nextGlobalTime)) nextGlobalTime = _scheduledWorkTimes.nextBackoff;
-    if (_scheduledWorkTimes.nextOldCandidateCheck.isBefore(nextGlobalTime)) nextGlobalTime = _scheduledWorkTimes.nextOldCandidateCheck;
-    
-    if (nextGlobalTime.isAtSameMomentAs(now) || nextGlobalTime.isBefore(now)) {
-        nextGlobalTime = now.add(const Duration(milliseconds: 100));
+    if (now.isAfter(_scheduledWorkTimes.nextAllowedCallToPeerSource)) {
+      if (!peerSourceRateLimiter.isClosed &&
+          !peerSourceRateLimiter.hasListener) {
+        try {
+          peerSourceRateLimiter.add(null);
+        } catch (e) {/* already closed or full */}
+        _scheduledWorkTimes = ScheduledWorkTimes(
+          nextAllowedCallToPeerSource: now.add(config.minInterval),
+          nextRefresh: _scheduledWorkTimes.nextRefresh,
+          nextBackoff: _scheduledWorkTimes.nextBackoff,
+          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+        );
+        if (_scheduledWorkTimes.nextAllowedCallToPeerSource
+            .isBefore(nextGlobalTime)) {
+          nextGlobalTime = _scheduledWorkTimes.nextAllowedCallToPeerSource;
+        }
+      }
+    } else {
+      if (_scheduledWorkTimes.nextAllowedCallToPeerSource
+          .isBefore(nextGlobalTime)) {
+        nextGlobalTime = _scheduledWorkTimes.nextAllowedCallToPeerSource;
+      }
     }
-    
+
+    if (_scheduledWorkTimes.nextRefresh.isBefore(nextGlobalTime)) {
+      nextGlobalTime = _scheduledWorkTimes.nextRefresh;
+    }
+    if (_scheduledWorkTimes.nextBackoff.isBefore(nextGlobalTime)) {
+      nextGlobalTime = _scheduledWorkTimes.nextBackoff;
+    }
+    if (_scheduledWorkTimes.nextOldCandidateCheck.isBefore(nextGlobalTime)) {
+      nextGlobalTime = _scheduledWorkTimes.nextOldCandidateCheck;
+    }
+
+    if (nextGlobalTime.isAtSameMomentAs(now) || nextGlobalTime.isBefore(now)) {
+      nextGlobalTime = now.add(const Duration(milliseconds: 100));
+    }
+
     metricsTracer.scheduledWorkUpdated(_scheduledWorkTimes);
     return nextGlobalTime;
   }
 
   Duration _getLeastFrequentInterval() {
     var interval = config.minInterval;
-    if (config.backoff > interval || interval == Duration.zero) interval = config.backoff;
-    if (config.maxCandidateAge > interval || interval == Duration.zero) interval = config.maxCandidateAge;
-    if (rsvpRefreshInterval > interval || interval == Duration.zero) interval = rsvpRefreshInterval;
+    if (config.backoff > interval || interval == Duration.zero) {
+      interval = config.backoff;
+    }
+    if (config.maxCandidateAge > interval || interval == Duration.zero) {
+      interval = config.maxCandidateAge;
+    }
+    if (rsvpRefreshInterval > interval || interval == Duration.zero) {
+      interval = rsvpRefreshInterval;
+    }
     return interval == Duration.zero ? const Duration(seconds: 1) : interval;
   }
 
-  void _findNodes(Stream<void> stopSignal, Stream<void> peerSourceRateLimiter) async {
+  Future<void> _findNodes(
+    Stream<void> stopSignal,
+    Stream<void> peerSourceRateLimiter,
+  ) async {
     Stream<AddrInfo>? currentPeerStream;
     StreamSubscription<AddrInfo>? currentPeerSubscription;
-    List<Future<void>> pendingNodeHandlers = [];
+    final pendingNodeHandlers = <Future<void>>[];
 
-    await for (var _ in peerSourceRateLimiter.takeUntil(stopSignal)) {
+    await for (final _ in peerSourceRateLimiter.takeUntil(stopSignal)) {
       if (currentPeerStream != null) continue;
 
-      int numCandidates = await _candidateMx.synchronized(() => _candidates.length);
+      final numCandidates =
+          await _candidateMx.synchronized(() => _candidates.length);
       if (numCandidates < config.minCandidates) {
-        _log.fine('RelayFinder: Need more candidates ($numCandidates < ${config.minCandidates}), calling peer source for up to ${config.maxCandidates} peers');
-        metricsTracer.candidateLoopState(CandidateLoopState.peerSourceRateLimited);
+        _log.fine(
+          'RelayFinder: Need more candidates ($numCandidates < ${config.minCandidates}), calling peer source for up to ${config.maxCandidates} peers',
+        );
+        metricsTracer
+            .candidateLoopState(CandidateLoopState.peerSourceRateLimited);
         currentPeerStream = _peerSource(config.maxCandidates);
-        
+
         currentPeerSubscription = currentPeerStream?.listen(
           (addrInfo) async {
-            _log.fine('RelayFinder: Received candidate from peer source: ${addrInfo.id.toBase58()}');
-            bool isOnBackoff = await _candidateMx.synchronized(() => _backoff.containsKey(addrInfo.id));
+            _log.fine(
+              'RelayFinder: Received candidate from peer source: ${addrInfo.id.toBase58()}',
+            );
+            final isOnBackoff = await _candidateMx
+                .synchronized(() => _backoff.containsKey(addrInfo.id));
             if (isOnBackoff) {
-              _log.fine('RelayFinder: Candidate ${addrInfo.id.toBase58()} is on backoff, skipping');
+              _log.fine(
+                'RelayFinder: Candidate ${addrInfo.id.toBase58()} is on backoff, skipping',
+              );
               return;
             }
-            int currentNumCandidates = await _candidateMx.synchronized(() => _candidates.length);
+            final currentNumCandidates =
+                await _candidateMx.synchronized(() => _candidates.length);
             if (currentNumCandidates >= config.maxCandidates) {
-              _log.fine('RelayFinder: Already have enough candidates ($currentNumCandidates >= ${config.maxCandidates}), skipping');
+              _log.fine(
+                'RelayFinder: Already have enough candidates ($currentNumCandidates >= ${config.maxCandidates}), skipping',
+              );
               return;
             }
-            
+
             final handlerCompleter = Completer<void>();
             pendingNodeHandlers.add(handlerCompleter.future);
             _handleNewNode(addrInfo).then((added) {
               if (added) {
-                _log.fine('RelayFinder: Candidate ${addrInfo.id.toBase58()} added successfully');
+                _log.fine(
+                  'RelayFinder: Candidate ${addrInfo.id.toBase58()} added successfully',
+                );
                 _notifyNewCandidate();
               } else {
-                _log.fine('RelayFinder: Candidate ${addrInfo.id.toBase58()} was not added');
+                _log.fine(
+                  'RelayFinder: Candidate ${addrInfo.id.toBase58()} was not added',
+                );
               }
-            }).whenComplete(() => handlerCompleter.complete());
+            }).whenComplete(handlerCompleter.complete);
           },
           onDone: () async {
             await Future.wait(pendingNodeHandlers);
             pendingNodeHandlers.clear();
             currentPeerStream = null;
             currentPeerSubscription = null;
-            if (!(_stopController?.isClosed ?? true)) _triggerRunScheduledWorkController.add(null);
+            if (!(_stopController?.isClosed ?? true)) {
+              _triggerRunScheduledWorkController.add(null);
+            }
           },
           onError: (e) {
             currentPeerStream = null;
@@ -308,38 +367,43 @@ class RelayFinder {
         );
         stopSignal.first.then((_) => currentPeerSubscription?.cancel());
       } else {
-         metricsTracer.candidateLoopState(CandidateLoopState.waitingForTrigger);
+        metricsTracer.candidateLoopState(CandidateLoopState.waitingForTrigger);
       }
-      
+
       await Future.any([
-          _maybeRequestNewCandidatesController.stream.first,
-          stopSignal.first,
-          if (currentPeerSubscription != null) currentPeerSubscription!.asFuture().catchError((_){})
+        _maybeRequestNewCandidatesController.stream.first,
+        stopSignal.first,
+        if (currentPeerSubscription != null)
+          currentPeerSubscription!.asFuture().catchError((_) {}),
       ]);
       if (_stopController?.isClosed ?? true) break;
       currentPeerSubscription?.cancel();
-      currentPeerStream = null; 
+      currentPeerStream = null;
       await Future.wait(pendingNodeHandlers);
       pendingNodeHandlers.clear();
     }
     metricsTracer.candidateLoopState(CandidateLoopState.stopped);
   }
-  
+
   Future<bool> _handleNewNode(AddrInfo addrInfo) async {
-    bool isRelayInUse = await _relayMx.synchronized(() => _isUsingRelay(addrInfo.id));
+    final isRelayInUse =
+        await _relayMx.synchronized(() => _isUsingRelay(addrInfo.id));
     if (isRelayInUse) return false;
 
     try {
-      final supportsV2 = await _tryNode(addrInfo).timeout(const Duration(seconds: 20));
+      final supportsV2 =
+          await _tryNode(addrInfo).timeout(const Duration(seconds: 20));
       metricsTracer.candidateChecked(supportsV2);
       if (supportsV2) {
         await _candidateMx.synchronized(() {
           if (_candidates.length < config.maxCandidates) {
-            _addCandidate(Candidate(
-              added: config.clock.now(),
-              addrInfo: addrInfo,
-              supportsRelayV2: true,
-            ));
+            _addCandidate(
+              Candidate(
+                added: config.clock.now(),
+                addrInfo: addrInfo,
+                supportsRelayV2: true,
+              ),
+            );
           } else {
             return false;
           }
@@ -348,7 +412,7 @@ class RelayFinder {
       }
     } catch (e) {
       if (e is _ProtocolNotSupportedException) {
-         metricsTracer.candidateChecked(false);
+        metricsTracer.candidateChecked(false);
       }
     }
     return false;
@@ -358,38 +422,47 @@ class RelayFinder {
     try {
       await host.connect(addrInfo);
     } catch (e) {
-      throw Exception('Error connecting to potential relay ${addrInfo.id.toString()}: $e');
+      throw Exception(
+        'Error connecting to potential relay ${addrInfo.id}: $e',
+      );
     }
 
     final conns = host.network.connsToPeer(addrInfo.id);
-    for (Conn conn in conns) {
+    for (final conn in conns) {
       if (isRelayAddress(conn.remoteMultiaddr)) {
         throw Exception('Not a public node (is a relay address)');
       }
     }
 
-    final supportedProtocols = await host.peerStore.protoBook.supportsProtocols(addrInfo.id, [CircuitV2Protocol.protoIDv2Hop]);
+    final supportedProtocols = await host.peerStore.protoBook
+        .supportsProtocols(addrInfo.id, [CircuitV2Protocol.protoIDv2Hop]);
     if (supportedProtocols.isEmpty) {
-        throw _ProtocolNotSupportedException("Doesn't speak circuit v2 hop (${CircuitV2Protocol.protoIDv2Hop})");
+      throw _ProtocolNotSupportedException(
+        "Doesn't speak circuit v2 hop (${CircuitV2Protocol.protoIDv2Hop})",
+      );
     }
     return true;
   }
 
-  void _handleNewCandidates(Stream<void> stopSignal) async {
+  Future<void> _handleNewCandidates(Stream<void> stopSignal) async {
     _candidateFoundController.stream.takeUntil(stopSignal).listen((_) {
       _notifyMaybeConnectToRelay();
     });
-    _maybeConnectToRelayTriggerController.stream.takeUntil(stopSignal).listen((_) {
+    _maybeConnectToRelayTriggerController.stream
+        .takeUntil(stopSignal)
+        .listen((_) {
       _maybeConnectToRelay();
     });
   }
 
   Future<void> _maybeConnectToRelay() async {
-    int numActiveRelays = await _relayMx.synchronized(() => _relays.length);
+    var numActiveRelays = await _relayMx.synchronized(() => _relays.length);
     if (numActiveRelays >= config.desiredRelays) return;
 
-    bool canConnect = await _candidateMx.synchronized(() {
-      if (_relays.isEmpty && _candidates.length < config.minCandidates && config.clock.since(_bootTime) < config.bootDelay) {
+    final canConnect = await _candidateMx.synchronized(() {
+      if (_relays.isEmpty &&
+          _candidates.length < config.minCandidates &&
+          config.clock.since(_bootTime) < config.bootDelay) {
         return false;
       }
       return _candidates.isNotEmpty;
@@ -397,11 +470,13 @@ class RelayFinder {
 
     if (!canConnect) return;
 
-    List<Candidate> selectedCandidates = await _candidateMx.synchronized(() => _selectCandidates());
+    final selectedCandidates =
+        await _candidateMx.synchronized(_selectCandidates);
 
-    for (var cand in selectedCandidates) {
-      PeerId id = cand.addrInfo.id;
-      bool usingThisRelay = await _relayMx.synchronized(() => _isUsingRelay(id));
+    for (final cand in selectedCandidates) {
+      final id = cand.addrInfo.id;
+      final usingThisRelay =
+          await _relayMx.synchronized(() => _isUsingRelay(id));
       if (usingThisRelay) {
         await _candidateMx.synchronized(() => _removeCandidate(id));
         _notifyMaybeNeedNewCandidates();
@@ -409,7 +484,8 @@ class RelayFinder {
       }
 
       try {
-        final rsvp = await _connectToRelay(cand).timeout(const Duration(seconds: 15));
+        final rsvp =
+            await _connectToRelay(cand).timeout(const Duration(seconds: 15));
         await _relayMx.synchronized(() {
           _relays[id] = rsvp;
           numActiveRelays = _relays.length;
@@ -422,16 +498,21 @@ class RelayFinder {
         if (numActiveRelays >= config.desiredRelays) break;
       } catch (e) {
         _notifyMaybeNeedNewCandidates();
-        metricsTracer.reservationRequestFinished(false, e is Exception ? e : Exception(e.toString()));
+        metricsTracer.reservationRequestFinished(
+          false,
+          e is Exception ? e : Exception(e.toString()),
+        );
       }
     }
   }
-  
+
   Future<Reservation> _connectToRelay(Candidate candidate) async {
-    final PeerId id = candidate.addrInfo.id;
+    final id = candidate.addrInfo.id;
     if (host.network.connectedness(id) != Connectedness.connected) {
       try {
-        await host.connect(candidate.addrInfo).timeout(const Duration(seconds:10));
+        await host
+            .connect(candidate.addrInfo)
+            .timeout(const Duration(seconds: 10));
       } catch (e) {
         await _candidateMx.synchronized(() => _removeCandidate(id));
         throw Exception('Failed to connect before reserving: $e');
@@ -444,19 +525,25 @@ class RelayFinder {
 
     Reservation rsvp;
     try {
-      final circuitClient = CircuitV2Client(host: host, upgrader: this.upgrader, connManager: host.connManager); // Changed Client to CircuitV2Client
-      rsvp = await circuitClient.reserve(candidate.addrInfo.id).timeout(const Duration(seconds:10));
+      final circuitClient = CircuitV2Client(
+        host: host,
+        upgrader: upgrader,
+        connManager: host.connManager,
+      ); // Changed Client to CircuitV2Client
+      rsvp = await circuitClient
+          .reserve(candidate.addrInfo.id)
+          .timeout(const Duration(seconds: 10));
     } catch (e) {
       await _candidateMx.synchronized(() => _removeCandidate(id));
       rethrow;
     }
-    
+
     await _candidateMx.synchronized(() => _removeCandidate(id));
     return rsvp;
   }
 
   Future<void> _refreshReservations(DateTime now) async {
-    List<PeerId> toRefresh = [];
+    final toRefresh = <PeerId>[];
     await _relayMx.synchronized(() {
       _relays.forEach((peerId, rsvp) {
         if (now.add(rsvpExpirationSlack).isAfter(rsvp.expire)) {
@@ -469,26 +556,34 @@ class RelayFinder {
       return;
     }
 
-    bool anyChange = false;
-    final client = CircuitV2Client(host: host, upgrader: this.upgrader, connManager: host.connManager); // Changed Client to CircuitV2Client
-    
-    List<Future<void>> refreshFutures = toRefresh.map((peerId) async {
+    var anyChange = false;
+    final client = CircuitV2Client(
+      host: host,
+      upgrader: upgrader,
+      connManager: host.connManager,
+    ); // Changed Client to CircuitV2Client
+
+    final List<Future<void>> refreshFutures = toRefresh.map((peerId) async {
       try {
-        final newRsvp = await client.reserve(peerId).timeout(const Duration(seconds:10));
+        final newRsvp =
+            await client.reserve(peerId).timeout(const Duration(seconds: 10));
         await _relayMx.synchronized(() {
           _relays[peerId] = newRsvp;
-          metricsTracer.reservationRequestFinished(true, null); 
+          metricsTracer.reservationRequestFinished(true, null);
           anyChange = true;
         });
       } catch (e) {
         await _relayMx.synchronized(() {
           if (_relays.containsKey(peerId)) {
-             _relays.remove(peerId);
-             host.connManager.unprotect(peerId, autorelayTag);
-             metricsTracer.reservationEnded(1);
+            _relays.remove(peerId);
+            host.connManager.unprotect(peerId, autorelayTag);
+            metricsTracer.reservationEnded(1);
           }
-          metricsTracer.reservationRequestFinished(true, e is Exception ? e : Exception(e.toString()));
-          anyChange = true; 
+          metricsTracer.reservationRequestFinished(
+            true,
+            e is Exception ? e : Exception(e.toString()),
+          );
+          anyChange = true;
         });
       }
     }).toList();
@@ -499,11 +594,11 @@ class RelayFinder {
       _clearCachedAddrsAndSignalAddressChange();
     }
   }
-  
+
   DateTime _clearBackoff(DateTime now) {
-    DateTime nextTime = now.add(config.backoff);
+    var nextTime = now.add(config.backoff);
     _candidateMx.synchronized(() {
-      List<PeerId> toRemove = [];
+      final toRemove = <PeerId>[];
       _backoff.forEach((id, backoffStartTime) {
         final expiry = backoffStartTime.add(config.backoff);
         if (expiry.isAfter(now)) {
@@ -512,7 +607,7 @@ class RelayFinder {
           toRemove.add(id);
         }
       });
-      for (var id in toRemove) {
+      for (final id in toRemove) {
         _backoff.remove(id);
       }
     });
@@ -520,10 +615,10 @@ class RelayFinder {
   }
 
   DateTime _clearOldCandidates(DateTime now) {
-    DateTime nextTime = now.add(config.maxCandidateAge);
-    bool deleted = false;
+    var nextTime = now.add(config.maxCandidateAge);
+    var deleted = false;
     _candidateMx.synchronized(() {
-      List<PeerId> toRemove = [];
+      final toRemove = <PeerId>[];
       _candidates.forEach((id, cand) {
         final expiry = cand.added.add(config.maxCandidateAge);
         if (expiry.isAfter(now)) {
@@ -533,7 +628,7 @@ class RelayFinder {
           deleted = true;
         }
       });
-      for (var id in toRemove) {
+      for (final id in toRemove) {
         _removeCandidate(id);
       }
     });
@@ -541,15 +636,17 @@ class RelayFinder {
     return nextTime;
   }
 
-  void _cleanupDisconnectedPeers(Stream<void> stopSignal) async {
-    final eventBusSubscription = host.eventBus.subscribe(EvtPeerConnectednessChanged);
-    StreamSubscription? streamSub; 
+  Future<void> _cleanupDisconnectedPeers(Stream<void> stopSignal) async {
+    final eventBusSubscription =
+        host.eventBus.subscribe(EvtPeerConnectednessChanged);
+    StreamSubscription? streamSub;
 
-    streamSub = eventBusSubscription.stream.takeUntil(stopSignal).listen((event) {
+    streamSub =
+        eventBusSubscription.stream.takeUntil(stopSignal).listen((event) {
       if (event is EvtPeerConnectednessChanged) {
         if (event.connectedness != Connectedness.notConnected) return;
 
-        bool wasRelay = false;
+        var wasRelay = false;
         _relayMx.synchronized(() {
           if (_isUsingRelay(event.peer)) {
             _relays.remove(event.peer);
@@ -573,19 +670,28 @@ class RelayFinder {
   }
 
   void _notifyNewCandidate() {
-    if (!(_candidateFoundController.isClosed)) _candidateFoundController.add(null);
+    if (!_candidateFoundController.isClosed) {
+      _candidateFoundController.add(null);
+    }
   }
+
   void _notifyMaybeConnectToRelay() {
-    if (!(_maybeConnectToRelayTriggerController.isClosed)) _maybeConnectToRelayTriggerController.add(null);
+    if (!_maybeConnectToRelayTriggerController.isClosed) {
+      _maybeConnectToRelayTriggerController.add(null);
+    }
   }
+
   void _notifyMaybeNeedNewCandidates() {
-    if (!(_maybeRequestNewCandidatesController.isClosed)) _maybeRequestNewCandidatesController.add(null);
+    if (!_maybeRequestNewCandidatesController.isClosed) {
+      _maybeRequestNewCandidatesController.add(null);
+    }
   }
+
   void _notifyRelayUpdated() {
-    if (!(_relayUpdatedController.isClosed)) _relayUpdatedController.add(null);
-     // _relayUpdatedController.stream.first.then((_) => _clearCachedAddrsAndSignalAddressChange()); // This was causing issues, direct call is better
+    if (!_relayUpdatedController.isClosed) _relayUpdatedController.add(null);
+    // _relayUpdatedController.stream.first.then((_) => _clearCachedAddrsAndSignalAddressChange()); // This was causing issues, direct call is better
   }
-  
+
   void _clearCachedAddrsAndSignalAddressChange() {
     _relayMx.synchronized(() {
       _cachedAddrs = [];
@@ -612,62 +718,80 @@ class RelayFinder {
 
   List<Candidate> _selectCandidates() {
     final now = config.clock.now();
-    List<Candidate> validCandidates = _candidates.values
+    final validCandidates = _candidates.values
         .where((cand) => cand.added.add(config.maxCandidateAge).isAfter(now))
         .toList();
     validCandidates.shuffle(Random(now.microsecondsSinceEpoch));
     return validCandidates;
   }
 
-  Future<List<MultiAddr>> getRelayAddrs(List<MultiAddr> currentHostAddrs) async {
-    return _relayMx.synchronized<List<MultiAddr>>(() async { // Made outer lambda async
-      _log.fine('RelayFinder: getRelayAddrs() called with ${currentHostAddrs.length} host addresses, ${_relays.length} active relays');
-      if (_cachedAddrs.isNotEmpty && config.clock.now().isBefore(_cachedAddrsExpiry)) {
-        _log.fine('RelayFinder: Returning cached addresses (${_cachedAddrs.length})');
+  Future<List<MultiAddr>> getRelayAddrs(
+    List<MultiAddr> currentHostAddrs,
+  ) async {
+    return _relayMx.synchronized<List<MultiAddr>>(() async {
+      // Made outer lambda async
+      _log.fine(
+        'RelayFinder: getRelayAddrs() called with ${currentHostAddrs.length} host addresses, ${_relays.length} active relays',
+      );
+      if (_cachedAddrs.isNotEmpty &&
+          config.clock.now().isBefore(_cachedAddrsExpiry)) {
+        _log.fine(
+          'RelayFinder: Returning cached addresses (${_cachedAddrs.length})',
+        );
         return List<MultiAddr>.from(_cachedAddrs);
       }
 
-      List<MultiAddr> raddrs = [];
-      for (var addr in currentHostAddrs) {
+      final raddrs = <MultiAddr>[];
+      for (final addr in currentHostAddrs) {
         if (addr.isPrivate() || addr.isLoopback()) {
           raddrs.add(addr);
           _log.fine('RelayFinder: Added private/loopback address: $addr');
         }
       }
 
-      _log.fine('RelayFinder: Processing ${_relays.length} relays for circuit address construction');
-      int relayAddrCountForMetrics = 0;
+      _log.fine(
+        'RelayFinder: Processing ${_relays.length} relays for circuit address construction',
+      );
+      var relayAddrCountForMetrics = 0;
 
       _relays.forEach((peerId, reservation) {
         _log.fine('RelayFinder: Processing relay: ${peerId.toBase58()}');
         // Use the addresses from the reservation - these are provided by the relay server
         final relayPeerAddrs = reservation.addrs;
-        _log.fine('RelayFinder: Reservation has ${relayPeerAddrs.length} addresses for relay ${peerId.toBase58()}');
-        
-        for (var relayAddr in relayPeerAddrs) {
-            try {
-                // Skip addresses that already contain /p2p-circuit (listen addresses)
-                // We only want to encapsulate /p2p-circuit on top of actual transport addresses
-                if (relayAddr.toString().contains('/p2p-circuit')) {
-                  _log.fine('RelayFinder: Skipping address that already contains /p2p-circuit: $relayAddr');
-                  continue;
-                }
-                
-                // Build circuit address: relayAddr/p2p/relayPeerID/p2p-circuit/p2p/ownPeerID
-                var circuitAddr = relayAddr
-                    .encapsulate(Protocols.p2p.name, peerId.toString())
-                    .encapsulate(Protocols.circuit.name, '')
-                    .encapsulate(Protocols.p2p.name, host.id.toString());
-                raddrs.add(circuitAddr);
-                relayAddrCountForMetrics++;
-                _log.fine('RelayFinder: Created circuit address: $circuitAddr');
-            } catch (e) {
-                _log.warning('RelayFinder: Failed to create circuit address for relay $peerId via $relayAddr: $e');
+        _log.fine(
+          'RelayFinder: Reservation has ${relayPeerAddrs.length} addresses for relay ${peerId.toBase58()}',
+        );
+
+        for (final relayAddr in relayPeerAddrs) {
+          try {
+            // Skip addresses that already contain /p2p-circuit (listen addresses)
+            // We only want to encapsulate /p2p-circuit on top of actual transport addresses
+            if (relayAddr.toString().contains('/p2p-circuit')) {
+              _log.fine(
+                'RelayFinder: Skipping address that already contains /p2p-circuit: $relayAddr',
+              );
+              continue;
             }
+
+            // Build circuit address: relayAddr/p2p/relayPeerID/p2p-circuit/p2p/ownPeerID
+            final circuitAddr = relayAddr
+                .encapsulate(Protocols.p2p.name, peerId.toString())
+                .encapsulate(Protocols.circuit.name, '')
+                .encapsulate(Protocols.p2p.name, host.id.toString());
+            raddrs.add(circuitAddr);
+            relayAddrCountForMetrics++;
+            _log.fine('RelayFinder: Created circuit address: $circuitAddr');
+          } catch (e) {
+            _log.warning(
+              'RelayFinder: Failed to create circuit address for relay $peerId via $relayAddr: $e',
+            );
+          }
         }
       });
 
-      _log.fine('RelayFinder: Built ${raddrs.length} total addresses (private + circuit)');
+      _log.fine(
+        'RelayFinder: Built ${raddrs.length} total addresses (private + circuit)',
+      );
       _cachedAddrs = List<MultiAddr>.from(raddrs);
       _cachedAddrsExpiry = config.clock.now().add(const Duration(seconds: 30));
       metricsTracer.relayAddressCount(relayAddrCountForMetrics);
@@ -679,7 +803,10 @@ class RelayFinder {
   /// This allows unit tests to verify circuit address construction without
   /// needing to perform actual relay connections.
   @visibleForTesting
-  Future<void> addTestReservation(PeerId relayPeerId, Reservation reservation) async {
+  Future<void> addTestReservation(
+    PeerId relayPeerId,
+    Reservation reservation,
+  ) async {
     await _relayMx.synchronized(() {
       _relays[relayPeerId] = reservation;
     });
@@ -689,7 +816,7 @@ class RelayFinder {
   /// Test helper to check if a relay exists in the internal map.
   @visibleForTesting
   Future<bool> hasRelay(PeerId relayPeerId) async {
-    return await _relayMx.synchronized(() {
+    return _relayMx.synchronized(() {
       return _relays.containsKey(relayPeerId);
     });
   }
@@ -697,17 +824,17 @@ class RelayFinder {
   /// Test helper to get the number of relays.
   @visibleForTesting
   Future<int> get relayCount async {
-    return await _relayMx.synchronized(() {
+    return _relayMx.synchronized(() {
       return _relays.length;
     });
   }
 }
 
 class _ProtocolNotSupportedException implements Exception {
-  final String message;
   _ProtocolNotSupportedException(this.message);
+  final String message;
   @override
-  String toString() => "ProtocolNotSupportedException: $message";
+  String toString() => 'ProtocolNotSupportedException: $message';
 }
 
 // Helper extension for Stream to mimic takeUntil from rxdart/async
@@ -726,7 +853,7 @@ extension StreamTakeUntil<T> on Stream<T> {
         );
         signalSubscription = signal.listen(
           (_) => controller?.close(),
-          onError: controller?.addError,
+          onError: controller.addError,
         );
       },
       onPause: () => subscription?.pause(),

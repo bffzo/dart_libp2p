@@ -1,62 +1,68 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
 import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/context.dart'; // Direct import for Context
 import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/core/network/transport_conn.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart'
+    as p2p_peer; // Imports concrete PeerId from core/peer/
 import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart' as p2p_peer; // Imports concrete PeerId from core/peer/
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:dart_libp2p/p2p/multiaddr/protocol.dart'; // For Protocols.p2p, Protocols.circuit
-import 'package:dart_libp2p/p2p/transport/upgrader.dart'; // Corrected path for Upgrader
-import 'package:dart_libp2p/p2p/transport/transport.dart'; // For Transport interface
-import 'package:dart_libp2p/p2p/transport/transport_config.dart'; // For TransportConfig
-import 'package:dart_libp2p/p2p/transport/listener.dart'; // For Listener interface
-import 'package:dart_libp2p/p2p/protocol/circuitv2/pb/circuit.pb.dart' as circuit_pb;
+import 'package:dart_libp2p/p2p/protocol/circuitv2/client/conn.dart';
+import 'package:dart_libp2p/p2p/protocol/circuitv2/pb/circuit.pb.dart'
+    as circuit_pb;
 import 'package:dart_libp2p/p2p/protocol/circuitv2/proto.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/util/io.dart' as circuit_io;
-import 'package:dart_libp2p/p2p/protocol/circuitv2/client/conn.dart';
-import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
+import 'package:dart_libp2p/p2p/transport/listener.dart'; // For Listener interface
+import 'package:dart_libp2p/p2p/transport/transport.dart'; // For Transport interface
+import 'package:dart_libp2p/p2p/transport/transport_config.dart'; // For TransportConfig
+import 'package:dart_libp2p/p2p/transport/upgrader.dart'; // Corrected path for Upgrader
 import 'package:dart_libp2p/utils/varint.dart'; // For encodeVarint
 import 'package:logging/logging.dart';
 
 final _log = Logger('CircuitV2Client');
 
-const int maxCircuitMessageSize = 4096; // Max message size for circuit protocol messages
+const int maxCircuitMessageSize =
+    4096; // Max message size for circuit protocol messages
 
 // Helper to adapt P2PStream to a Dart Stream for DelimitedReader
 Stream<List<int>> _adaptP2PStreamToDartStream(P2PStream p2pStream) {
   final controller = StreamController<List<int>>();
-  
+
   Future<void> readLoop() async {
     try {
-      while (true) { 
-        if (p2pStream.isClosed || controller.isClosed) { // Check before read
-             if (!controller.isClosed) await controller.close();
-             break;
+      while (true) {
+        if (p2pStream.isClosed || controller.isClosed) {
+          // Check before read
+          if (!controller.isClosed) await controller.close();
+          break;
         }
-        final data = await p2pStream.read(); 
-        if (p2pStream.isClosed || controller.isClosed) { // Check after read
-             if (!controller.isClosed) await controller.close();
-             break;
+        final data = await p2pStream.read();
+        if (p2pStream.isClosed || controller.isClosed) {
+          // Check after read
+          if (!controller.isClosed) await controller.close();
+          break;
         }
         if (data.isNotEmpty) {
           controller.add(data);
-        } else if (p2pStream.isClosed) { // If read returns empty and stream is closed
-            if (!controller.isClosed) await controller.close();
-            break;
+        } else if (p2pStream.isClosed) {
+          // If read returns empty and stream is closed
+          if (!controller.isClosed) await controller.close();
+          break;
         }
       }
-    } catch (e,s) {
+    } catch (e, s) {
       if (!controller.isClosed) {
-        controller.addError(e,s);
+        controller.addError(e, s);
         await controller.close();
       }
     }
   }
-  
+
   readLoop();
   // Return as broadcast stream to allow multiple subscriptions by DelimitedReader
   return controller.stream.asBroadcastStream();
@@ -66,16 +72,23 @@ Stream<List<int>> _adaptP2PStreamToDartStream(P2PStream p2pStream) {
 /// It allows peers to establish connections through relay servers when direct
 /// connections are not possible (e.g., due to NATs or firewalls).
 class CircuitV2Client implements Transport {
+  CircuitV2Client({
+    required this.host,
+    required this.upgrader,
+    required this.connManager,
+    TransportConfig? config,
+  }) : config = config ?? TransportConfig.defaultConfig;
   final Host host;
   final Upgrader upgrader;
   final ConnManager connManager;
-  
+
   @override
   final TransportConfig config;
 
   // Stream controller for incoming connections that have been accepted by a listener
-  final StreamController<TransportConn> _incomingConnController = StreamController.broadcast();
-  StreamSubscription<P2PStream<dynamic>>? _stopHandlerSubscription;
+  final StreamController<TransportConn> _incomingConnController =
+      StreamController.broadcast();
+  StreamSubscription<P2PStream>? _stopHandlerSubscription;
 
   // Active listeners
   // For circuit relay, "listening" means being ready to accept incoming StopMessages.
@@ -86,20 +99,18 @@ class CircuitV2Client implements Transport {
   final List<MultiAddr> _listenAddrs = [];
   bool _isListening = false;
 
-
-  CircuitV2Client({
-    required this.host,
-    required this.upgrader,
-    required this.connManager,
-    TransportConfig? config,
-  }) : config = config ?? TransportConfig.defaultConfig;
-
   Future<void> start() async {
     // Register a handler for the STOP protocol. This is how we receive incoming connections.
     host.setStreamHandler(CircuitV2Protocol.protoIDv2Stop, _handleStreamV2);
-    _log.warning('🎯 [CircuitV2Client.start] Handler registered for ${CircuitV2Protocol.protoIDv2Stop}');
-    print('🎯 [CircuitV2Client.start] Handler registered for ${CircuitV2Protocol.protoIDv2Stop}');
-    _log.fine('CircuitV2Client started, listening for ${CircuitV2Protocol.protoIDv2Stop}');
+    _log.warning(
+      '🎯 [CircuitV2Client.start] Handler registered for ${CircuitV2Protocol.protoIDv2Stop}',
+    );
+    print(
+      '🎯 [CircuitV2Client.start] Handler registered for ${CircuitV2Protocol.protoIDv2Stop}',
+    );
+    _log.fine(
+      'CircuitV2Client started, listening for ${CircuitV2Protocol.protoIDv2Stop}',
+    );
   }
 
   Future<void> stop() async {
@@ -111,61 +122,82 @@ class CircuitV2Client implements Transport {
 
   // Handles incoming streams for the STOP protocol (from relay to destination)
   // Signature updated to match StreamHandler typedef: Future<void> Function(P2PStream stream, PeerId remotePeer)
-  Future<void> _handleStreamV2(P2PStream stream, PeerId remoteRelayPeerId) async {
-    _log.warning('🎯 [CircuitV2Client._handleStreamV2] ENTERED! Received incoming STOP stream from relay ${remoteRelayPeerId.toString()} for stream ${stream.id()}');
-    print('🎯 [CircuitV2Client._handleStreamV2] ENTERED! Stream ${stream.id()} from relay ${remoteRelayPeerId.toString()}');
-    
+  Future<void> _handleStreamV2(
+    P2PStream stream,
+    PeerId remoteRelayPeerId,
+  ) async {
+    _log.warning(
+      '🎯 [CircuitV2Client._handleStreamV2] ENTERED! Received incoming STOP stream from relay $remoteRelayPeerId for stream ${stream.id()}',
+    );
+    print(
+      '🎯 [CircuitV2Client._handleStreamV2] ENTERED! Stream ${stream.id()} from relay $remoteRelayPeerId',
+    );
+
     try {
       // Read the STOP message directly from the P2PStream without any adapters
       // This keeps the stream clean for the RelayedConn to use afterward
-      print('🎯 [CircuitV2Client._handleStreamV2] Reading length-prefixed STOP message...');
-      
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Reading length-prefixed STOP message...',
+      );
+
       // Accumulate data until we have the complete message
       final buffer = <int>[];
-      
+
       // Read first chunk to get length prefix
       var chunk = await stream.read();
-      print('🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} bytes (chunk 1)');
-      
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} bytes (chunk 1)',
+      );
+
       if (chunk.isEmpty) {
         throw Exception('Empty message received from relay');
       }
-      
+
       buffer.addAll(chunk);
-      
+
       // Decode varint length prefix
-      int messageLength = 0;
-      int shift = 0;
-      int bytesRead = 0;
-      for (int i = 0; i < buffer.length; i++) {
+      var messageLength = 0;
+      var shift = 0;
+      var bytesRead = 0;
+      for (var i = 0; i < buffer.length; i++) {
         bytesRead++;
         final byte = buffer[i];
         messageLength |= (byte & 0x7F) << shift;
         if ((byte & 0x80) == 0) break; // Last byte of varint
         shift += 7;
       }
-      
-      print('🎯 [CircuitV2Client._handleStreamV2] Message length: $messageLength bytes (length prefix: $bytesRead bytes)');
-      
+
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Message length: $messageLength bytes (length prefix: $bytesRead bytes)',
+      );
+
       // Read more chunks until we have the complete message
       while (buffer.length < bytesRead + messageLength) {
-        print('🎯 [CircuitV2Client._handleStreamV2] Need ${bytesRead + messageLength} bytes, have ${buffer.length}, reading more...');
+        print(
+          '🎯 [CircuitV2Client._handleStreamV2] Need ${bytesRead + messageLength} bytes, have ${buffer.length}, reading more...',
+        );
         chunk = await stream.read();
-        print('🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} more bytes');
+        print(
+          '🎯 [CircuitV2Client._handleStreamV2] Read ${chunk.length} more bytes',
+        );
         if (chunk.isEmpty) {
           throw Exception('Stream closed before complete message received');
         }
         buffer.addAll(chunk);
       }
-      
-      print('🎯 [CircuitV2Client._handleStreamV2] Complete message received: ${buffer.length} bytes total');
-      
+
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Complete message received: ${buffer.length} bytes total',
+      );
+
       // Extract message bytes (skip the length prefix)
       final messageBytes = buffer.sublist(bytesRead, bytesRead + messageLength);
-      
+
       // Parse the STOP message
       final msg = circuit_pb.StopMessage.fromBuffer(messageBytes);
-      print('🎯 [CircuitV2Client._handleStreamV2] STOP message received! Type: ${msg.type}');
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] STOP message received! Type: ${msg.type}',
+      );
       // msg will not be null if readMsg completes, it throws on error/eof.
       // However, checking for safety or specific default values if applicable.
       // if (msg == null) { // This check might be redundant depending on readMsg behavior
@@ -174,7 +206,9 @@ class CircuitV2Client implements Transport {
       //   return;
       // }
 
-      _log.fine('StopMessage received: type=${msg.type}, peer=${msg.hasPeer() ? msg.peer.id : 'N/A'}');
+      _log.fine(
+        'StopMessage received: type=${msg.type}, peer=${msg.hasPeer() ? msg.peer.id : 'N/A'}',
+      );
 
       if (msg.type != circuit_pb.StopMessage_Type.CONNECT) {
         _log.warning('Received StopMessage with unexpected type: ${msg.type}');
@@ -182,7 +216,9 @@ class CircuitV2Client implements Transport {
         return;
       }
 
-      _log.fine('StopMessage received: type=${msg.type}, peer=${msg.hasPeer() ? msg.peer.id : 'N/A'}');
+      _log.fine(
+        'StopMessage received: type=${msg.type}, peer=${msg.hasPeer() ? msg.peer.id : 'N/A'}',
+      );
 
       if (msg.type != circuit_pb.StopMessage_Type.CONNECT) {
         _log.warning('Received StopMessage with unexpected type: ${msg.type}');
@@ -197,7 +233,9 @@ class CircuitV2Client implements Transport {
         return;
       }
 
-      final sourcePeerId = p2p_peer.PeerId.fromBytes(Uint8List.fromList(msg.peer.id)); // Ensure Uint8List
+      final sourcePeerId = p2p_peer.PeerId.fromBytes(
+        Uint8List.fromList(msg.peer.id),
+      ); // Ensure Uint8List
       // TODO: Add source peer to peerstore with its addresses from msg.peer.addrs
       // This might require converting List<Uint8List> to List<Multiaddr>
       // host.peerstore().addAddrs(sourcePeerId, sourcePeerAddrs, ttl);
@@ -214,53 +252,65 @@ class CircuitV2Client implements Transport {
       // Remote: /p2p/{relayId}/p2p-circuit/p2p/{sourcePeerId}
       final relayMa = stream.conn.remoteMultiaddr; // Address of the relay
       // Ensure Multiaddr.fromString is available or use appropriate constructor
-      final localCircuitMa = MultiAddr('${relayMa.toString()}/p2p-circuit/p2p/${host.id.toString()}');
-      final remoteCircuitMa = MultiAddr('${relayMa.toString()}/p2p-circuit/p2p/${sourcePeerId.toString()}');
-
+      final localCircuitMa = MultiAddr(
+        '$relayMa/p2p-circuit/p2p/${host.id}',
+      );
+      final remoteCircuitMa = MultiAddr(
+        '$relayMa/p2p-circuit/p2p/$sourcePeerId',
+      );
 
       final relayedConn = RelayedConn(
-        stream: stream as P2PStream<Uint8List>, // Cast needed, ensure stream is Uint8List
+        stream: stream, // Cast needed, ensure stream is Uint8List
         transport: this,
         localPeer: host.id,
         remotePeer: sourcePeerId,
         localMultiaddr: localCircuitMa, // This represents how we are reached
-        remoteMultiaddr: remoteCircuitMa, // This represents how the remote is dialed
+        remoteMultiaddr:
+            remoteCircuitMa, // This represents how the remote is dialed
         // isInitiator: false, // This is an incoming connection
       );
 
-      _log.fine('Accepted incoming relayed connection from ${sourcePeerId.toString()} via ${stream.conn.remotePeer.toString()}');
+      _log.fine(
+        'Accepted incoming relayed connection from $sourcePeerId via ${stream.conn.remotePeer}',
+      );
       _incomingConnController.add(relayedConn);
 
       // Send back a STOP response with STATUS OK to the relay
       // The relay is waiting for this response to confirm we're ready to accept the connection
-      print('🎯 [CircuitV2Client._handleStreamV2] Sending STOP response with status OK...');
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Sending STOP response with status OK...',
+      );
       final stopResponse = circuit_pb.StopMessage()
         ..type = circuit_pb.StopMessage_Type.STATUS
         ..status = circuit_pb.Status.OK;
-      
+
       // Write the response with length prefix (DelimitedReader on relay side expects it)
       final responseBytes = stopResponse.writeToBuffer();
       final responseLengthBytes = encodeVarint(responseBytes.length);
       await stream.write(responseLengthBytes);
       await stream.write(responseBytes);
-      print('🎯 [CircuitV2Client._handleStreamV2] STOP response sent successfully');
-      
-      _log.fine('Sent STOP response with status OK to relay ${stream.conn.remotePeer.toString()}');
-      
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] STOP response sent successfully',
+      );
+
+      _log.fine(
+        'Sent STOP response with status OK to relay ${stream.conn.remotePeer}',
+      );
+
       // IMPORTANT: The stream is now owned by the RelayedConn for application data.
       // We must NOT return from this handler, as that would allow the stream to be
       // garbage collected or have its protocol handlers removed.
       // Instead, the stream will be managed by the RelayedConn which was added to
       // _incomingConnController above. The handler can now return, and the stream
       // will be kept alive by the RelayedConn.
-      print('🎯 [CircuitV2Client._handleStreamV2] Handler complete, stream now managed by RelayedConn');
-
+      print(
+        '🎯 [CircuitV2Client._handleStreamV2] Handler complete, stream now managed by RelayedConn',
+      );
     } catch (e, s) {
       _log.severe('Error handling incoming STOP stream: $e\n$s');
       await stream.reset();
     }
   }
-
 
   @override
   Future<TransportConn> dial(MultiAddr addr, {Duration? timeout}) async {
@@ -272,8 +322,8 @@ class CircuitV2Client implements Transport {
     String? relayIdStr;
     String? destIdStr;
 
-    int p2pIdx = -1;
-    for (int i = 0; i < addrComponents.length; i++) {
+    var p2pIdx = -1;
+    for (var i = 0; i < addrComponents.length; i++) {
       if (addrComponents[i].$1.code == Protocols.p2p.code) {
         p2pIdx = i;
         relayIdStr = addrComponents[i].$2;
@@ -282,15 +332,19 @@ class CircuitV2Client implements Transport {
     }
 
     if (relayIdStr == null) {
-      throw ArgumentError('Dial address must contain a /p2p/relayId component: $addr');
+      throw ArgumentError(
+        'Dial address must contain a /p2p/relayId component: $addr',
+      );
     }
-    final relayId = p2p_peer.PeerId.fromString(relayIdStr); // Use concrete PeerId.fromString
+    final relayId = p2p_peer.PeerId.fromString(
+      relayIdStr,
+    ); // Use concrete PeerId.fromString
 
-    bool connectToRelayAsDest = false;
+    var connectToRelayAsDest = false;
     PeerId destId;
 
-    int circuitIdx = -1;
-    for (int i = p2pIdx + 1; i < addrComponents.length; i++) {
+    var circuitIdx = -1;
+    for (var i = p2pIdx + 1; i < addrComponents.length; i++) {
       if (addrComponents[i].$1.code == Protocols.circuit.code) {
         circuitIdx = i;
         break;
@@ -298,7 +352,9 @@ class CircuitV2Client implements Transport {
     }
 
     if (circuitIdx == -1) {
-      throw ArgumentError('Dial address is not a circuit address (missing /p2p-circuit): $addr');
+      throw ArgumentError(
+        'Dial address is not a circuit address (missing /p2p-circuit): $addr',
+      );
     }
 
     if (circuitIdx == addrComponents.length - 1) {
@@ -306,16 +362,19 @@ class CircuitV2Client implements Transport {
       destId = relayId;
       connectToRelayAsDest = true;
       _log.fine('Dialing relay $relayId as destination via circuit');
-    } else if (circuitIdx < addrComponents.length - 1 && addrComponents[circuitIdx + 1].$1.code == Protocols.p2p.code) {
+    } else if (circuitIdx < addrComponents.length - 1 &&
+        addrComponents[circuitIdx + 1].$1.code == Protocols.p2p.code) {
       // Has /p2p/destId after /p2p-circuit
       destIdStr = addrComponents[circuitIdx + 1].$2;
-      destId = p2p_peer.PeerId.fromString(destIdStr); // Use concrete PeerId.fromString
+      destId = p2p_peer.PeerId.fromString(
+        destIdStr,
+      ); // Use concrete PeerId.fromString
       _log.fine('Dialing $destId via relay $relayId');
     } else {
-      throw ArgumentError('Invalid circuit address format after /p2p-circuit: $addr');
+      throw ArgumentError(
+        'Invalid circuit address format after /p2p-circuit: $addr',
+      );
     }
-
-
 
     // 2. Connect to the relay peer if not already connected.
     // The host should handle this when opening a new stream.
@@ -327,38 +386,41 @@ class CircuitV2Client implements Transport {
     // Host.newStream requires a Context. Creating a default one for now.
     // TODO: Consider if a more specific context is needed.
     final ctx = Context(); // Create a new Context
-    _log.fine('Opening HOP stream to relay ${relayId.toString()}');
+    _log.fine('Opening HOP stream to relay $relayId');
     // Correct order for newStream: peerId, protocols, context
-    final hopStream = await host.newStream(relayId, [CircuitV2Protocol.protoIDv2Hop], ctx);
-    _log.fine('HOP stream to relay ${relayId.toString()} opened');
-
+    final hopStream =
+        await host.newStream(relayId, [CircuitV2Protocol.protoIDv2Hop], ctx);
+    _log.fine('HOP stream to relay $relayId opened');
 
     try {
       // 4. Send a HopMessage with type = CONNECT and peer set to the destination peer.
       final hopMsg = circuit_pb.HopMessage()
         ..type = circuit_pb.HopMessage_Type.CONNECT
-        ..peer = (circuit_pb.Peer()
-          ..id = destId.toBytes()
-          // Optionally add our listen addrs for the destination to know
-          // ..addAllAddrs(host.listenAddrs().map((ma) => ma.toBytes()).toList())
-          );
+        ..peer = (circuit_pb.Peer()..id = destId.toBytes()
+            // Optionally add our listen addrs for the destination to know
+            // ..addAllAddrs(host.listenAddrs().map((ma) => ma.toBytes()).toList())
+            );
       if (connectToRelayAsDest) {
         // If connecting to the relay itself as destination, the peer field in HopMessage
         // might be empty or refer to the relay itself. Go client sends its own AddrInfo.
         // For simplicity, let's assume destId (which is relayId here) is correct.
       }
 
-      _log.info('[CircuitV2Client.dial] 📤 Sending HopMessage.CONNECT to relay for dest ${destId.toString()}');
-      
+      _log.info(
+        '[CircuitV2Client.dial] 📤 Sending HopMessage.CONNECT to relay for dest $destId',
+      );
+
       // Create a sink adapter to write to the P2PStream
       final writeCompleter = Completer<void>();
-      final StreamController<List<int>> hopSinkController = StreamController();
+      final hopSinkController = StreamController<List<int>>();
       hopSinkController.stream.listen(
         (data) async {
           try {
             await hopStream.write(Uint8List.fromList(data));
           } catch (e) {
-            _log.severe('[CircuitV2Client.dial] ❌ Error writing to HOP stream: $e');
+            _log.severe(
+              '[CircuitV2Client.dial] ❌ Error writing to HOP stream: $e',
+            );
             if (!writeCompleter.isCompleted) {
               writeCompleter.completeError(e);
             }
@@ -369,59 +431,79 @@ class CircuitV2Client implements Transport {
             writeCompleter.complete();
           }
         },
-        onError: (error) {
+        onError: (Object error) {
           if (!writeCompleter.isCompleted) {
             writeCompleter.completeError(error);
           }
         },
       );
-      
+
       circuit_io.writeDelimitedMessage(hopSinkController.sink, hopMsg);
       await hopSinkController.close();
       await writeCompleter.future; // Wait for write to complete
-      
-      _log.info('[CircuitV2Client.dial] ✅ HopMessage.CONNECT sent successfully');
 
+      _log.info(
+        '[CircuitV2Client.dial] ✅ HopMessage.CONNECT sent successfully',
+      );
 
       // 5. Await a HopMessage response from the relay with type = STATUS.
-      _log.info('[CircuitV2Client.dial] ⏳ Waiting for STATUS response from relay...');
+      _log.info(
+        '[CircuitV2Client.dial] ⏳ Waiting for STATUS response from relay...',
+      );
       final adaptedHopStreamForReader = _adaptP2PStreamToDartStream(hopStream);
-      final hopReader = circuit_io.DelimitedReader(adaptedHopStreamForReader, maxCircuitMessageSize);
-      
+      final hopReader = circuit_io.DelimitedReader(
+        adaptedHopStreamForReader,
+        maxCircuitMessageSize,
+      );
+
       final statusMsg = await hopReader.readMsg(circuit_pb.HopMessage());
-      _log.info('[CircuitV2Client.dial] 📨 Received HopMessage from relay: type=${statusMsg.type}, status=${statusMsg.status}');
+      _log.info(
+        '[CircuitV2Client.dial] 📨 Received HopMessage from relay: type=${statusMsg.type}, status=${statusMsg.status}',
+      );
 
       if (statusMsg.type != circuit_pb.HopMessage_Type.STATUS) {
-        _log.severe('[CircuitV2Client.dial] ❌ Expected STATUS message from relay, got ${statusMsg.type}');
-        throw Exception('Expected STATUS message from relay, got ${statusMsg.type}');
+        _log.severe(
+          '[CircuitV2Client.dial] ❌ Expected STATUS message from relay, got ${statusMsg.type}',
+        );
+        throw Exception(
+          'Expected STATUS message from relay, got ${statusMsg.type}',
+        );
       }
 
       if (statusMsg.status != circuit_pb.Status.OK) {
-        _log.severe('[CircuitV2Client.dial] ❌ Relay returned error status: ${statusMsg.status}');
+        _log.severe(
+          '[CircuitV2Client.dial] ❌ Relay returned error status: ${statusMsg.status}',
+        );
         throw Exception('Relay returned error status: ${statusMsg.status}');
       }
 
-      _log.info('[CircuitV2Client.dial] ✅ STATUS OK received, creating relayed connection');
+      _log.info(
+        '[CircuitV2Client.dial] ✅ STATUS OK received, creating relayed connection',
+      );
 
       // 6. If status is OK, the stream `hopStream` is now connected to the destination peer.
       // Wrap this stream in a RelayedConn object and return it.
       final relayedConn = RelayedConn(
-        stream: hopStream as P2PStream<Uint8List>, // Cast needed
+        stream: hopStream, // Cast needed
         transport: this,
         localPeer: host.id,
         remotePeer: destId,
         localMultiaddr: addr, // The address we dialed
-        remoteMultiaddr: addr, // Keep the full circuit address including /p2p-circuit
+        remoteMultiaddr:
+            addr, // Keep the full circuit address including /p2p-circuit
         // isInitiator: true, // This is derived from stream.stat().direction in RelayedConn
       );
-      _log.info('[CircuitV2Client.dial] 🎉 Successfully dialed ${destId.toString()} via relay ${relayId.toString()}');
-      print('🎉 [CircuitV2Client.dial] SUCCESS! Returning RelayedConn for ${destId.toString()}');
+      _log.info(
+        '[CircuitV2Client.dial] 🎉 Successfully dialed $destId via relay $relayId',
+      );
+      print(
+        '🎉 [CircuitV2Client.dial] SUCCESS! Returning RelayedConn for $destId',
+      );
       print('   Local peer: ${relayedConn.localPeer}');
       print('   Remote peer: ${relayedConn.remotePeer}');
       print('   Local addr: ${relayedConn.localMultiaddr}');
       print('   Remote addr: ${relayedConn.remoteMultiaddr}');
       return relayedConn;
-
     } catch (e, s) {
       _log.severe('Error during HOP stream negotiation: $e\n$s');
       print('❌ [CircuitV2Client.dial] FAILED! Error: $e');
@@ -442,9 +524,11 @@ class CircuitV2Client implements Transport {
     //    A simple model: if listen() is called, we are "listening" on any relay that knows us.
 
     if (!canListen(addr)) {
-      throw ArgumentError('Cannot listen on address: $addr. Must be a /p2p-circuit address or a local address.');
+      throw ArgumentError(
+        'Cannot listen on address: $addr. Must be a /p2p-circuit address or a local address.',
+      );
     }
-    
+
     _log.fine('Client instructed to "listen" on $addr');
     // If addr is a specific circuit address like /ip4/A.B.C.D/tcp/1234/p2p/RelayID/p2p-circuit,
     // it implies we expect connections via that RelayID.
@@ -453,7 +537,7 @@ class CircuitV2Client implements Transport {
     // For now, simply add to listenAddrs and ensure handler is registered.
     // The actual "listening" is passive, waiting for _handleStreamV2.
     if (!_listenAddrs.contains(addr)) {
-        _listenAddrs.add(addr);
+      _listenAddrs.add(addr);
     }
     _isListening = true; // Mark that we are in a listening state.
 
@@ -465,8 +549,8 @@ class CircuitV2Client implements Transport {
     final addrComponents = addr.components;
     if (addrComponents.length < 2) return false;
 
-    int p2pRelayIdx = -1;
-    for (int i = 0; i < addrComponents.length; i++) {
+    var p2pRelayIdx = -1;
+    for (var i = 0; i < addrComponents.length; i++) {
       if (addrComponents[i].$1.code == Protocols.p2p.code) {
         p2pRelayIdx = i;
         break;
@@ -474,8 +558,8 @@ class CircuitV2Client implements Transport {
     }
     if (p2pRelayIdx == -1) return false; // Must have a /p2p/relayId
 
-    int circuitIdx = -1;
-    for (int i = p2pRelayIdx + 1; i < addrComponents.length; i++) {
+    var circuitIdx = -1;
+    for (var i = p2pRelayIdx + 1; i < addrComponents.length; i++) {
       if (addrComponents[i].$1.code == Protocols.circuit.code) {
         circuitIdx = i;
         break;
@@ -487,7 +571,10 @@ class CircuitV2Client implements Transport {
     if (circuitIdx == addrComponents.length - 1) return true;
 
     // Case 2: /.../p2p/relayId/.../p2p-circuit/p2p/destId
-    if (circuitIdx < addrComponents.length - 1 && addrComponents[circuitIdx + 1].$1.code == Protocols.p2p.code) return true;
+    if (circuitIdx < addrComponents.length - 1 &&
+        addrComponents[circuitIdx + 1].$1.code == Protocols.p2p.code) {
+      return true;
+    }
 
     return false;
   }
@@ -503,18 +590,20 @@ class CircuitV2Client implements Transport {
     // If _listenAddrs is empty but we are listening, it implies we are listening generally.
     // We could return a generic /p2p/{host.id}/p2p-circuit address.
     if (_listenAddrs.isEmpty) {
-        try {
-            return [MultiAddr('/p2p/${host.id.toString()}/${Protocols.circuit.name}')];
-        } catch (e) {
-            _log.warning('Error creating default listen address: $e');
-            return []; // Should not happen if host.id is valid
-        }
+      try {
+        return [
+          MultiAddr('/p2p/${host.id}/${Protocols.circuit.name}'),
+        ];
+      } catch (e) {
+        _log.warning('Error creating default listen address: $e');
+        return []; // Should not happen if host.id is valid
+      }
     }
     return List.unmodifiable(_listenAddrs);
   }
 
   // Helper methods for transport selection (not part of Transport interface)
-  
+
   dynamic transportForDial(MultiAddr addr) {
     return canDial(addr) ? this : null;
   }
@@ -523,6 +612,7 @@ class CircuitV2Client implements Transport {
     return canListen(addr) ? this : null;
   }
 
+  @override
   bool canListen(MultiAddr addr) {
     // A client can "listen" on an address that signifies it's reachable via relays.
     // This could be a generic /p2p-circuit address or one specifying the local peer.
@@ -531,7 +621,7 @@ class CircuitV2Client implements Transport {
     if (addrProtocols.isEmpty) return false;
 
     for (final p in addrProtocols) {
-        if (p.code == Protocols.circuit.code) return true;
+      if (p.code == Protocols.circuit.code) return true;
     }
     // Also allow listening on unspecified addresses if they are to be used for advertising
     // relayed reachability. E.g. /ip4/0.0.0.0/tcp/0 could imply listening via any relay.
@@ -548,7 +638,7 @@ class CircuitV2Client implements Transport {
   }
 
   // Additional helper methods (not part of Transport interface)
-  
+
   String get protocolId => CircuitV2Protocol.protoIDv2Hop;
 
   Peerstore get peerstore => host.peerStore;
@@ -561,13 +651,6 @@ class CircuitV2Client implements Transport {
 /// CircuitListener implements the Listener interface for circuit relay transport.
 /// It listens for incoming relayed connections from the CircuitV2Client.
 class CircuitListener implements Listener {
-  final CircuitV2Client _client;
-  final MultiAddr _listenAddr;
-  final Stream<TransportConn> _connStream;
-  StreamSubscription<TransportConn>? _subscription;
-  final StreamController<TransportConn> _acceptedConnController = StreamController();
-  bool _isClosed = false;
-
   CircuitListener(this._client, this._listenAddr, this._connStream) {
     // Filter the client's global incoming connections for this specific listener.
     // This is a simplified model. A more robust one might involve matching
@@ -579,7 +662,7 @@ class CircuitListener implements Listener {
           _acceptedConnController.add(conn);
         }
       },
-      onError: (err, stack) {
+      onError: (Object err, StackTrace stack) {
         if (!_isClosed) {
           _acceptedConnController.addError(err, stack);
         }
@@ -592,6 +675,13 @@ class CircuitListener implements Listener {
       },
     );
   }
+  final CircuitV2Client _client;
+  final MultiAddr _listenAddr;
+  final Stream<TransportConn> _connStream;
+  StreamSubscription<TransportConn>? _subscription;
+  final StreamController<TransportConn> _acceptedConnController =
+      StreamController();
+  bool _isClosed = false;
 
   @override
   MultiAddr get addr => _listenAddr;

@@ -2,16 +2,35 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/network/common.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show
+        ResourceScope,
+        ResourceScopeSpan,
+        ScopeStat,
+        StreamManagementScope,
+        StreamScope;
 import 'package:dart_libp2p/core/network/stream.dart';
+import 'package:dart_libp2p/p2p/network/swarm/swarm_conn.dart';
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 
-import '../../../core/network/conn.dart';
-import '../../../core/network/rcmgr.dart' show StreamScope, ScopeStat, ResourceScopeSpan, ResourceScope, StreamManagementScope;
-import 'swarm_conn.dart';
-
 /// SwarmStream is a stream over a SwarmConn.
-class SwarmStream implements P2PStream<Uint8List> {
+class SwarmStream implements P2PStream {
+  /// Creates a new SwarmStream
+  SwarmStream({
+    required String id,
+    required SwarmConn conn,
+    required Direction direction,
+    required DateTime opened,
+    required P2PStream underlyingMuxedStream,
+    required StreamManagementScope managementScope,
+  })  : _id = id,
+        _conn = conn,
+        _direction = direction,
+        _opened = opened,
+        _underlyingMuxedStream = underlyingMuxedStream,
+        _managementScope = managementScope;
   final Logger _logger = Logger('SwarmStream');
 
   /// The stream ID (Swarm's logical ID for this wrapper)
@@ -21,7 +40,7 @@ class SwarmStream implements P2PStream<Uint8List> {
   final SwarmConn _conn;
 
   /// The underlying multiplexed stream
-  final P2PStream<Uint8List> _underlyingMuxedStream;
+  final P2PStream _underlyingMuxedStream;
 
   /// The resource management scope for this stream
   final StreamManagementScope _managementScope;
@@ -43,22 +62,6 @@ class SwarmStream implements P2PStream<Uint8List> {
 
   /// Lock for closed state
   final Lock _closedLock = Lock();
-
-  /// Creates a new SwarmStream
-  SwarmStream({
-    required String id,
-    required SwarmConn conn,
-    required Direction direction,
-    required DateTime opened,
-    required P2PStream<Uint8List> underlyingMuxedStream,
-    required StreamManagementScope managementScope,
-  }) : 
-    _id = id,
-    _conn = conn,
-    _direction = direction,
-    _opened = opened,
-    _underlyingMuxedStream = underlyingMuxedStream,
-    _managementScope = managementScope;
 
   @override
   String id() => _id;
@@ -89,7 +92,8 @@ class SwarmStream implements P2PStream<Uint8List> {
   Conn get conn => _conn;
 
   @override
-  StreamManagementScope scope() { // Changed return type
+  StreamManagementScope scope() {
+    // Changed return type
     return _managementScope; // Return the full management scope directly
   }
 
@@ -110,7 +114,8 @@ class SwarmStream implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming => _underlyingMuxedStream; // Return the underlying stream directly
+  P2PStream get incoming =>
+      _underlyingMuxedStream; // Return the underlying stream directly
 
   @override
   Future<void> close() async {
@@ -118,13 +123,15 @@ class SwarmStream implements P2PStream<Uint8List> {
       if (_isClosed) return;
       _isClosed = true;
       _logger.fine('Closing stream $_id');
-      
+
       try {
         await _underlyingMuxedStream.close();
       } catch (e, s) {
-        _logger.warning('Error closing underlying muxed stream for stream $_id: $e\n$s');
+        _logger.warning(
+          'Error closing underlying muxed stream for stream $_id: $e\n$s',
+        );
       }
-      
+
       // Only clean up scope once to prevent double cleanup
       if (!_scopeCleanedUp) {
         _logger.fine('Stream $_id: Cleaning up management scope');
@@ -133,7 +140,7 @@ class SwarmStream implements P2PStream<Uint8List> {
       } else {
         _logger.fine('Stream $_id: Scope already cleaned up, skipping');
       }
-      
+
       // Let SwarmConn handle its own cleanup without additional scope cleanup
       await _conn.removeStream(this);
       _logger.fine('Stream $_id closed and removed from connection');
@@ -143,15 +150,19 @@ class SwarmStream implements P2PStream<Uint8List> {
   @override
   Future<void> closeWrite() async {
     if (_isClosed) {
-      _logger.finer('Stream $_id closeWrite called, but stream is already fully closed.');
+      _logger.finer(
+        'Stream $_id closeWrite called, but stream is already fully closed.',
+      );
     }
     return _underlyingMuxedStream.closeWrite();
   }
 
   @override
   Future<void> closeRead() async {
-     if (_isClosed) {
-      _logger.finer('Stream $_id closeRead called, but stream is already fully closed.');
+    if (_isClosed) {
+      _logger.finer(
+        'Stream $_id closeRead called, but stream is already fully closed.',
+      );
     }
     return _underlyingMuxedStream.closeRead();
   }
@@ -162,22 +173,26 @@ class SwarmStream implements P2PStream<Uint8List> {
       if (_isClosed) return;
       _isClosed = true; // Mark as closed immediately
       _logger.fine('Resetting stream $_id');
-      
+
       try {
         await _underlyingMuxedStream.reset();
       } catch (e, s) {
-        _logger.warning('Error resetting underlying muxed stream for stream $_id: $e\n$s');
+        _logger.warning(
+          'Error resetting underlying muxed stream for stream $_id: $e\n$s',
+        );
       }
-      
+
       // Only clean up scope once to prevent double cleanup
       if (!_scopeCleanedUp) {
         _logger.fine('Stream $_id: Cleaning up management scope during reset');
         _managementScope.done();
         _scopeCleanedUp = true;
       } else {
-        _logger.fine('Stream $_id: Scope already cleaned up, skipping during reset');
+        _logger.fine(
+          'Stream $_id: Scope already cleaned up, skipping during reset',
+        );
       }
-      
+
       // Let SwarmConn handle its own cleanup without additional scope cleanup
       await _conn.removeStream(this);
       _logger.fine('Stream $_id reset and removed from connection');
@@ -224,10 +239,9 @@ class SwarmStream implements P2PStream<Uint8List> {
 
 /// Implementation of StreamScope, wrapping a StreamManagementScope
 class _StreamScopeImpl implements StreamScope {
-  final StreamManagementScope _managementScope;
-
   _StreamScopeImpl({required StreamManagementScope managementScope})
       : _managementScope = managementScope;
+  final StreamManagementScope _managementScope;
 
   @override
   Future<ResourceScopeSpan> beginSpan() async {
@@ -258,9 +272,9 @@ class _StreamScopeImpl implements StreamScope {
 
 /// Implementation of ResourceScopeSpan, wrapping an underlying ResourceScopeSpan
 class _ResourceScopeSpanImpl implements ResourceScopeSpan {
+  _ResourceScopeSpanImpl({required ResourceScopeSpan span})
+      : _underlyingSpan = span;
   final ResourceScopeSpan _underlyingSpan;
-
-  _ResourceScopeSpanImpl({required ResourceScopeSpan span}) : _underlyingSpan = span;
 
   @override
   Future<ResourceScopeSpan> beginSpan() async {

@@ -1,19 +1,18 @@
 import 'dart:async';
 
-import 'stomp_constants.dart';
-import 'stomp_exceptions.dart';
-import 'stomp_frame.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_constants.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_exceptions.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_frame.dart';
 
 /// Represents a STOMP transaction
 class StompTransaction {
+  StompTransaction({required this.id}) : startTime = DateTime.now();
   final String id;
   final DateTime startTime;
   final List<StompFrame> _frames = [];
-  
+
   bool _isCommitted = false;
   bool _isAborted = false;
-
-  StompTransaction({required this.id}) : startTime = DateTime.now();
 
   /// Whether this transaction is active (not committed or aborted)
   bool get isActive => !_isCommitted && !_isAborted;
@@ -30,12 +29,18 @@ class StompTransaction {
   /// Adds a frame to this transaction
   void addFrame(StompFrame frame) {
     if (!isActive) {
-      throw StompTransactionException('Cannot add frame to inactive transaction', id);
+      throw StompTransactionException(
+        'Cannot add frame to inactive transaction',
+        id,
+      );
     }
 
     // Validate that the frame can be part of a transaction
     if (!_canBeTransactional(frame)) {
-      throw StompTransactionException('Frame ${frame.command} cannot be part of a transaction', id);
+      throw StompTransactionException(
+        'Frame ${frame.command} cannot be part of a transaction',
+        id,
+      );
     }
 
     _frames.add(frame.copy());
@@ -88,9 +93,12 @@ class StompTransaction {
 /// Manager for STOMP transactions
 class StompTransactionManager {
   final Map<String, StompTransaction> _transactions = {};
-  final StreamController<StompTransaction> _beginController = StreamController<StompTransaction>.broadcast();
-  final StreamController<StompTransaction> _commitController = StreamController<StompTransaction>.broadcast();
-  final StreamController<StompTransaction> _abortController = StreamController<StompTransaction>.broadcast();
+  final StreamController<StompTransaction> _beginController =
+      StreamController<StompTransaction>.broadcast();
+  final StreamController<StompTransaction> _commitController =
+      StreamController<StompTransaction>.broadcast();
+  final StreamController<StompTransaction> _abortController =
+      StreamController<StompTransaction>.broadcast();
 
   /// Stream of transaction begin events
   Stream<StompTransaction> get onBegin => _beginController.stream;
@@ -102,7 +110,7 @@ class StompTransactionManager {
   Stream<StompTransaction> get onAbort => _abortController.stream;
 
   /// Gets all active transactions
-  List<StompTransaction> get activeTransactions => 
+  List<StompTransaction> get activeTransactions =>
       _transactions.values.where((t) => t.isActive).toList();
 
   /// Gets a transaction by ID
@@ -117,7 +125,10 @@ class StompTransactionManager {
     }
 
     if (_transactions.length >= StompConstants.maxTransactions) {
-      throw StompTransactionException('Maximum number of transactions reached', id);
+      throw StompTransactionException(
+        'Maximum number of transactions reached',
+        id,
+      );
     }
 
     final transaction = StompTransaction(id: id);
@@ -224,13 +235,6 @@ enum StompTransactionState {
 
 /// Transaction statistics
 class StompTransactionStats {
-  final int totalTransactions;
-  final int activeTransactions;
-  final int committedTransactions;
-  final int abortedTransactions;
-  final Duration averageTransactionDuration;
-  final Duration longestTransactionDuration;
-
   StompTransactionStats({
     required this.totalTransactions,
     required this.activeTransactions,
@@ -247,8 +251,8 @@ class StompTransactionStats {
     final committed = transactions.where((t) => t.isCommitted).length;
     final aborted = transactions.where((t) => t.isAborted).length;
 
-    Duration totalDuration = Duration.zero;
-    Duration longestDuration = Duration.zero;
+    var totalDuration = Duration.zero;
+    var longestDuration = Duration.zero;
 
     for (final transaction in transactions) {
       final duration = transaction.duration;
@@ -259,7 +263,9 @@ class StompTransactionStats {
     }
 
     final averageDuration = transactions.isNotEmpty
-        ? Duration(microseconds: totalDuration.inMicroseconds ~/ transactions.length)
+        ? Duration(
+            microseconds: totalDuration.inMicroseconds ~/ transactions.length,
+          )
         : Duration.zero;
 
     return StompTransactionStats(
@@ -271,6 +277,12 @@ class StompTransactionStats {
       longestTransactionDuration: longestDuration,
     );
   }
+  final int totalTransactions;
+  final int activeTransactions;
+  final int committedTransactions;
+  final int abortedTransactions;
+  final Duration averageTransactionDuration;
+  final Duration longestTransactionDuration;
 
   @override
   String toString() {
@@ -336,7 +348,10 @@ class StompTransactionFrameFactory {
   }
 
   /// Adds transaction header to a frame
-  static StompFrame addTransactionHeader(StompFrame frame, String transactionId) {
+  static StompFrame addTransactionHeader(
+    StompFrame frame,
+    String transactionId,
+  ) {
     final newFrame = frame.copy();
     newFrame.setHeader(StompHeaders.transaction, transactionId);
     return newFrame;
@@ -362,10 +377,6 @@ class StompTransactionFrameFactory {
 
 /// Transaction timeout manager
 class StompTransactionTimeoutManager {
-  final StompTransactionManager _transactionManager;
-  final Duration _defaultTimeout;
-  final Map<String, Timer> _timeouts = {};
-
   StompTransactionTimeoutManager(
     this._transactionManager, {
     Duration defaultTimeout = const Duration(minutes: 5),
@@ -375,11 +386,14 @@ class StompTransactionTimeoutManager {
     _transactionManager.onCommit.listen(_onTransactionEnd);
     _transactionManager.onAbort.listen(_onTransactionEnd);
   }
+  final StompTransactionManager _transactionManager;
+  final Duration _defaultTimeout;
+  final Map<String, Timer> _timeouts = {};
 
   /// Sets a timeout for a transaction
   void setTimeout(String transactionId, Duration timeout) {
     _clearTimeout(transactionId);
-    
+
     final timer = Timer(timeout, () {
       try {
         _transactionManager.abortTransaction(transactionId);
@@ -387,7 +401,7 @@ class StompTransactionTimeoutManager {
         // Transaction might already be completed
       }
     });
-    
+
     _timeouts[transactionId] = timer;
   }
 

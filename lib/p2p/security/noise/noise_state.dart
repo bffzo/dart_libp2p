@@ -1,12 +1,11 @@
+import 'package:dart_libp2p/p2p/security/noise/handshake_state.dart';
 import 'package:meta/meta.dart';
-import 'handshake_state.dart';
 
 /// Manages state transitions for the Noise XX handshake pattern
 class NoiseStateMachine {
+  NoiseStateMachine(this._isInitiator) : _state = XXHandshakeState.initial;
   final bool _isInitiator;
   XXHandshakeState _state;
-
-  NoiseStateMachine(this._isInitiator) : _state = XXHandshakeState.initial;
 
   /// Gets the current state
   XXHandshakeState get state => _state;
@@ -19,17 +18,14 @@ class NoiseStateMachine {
         if (_isInitiator) {
           throw StateError('Initiator cannot receive first message');
         }
-        break;
       case XXHandshakeState.sentE:
         if (!_isInitiator) {
           throw StateError('Responder cannot receive second message');
         }
-        break;
       case XXHandshakeState.sentEES:
         if (_isInitiator) {
           throw StateError('Initiator cannot receive third message');
         }
-        break;
       case XXHandshakeState.complete:
         throw StateError('Cannot read message in completed state');
       case XXHandshakeState.error:
@@ -45,17 +41,14 @@ class NoiseStateMachine {
         if (!_isInitiator) {
           throw StateError('Responder cannot send first message');
         }
-        break;
       case XXHandshakeState.sentE:
         if (_isInitiator) {
           throw StateError('Initiator cannot send second message');
         }
-        break;
       case XXHandshakeState.sentEES:
         if (!_isInitiator) {
           throw StateError('Responder cannot send third message');
         }
-        break;
       case XXHandshakeState.complete:
         throw StateError('Cannot write message in completed state');
       case XXHandshakeState.error:
@@ -69,13 +62,10 @@ class NoiseStateMachine {
     switch (_state) {
       case XXHandshakeState.initial:
         _state = XXHandshakeState.sentE;
-        break;
       case XXHandshakeState.sentE:
         _state = XXHandshakeState.sentEES;
-        break;
       case XXHandshakeState.sentEES:
         _state = XXHandshakeState.complete;
-        break;
       default:
         throw StateError('Invalid state transition from $_state');
     }
@@ -87,13 +77,10 @@ class NoiseStateMachine {
     switch (_state) {
       case XXHandshakeState.initial:
         _state = XXHandshakeState.sentE;
-        break;
       case XXHandshakeState.sentE:
         _state = XXHandshakeState.sentEES;
-        break;
       case XXHandshakeState.sentEES:
         _state = XXHandshakeState.complete;
-        break;
       default:
         throw StateError('Invalid state transition from $_state');
     }
@@ -106,4 +93,4 @@ class NoiseStateMachine {
 
   /// Returns true if the handshake is complete
   bool get isComplete => _state == XXHandshakeState.complete;
-} 
+}

@@ -4,6 +4,7 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/p2p/protocol/identify/user_agent.go
 /// to Dart, using native Dart idioms.
+library;
 
 import 'dart:io' show Platform;
 
@@ -13,7 +14,7 @@ import 'dart:io' show Platform;
 String defaultUserAgent = 'dart-libp2p';
 
 /// Initializes the default user agent based on the package information.
-/// 
+///
 /// This should be called early in the application lifecycle, typically
 /// during the initialization of the libp2p node.
 Future<void> initUserAgent() async {

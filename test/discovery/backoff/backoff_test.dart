@@ -1,11 +1,12 @@
 import 'dart:math';
-import 'package:test/test.dart';
+
 import 'package:dart_libp2p/p2p/discovery/backoff/backoff.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Backoff Strategies', () {
     test('FixedBackoff returns constant delay', () {
-      final delay = Duration(milliseconds: 100);
+      const delay = Duration(milliseconds: 100);
       final backoff = newFixedBackoff(delay)();
 
       expect(backoff.delay(), equals(delay));
@@ -16,9 +17,9 @@ void main() {
     });
 
     test('PolynomialBackoff calculates correct delay', () {
-      final min = Duration(milliseconds: 10);
-      final max = Duration(milliseconds: 1000);
-      final timeUnits = Duration(milliseconds: 1);
+      const min = Duration(milliseconds: 10);
+      const max = Duration(milliseconds: 1000);
+      const timeUnits = Duration(milliseconds: 1);
       final polyCoefs = [1.0, 2.0]; // 1 + 2x
       final rng = Random(42); // Fixed seed for reproducibility
 
@@ -32,26 +33,26 @@ void main() {
       )();
 
       // First delay: 1 + 2*0 = 1ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       // Second delay: 1 + 2*1 = 3ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       // Third delay: 1 + 2*2 = 5ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       backoff.reset();
 
       // After reset, first delay: 1 + 2*0 = 1ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
     });
 
     test('ExponentialBackoff calculates correct delay', () {
-      final min = Duration(milliseconds: 10);
-      final max = Duration(milliseconds: 1000);
-      final timeUnits = Duration(milliseconds: 1);
-      final base = 2.0;
-      final offset = Duration(milliseconds: 5);
+      const min = Duration(milliseconds: 10);
+      const max = Duration(milliseconds: 1000);
+      const timeUnits = Duration(milliseconds: 1);
+      const base = 2.0;
+      const offset = Duration(milliseconds: 5);
       final rng = Random(42); // Fixed seed for reproducibility
 
       final backoff = newExponentialBackoff(
@@ -65,24 +66,24 @@ void main() {
       )();
 
       // First delay: 2^0 + 5 = 6ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       // Second delay: 2^1 + 5 = 7ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       // Third delay: 2^2 + 5 = 9ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
 
       backoff.reset();
 
       // After reset, first delay: 2^0 + 5 = 6ms, but min is 10ms
-      expect(backoff.delay(), equals(Duration(milliseconds: 10)));
+      expect(backoff.delay(), equals(const Duration(milliseconds: 10)));
     });
 
     test('ExponentialDecorrelatedJitter calculates correct delay', () {
-      final min = Duration(milliseconds: 10);
-      final max = Duration(milliseconds: 1000);
-      final base = 2.0;
+      const min = Duration(milliseconds: 10);
+      const max = Duration(milliseconds: 1000);
+      const base = 2.0;
       final rng = Random(42); // Fixed seed for reproducibility
 
       final backoff = newExponentialDecorrelatedJitter(
@@ -98,7 +99,12 @@ void main() {
       // Second delay: random between min and min*base
       final secondDelay = backoff.delay();
       expect(secondDelay, greaterThanOrEqualTo(min));
-      expect(secondDelay, lessThanOrEqualTo(Duration(milliseconds: (min.inMilliseconds * base).round())));
+      expect(
+        secondDelay,
+        lessThanOrEqualTo(
+          Duration(milliseconds: (min.inMilliseconds * base).round()),
+        ),
+      );
 
       backoff.reset();
 
@@ -107,15 +113,21 @@ void main() {
     });
 
     test('Jitter functions work correctly', () {
-      final duration = Duration(milliseconds: 100);
-      final min = Duration(milliseconds: 10);
-      final max = Duration(milliseconds: 1000);
+      const duration = Duration(milliseconds: 100);
+      const min = Duration(milliseconds: 10);
+      const max = Duration(milliseconds: 1000);
       final rng = Random(42); // Fixed seed for reproducibility
 
       // NoJitter returns the bounded duration
       expect(noJitter(duration, min, max, rng), equals(duration));
-      expect(noJitter(Duration(milliseconds: 5), min, max, rng), equals(min));
-      expect(noJitter(Duration(milliseconds: 2000), min, max, rng), equals(max));
+      expect(
+        noJitter(const Duration(milliseconds: 5), min, max, rng),
+        equals(min),
+      );
+      expect(
+        noJitter(const Duration(milliseconds: 2000), min, max, rng),
+        equals(max),
+      );
 
       // FullJitter returns a random duration between min and bounded duration
       final jittered = fullJitter(duration, min, max, rng);
