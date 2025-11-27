@@ -18,7 +18,7 @@ import 'package:logging/logging.dart';
 
 final Logger _logger = Logger('UDXStreamAdapter');
 
-class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
+class UDXP2PStreamAdapter extends P2PStream implements MuxedStream {
   UDXP2PStreamAdapter({
     required UDXStream udxStream,
     required UDXSessionConn parentConn,

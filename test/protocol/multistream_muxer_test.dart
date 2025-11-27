@@ -106,7 +106,7 @@ class MockStreamStats implements StreamStats {
 
 // --- Mock P2PStream Implementation ---
 
-class MockP2PStream implements P2PStream {
+class MockP2PStream extends P2PStream {
   // Each stream is associated with a mock connection
 
   MockP2PStream(

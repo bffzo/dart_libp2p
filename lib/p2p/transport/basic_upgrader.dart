@@ -27,7 +27,7 @@ import 'package:dart_libp2p/p2p/transport/multiplexing/multiplexer.dart'
 import 'package:dart_libp2p/p2p/transport/upgrader.dart'; // For Upgrader interface
 
 // --- Helper: NegotiationStreamWrapper ---
-class NegotiationStreamWrapper implements P2PStream {
+class NegotiationStreamWrapper extends P2PStream {
   NegotiationStreamWrapper(this._conn, [this._protocolId = 'negotiator']);
   final TransportConn _conn;
   final String _protocolId;
@@ -157,7 +157,7 @@ class UpgradedConnectionImpl implements Conn, core_mux.MuxedConn {
     if (muxedStream is P2PStream) {
       return muxedStream as P2PStream;
     } else {
-      // This path should ideally not be hit if YamuxStream correctly implements P2PStream
+      // This path should ideally not be hit if YamuxStream correctly extends P2PStream
       throw Exception(
         'MuxedStream from _muxedConn.openStream() is not a P2PStream. Type: ${muxedStream.runtimeType}',
       );

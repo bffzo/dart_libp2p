@@ -16,7 +16,7 @@ import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 
 /// SwarmStream is a stream over a SwarmConn.
-class SwarmStream implements P2PStream {
+class SwarmStream extends P2PStream {
   /// Creates a new SwarmStream
   SwarmStream({
     required String id,

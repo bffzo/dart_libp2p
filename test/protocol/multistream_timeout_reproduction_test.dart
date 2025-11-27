@@ -74,7 +74,7 @@ class MockConnStats implements ConnStats {
 }
 
 /// Mock stream that simulates hanging/slow reads to trigger timeouts
-class HangingMockStream implements P2PStream {
+class HangingMockStream extends P2PStream {
   HangingMockStream({
     Duration hangDuration = const Duration(minutes: 5),
     bool shouldHangForever = true,

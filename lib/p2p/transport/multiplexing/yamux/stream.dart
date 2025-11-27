@@ -41,7 +41,7 @@ enum YamuxStreamState {
 }
 
 /// A Yamux stream that implements the P2PStream and MuxedStream interfaces
-class YamuxStream implements P2PStream, core_mux.MuxedStream {
+class YamuxStream extends P2PStream implements core_mux.MuxedStream {
   YamuxStream({
     required int id,
     required String protocol,

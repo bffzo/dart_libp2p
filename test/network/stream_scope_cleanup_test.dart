@@ -104,7 +104,7 @@ class MockStreamScope implements StreamScope {
 }
 
 /// Mock implementation of P2PStream for testing
-class MockP2PStream implements P2PStream {
+class MockP2PStream extends P2PStream {
   MockP2PStream(this._id);
   final String _id;
   bool _isClosed = false;

@@ -147,7 +147,7 @@ class MockConnStats implements ConnStats {
   Stats stats = MockStats();
 }
 
-class MockP2PStream implements P2PStream {
+class MockP2PStream extends P2PStream {
   final String _id =
       'mock-stream-${DateTime.now().millisecondsSinceEpoch}-${_streamIdCounter++}';
   static int _streamIdCounter = 0;

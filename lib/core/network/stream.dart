@@ -1,21 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/network/common.dart';
 import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart'
-    show
-        ResourceScopeSpan,
-        ScopeStat,
-        StreamManagementScope,
-        StreamScope; // Import new types
+import 'package:dart_libp2p/core/network/rcmgr.dart' show StreamManagementScope;
 
 /// Represents a bidirectional channel between two agents in
 /// a libp2p network. "agent" is as granular as desired, potentially
 /// being a "request -> reply" pair, or whole protocols.
 ///
 /// Streams are backed by a multiplexer underneath the hood.
-abstract class P2PStream {
+abstract class P2PStream implements Stream<int>, IOSink {
   /// Returns an identifier that uniquely identifies this Stream within this
   /// host, during this run. Stream IDs may repeat across restarts.
   String id();
@@ -71,6 +67,9 @@ abstract class P2PStream {
   /// Returns true if the stream is ready for writing
   /// More precise than !isClosed as it excludes closing state
   bool get isWritable;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Stores metadata pertaining to a given Stream

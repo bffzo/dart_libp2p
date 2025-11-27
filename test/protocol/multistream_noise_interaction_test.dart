@@ -104,7 +104,7 @@ class MockStreamStats implements StreamStats {
   Map get extra => {};
 }
 
-class MockP2PStream implements P2PStream {
+class MockP2PStream extends P2PStream {
   MockP2PStream(
     this._outgoingDataController,
     Stream<Uint8List> incomingStream,

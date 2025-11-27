@@ -262,7 +262,7 @@ class StreamlinedMockMuxedConn implements core_mux.MuxedConn {
 }
 
 /// Streamlined mock stream with connection reuse tracking
-class StreamlinedMockStream implements core_mux.MuxedStream, P2PStream {
+class StreamlinedMockStream extends P2PStream implements core_mux.MuxedStream {
   StreamlinedMockStream({
     required String id,
     required SecuredConnection conn,

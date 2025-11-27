@@ -11,7 +11,7 @@ import 'package:dart_libp2p/core/network/stream.dart'
 import 'package:dart_libp2p/p2p/transport/tcp_connection.dart'; // Assuming TCPConnection will be the parent
 import 'package:uuid/uuid.dart'; // Moved to top
 
-class P2PStreamAdapter implements P2PStream {
+class P2PStreamAdapter extends P2PStream {
   P2PStreamAdapter(
     this._underlyingMuxedStream,
     this._parentConnection,

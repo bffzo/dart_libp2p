@@ -277,7 +277,7 @@ class MockConnStats extends ConnStats {
   MockConnStats({required super.stats, required super.numStreams});
 }
 
-class PingPongMockStream implements P2PStream {
+class PingPongMockStream extends P2PStream {
   // Private constructor
   PingPongMockStream._({
     required this.remotePeerId,

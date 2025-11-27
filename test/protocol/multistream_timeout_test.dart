@@ -10,7 +10,7 @@ import 'package:dart_libp2p/p2p/protocol/multistream/multistream.dart';
 import 'package:test/test.dart';
 
 /// Mock stream that can simulate timeout scenarios
-class TimeoutMockStream implements P2PStream {
+class TimeoutMockStream extends P2PStream {
   TimeoutMockStream({
     Duration readDelay = const Duration(milliseconds: 100),
     bool shouldTimeout = false,

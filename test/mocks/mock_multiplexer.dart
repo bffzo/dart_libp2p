@@ -169,7 +169,7 @@ class MockMuxedConn implements core_mux.MuxedConn {
 }
 
 /// Mock muxed stream
-class MockMuxedStream implements core_mux.MuxedStream, P2PStream {
+class MockMuxedStream extends P2PStream implements core_mux.MuxedStream {
   MockMuxedStream({
     required String id,
     required SecuredConnection conn,
