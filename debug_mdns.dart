@@ -81,7 +81,7 @@ Future<void> testAdvertising() async {
 
     // Keep running
     while (true) {
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
       print(
         '⏰ Service still advertising... (${DateTime.now().toIso8601String()})',
       );
@@ -139,7 +139,7 @@ Future<void> testBoth() async {
   final advertisingFuture = testAdvertising();
 
   // Wait a bit for advertising to start
-  await Future.delayed(const Duration(seconds: 2));
+  await Future<void>.delayed(const Duration(seconds: 2));
 
   // Perform discovery
   await testDiscovery();

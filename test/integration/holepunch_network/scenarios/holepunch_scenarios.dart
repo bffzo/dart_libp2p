@@ -74,13 +74,13 @@ class ConeToConeSucessScenario extends HolePunchScenario {
       print(
         '🔧 Fresh orchestrator start - allowing extra warmup time for Cone NAT infrastructure...',
       );
-      await Future.delayed(const Duration(seconds: 20));
+      await Future<void>.delayed(const Duration(seconds: 20));
     } else {
       // Infrastructure already running, shorter delay for scenario transition
       print(
         '♻️  Reusing established infrastructure - brief warmup for Cone NAT setup...',
       );
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
 
     print('✅ ConeToConeSucessScenario setup complete');
@@ -123,7 +123,7 @@ class ConeToConeSucessScenario extends HolePunchScenario {
     );
 
     // Wait for peer introductions to settle
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
 
     // Initiate holepunch from A to B
     print('🕳️  Initiating holepunch from A to B...');
@@ -137,7 +137,7 @@ class ConeToConeSucessScenario extends HolePunchScenario {
     print('📡 Holepunch result: $holepunchResult');
 
     // Wait for holepunch to complete
-    await Future.delayed(const Duration(seconds: 15));
+    await Future<void>.delayed(const Duration(seconds: 15));
 
     // Verify direct connection was established
     final finalStatusA =
@@ -199,13 +199,13 @@ class SymmetricToSymmetricFailureScenario extends HolePunchScenario {
       print(
         '🔧 Fresh orchestrator start - allowing extra warmup time for Symmetric NAT infrastructure...',
       );
-      await Future.delayed(const Duration(seconds: 20));
+      await Future<void>.delayed(const Duration(seconds: 20));
     } else {
       // Infrastructure already running, shorter delay for scenario transition
       print(
         '♻️  Reusing established infrastructure - brief warmup for Symmetric NAT setup...',
       );
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
 
     print('✅ SymmetricToSymmetricFailureScenario setup complete');
@@ -245,7 +245,7 @@ class SymmetricToSymmetricFailureScenario extends HolePunchScenario {
     );
 
     // Wait for peer introductions to settle
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
 
     // Attempt holepunch (should fail)
     print('🕳️  Attempting holepunch (expecting failure)...');
@@ -262,7 +262,7 @@ class SymmetricToSymmetricFailureScenario extends HolePunchScenario {
     }
 
     // Wait for failure and fallback
-    await Future.delayed(const Duration(seconds: 20));
+    await Future<void>.delayed(const Duration(seconds: 20));
 
     // Verify that relay connection still works
     // final finalStatusA = await orchestrator.sendControlRequest('peer-a', '/status');
@@ -316,13 +316,13 @@ class MixedNATScenario extends HolePunchScenario {
       print(
         '🔧 Fresh orchestrator start - allowing extra warmup time for Mixed NAT infrastructure...',
       );
-      await Future.delayed(const Duration(seconds: 20));
+      await Future<void>.delayed(const Duration(seconds: 20));
     } else {
       // Infrastructure already running, shorter delay for scenario transition
       print(
         '♻️  Reusing established infrastructure - brief warmup for Mixed NAT setup...',
       );
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
 
     print('✅ MixedNATScenario setup complete');
@@ -374,7 +374,7 @@ class MixedNATScenario extends HolePunchScenario {
 
     // Wait for relay connections to establish
     print('⏳ Waiting for relay connections to establish...');
-    await Future.delayed(const Duration(seconds: 10));
+    await Future<void>.delayed(const Duration(seconds: 10));
 
     // Verify relay connectivity established
     final relayStatusA =
@@ -452,7 +452,7 @@ class MixedNATScenario extends HolePunchScenario {
     }
 
     // Wait for any holepunch cleanup/stabilization
-    await Future.delayed(const Duration(seconds: 10));
+    await Future<void>.delayed(const Duration(seconds: 10));
 
     // Assertion 2: Verify holepunch did not break relay connectivity
     final postHolepunchStatusA =
@@ -630,7 +630,7 @@ class ScenarioRunner {
       results.add(result);
 
       // Brief pause between scenarios
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
 
     _printSummary(results);

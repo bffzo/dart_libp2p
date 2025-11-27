@@ -67,7 +67,7 @@ void main() {
     test('read() returns data from buffer if not empty', () async {
       final testData = Uint8List.fromList([1, 2, 3]);
       udxDataController.add(testData);
-      await Future.delayed(Duration.zero); // allow stream to deliver data
+      await Future<void>.delayed(Duration.zero); // allow stream to deliver data
 
       final result = await adapter.read();
       expect(result, equals(testData));
@@ -79,7 +79,7 @@ void main() {
       final readFuture = adapter.read();
 
       // Ensure read is waiting
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       udxDataController.add(testData);
 
       final result = await readFuture;
@@ -89,7 +89,7 @@ void main() {
     test('read() respects maxLength and buffers remainder', () async {
       final testData = Uint8List.fromList([1, 2, 3, 4, 5]);
       udxDataController.add(testData);
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       final part1 = await adapter.read(3);
       expect(part1, equals(Uint8List.fromList([1, 2, 3])));
@@ -259,7 +259,7 @@ void main() {
       connectionsController.add(mockSocket);
 
       // Add a small delay to ensure the listener subscription is set up
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Simulate initial stream on that connection
       streamController.add(event);
@@ -281,7 +281,7 @@ void main() {
       await listener.close();
 
       connectionsController.add(mockSocket);
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       verify(mockSocket.close()).called(1);
       verifyNever(mockConnManager.registerConnection(any));

@@ -233,7 +233,7 @@ void main() {
           return serverStream;
         });
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         clientStream = await (clientUpgradedConn as core_mux_types.MuxedConn)
             .openStream(core_context.Context()) as YamuxStream;
@@ -266,7 +266,7 @@ void main() {
         await serverUpgradedConn.close();
 
         // Add a short delay to allow the close events to propagate
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         expect(
           clientRawConn.isClosed,
@@ -444,7 +444,7 @@ void main() {
           return serverStream;
         });
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         clientStream = await (clientUpgradedConn as core_mux_types.MuxedConn)
             .openStream(core_context.Context()) as YamuxStream;
@@ -507,7 +507,7 @@ void main() {
         await serverUpgradedConn.close();
 
         // Add a short delay to allow the close events to propagate
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         expect(
           clientRawConn.isClosed,
@@ -706,7 +706,7 @@ void main() {
         await clientStream.close();
         print('Client closed stream ${clientStream.id()}');
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 20)),
     );

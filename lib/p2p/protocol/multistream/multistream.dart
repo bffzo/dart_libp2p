@@ -389,7 +389,7 @@ class MultistreamMuxer implements ProtocolSwitch {
         }
 
         // Brief delay before retry to allow stream to recover
-        await Future.delayed(config.retryDelay * retryCount);
+        await Future<void>.delayed(config.retryDelay * retryCount);
         if (config.enableTimeoutLogging) {}
       }
     }

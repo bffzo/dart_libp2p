@@ -146,7 +146,7 @@ void main() {
         gater.interceptAccept(mockConn);
 
         // Wait for timeout
-        await Future.delayed(const Duration(milliseconds: 150));
+        await Future<void>.delayed(const Duration(milliseconds: 150));
 
         expect(gater.isConnBlocked(mockConn.id), isTrue);
       });

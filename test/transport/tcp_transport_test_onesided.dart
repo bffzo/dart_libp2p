@@ -126,7 +126,7 @@ void main() {
 
           // Give it a very short time to see if it crashes due to initial frame parsing
           // or if the read loop starts and then potentially idles or errors gracefully.
-          await Future.delayed(const Duration(seconds: 5));
+          await Future<void>.delayed(const Duration(seconds: 5));
           print('YamuxSession existed for 5 seconds.');
 
           // If YamuxSession.close() itself hangs, this test would also hang here.

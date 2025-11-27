@@ -116,7 +116,7 @@ class OBPProtocolHandler {
         }
 
         // Wait before retry
-        await Future.delayed(Duration(milliseconds: 100 * attempt));
+        await Future<void>.delayed(Duration(milliseconds: 100 * attempt));
       }
     }
 

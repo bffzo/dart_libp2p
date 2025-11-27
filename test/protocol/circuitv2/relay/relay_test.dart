@@ -148,7 +148,7 @@ void main() {
         relay.relayDataForTesting(srcStream, dstStream, srcPeer, dstPeer);
 
         // Wait for data to be relayed and cleanup
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         // Assert: Data was forwarded to destination
         expect(dstWrites, isNotEmpty);
@@ -198,7 +198,7 @@ void main() {
         relay.relayDataForTesting(srcStream, dstStream, srcPeer, dstPeer);
 
         // Wait for data to be relayed and cleanup
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         // Assert: Data was forwarded to source
         expect(srcWrites, isNotEmpty);
@@ -239,7 +239,7 @@ void main() {
         );
 
         // Wait for error handling
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         // Assert: Cleanup should have occurred
         verify(srcStream.close()).called(greaterThanOrEqualTo(1));

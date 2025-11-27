@@ -51,7 +51,7 @@ void main() {
 
       // Wait for sessions to initialize with timeout
       print('Waiting for sessions to initialize...');
-      await Future.delayed(const Duration(seconds: 1)); // Increased delay
+      await Future<void>.delayed(const Duration(seconds: 1)); // Increased delay
 
       // Verify sessions are ready
       expect(
@@ -474,7 +474,7 @@ void main() {
           // Max attempts for roughly 5 seconds (250 * 20ms = 5000ms)
           const maxAttempts = 250;
           while (!session2.isClosed && attempts < maxAttempts) {
-            await Future.delayed(const Duration(milliseconds: 20));
+            await Future<void>.delayed(const Duration(milliseconds: 20));
             attempts++;
           }
           if (!session2.isClosed) {
@@ -528,7 +528,7 @@ void main() {
       final testSession2 = YamuxSession(testConn2, testConfig, false);
 
       // Wait for sessions to initialize
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(testSession1.isClosed, isFalse);
       expect(testSession2.isClosed, isFalse);
 
@@ -570,14 +570,14 @@ void main() {
 
           // Add small delay between batches
           if (i + batchSize < testMaxStreams) {
-            await Future.delayed(const Duration(milliseconds: 200));
+            await Future<void>.delayed(const Duration(milliseconds: 200));
           }
         }
 
         // Wait for server to receive all streams
         print('\nWaiting for server to receive all streams...');
         while (receivedStreams.length < testMaxStreams) {
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
           if (testSession1.isClosed || testSession2.isClosed) {
             throw StateError('Session closed before receiving all streams');
           }
@@ -679,7 +679,7 @@ void main() {
         print('Connection closed');
 
         // Add a delay to allow error propagation
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         print('Verifying stream operations fail...');
         await expectLater(
@@ -715,7 +715,7 @@ void main() {
         }
 
         // Add delay to allow closure propagation
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
         // Final state verification
         expect(
@@ -758,7 +758,7 @@ void main() {
       );
 
       // Allow time for the RST frame to be processed by session2
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       await expectLater(
         () => withTimeout(stream2.read(), 'stream2 read after reset'),

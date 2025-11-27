@@ -208,7 +208,7 @@ void main() {
             serverSession = YamuxSession(serverRawConn, yamuxConfig, false);
 
             // Wait for sessions to initialize
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future<void>.delayed(const Duration(milliseconds: 500));
             expect(
               clientSession.isClosed,
               isFalse,
@@ -442,7 +442,7 @@ void main() {
               return serverStream;
             });
 
-            await Future.delayed(const Duration(milliseconds: 100));
+            await Future<void>.delayed(const Duration(milliseconds: 100));
 
             // Open client stream
             clientStream =
@@ -958,7 +958,7 @@ Future<void> _testLargePayloadEcho(
 
         // Small delay to allow echo processing
         if (chunksWritten % 5 == 0) {
-          await Future.delayed(const Duration(milliseconds: 1));
+          await Future<void>.delayed(const Duration(milliseconds: 1));
         }
       }
       print('   ✅ [$testContext] All chunks written successfully');
@@ -975,7 +975,7 @@ Future<void> _testLargePayloadEcho(
   // Wait for all echo data to be received
   var waitCount = 0;
   while (receivedData.length < largeData.length && waitCount < 100) {
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     waitCount++;
     if (waitCount % 10 == 0) {
       print(

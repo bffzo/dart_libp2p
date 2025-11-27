@@ -97,7 +97,7 @@ void main() {
         await autoRelay.start();
 
         // Give some time for async operations
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Verify address update event was emitted
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))
@@ -120,7 +120,7 @@ void main() {
 
         // Act
         await autoRelay.start();
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - When private, should request relay addresses from RelayFinder
         // This would be verified through emitted events containing circuit addresses
@@ -141,7 +141,7 @@ void main() {
 
         // Act
         await autoRelay.start();
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should emit addresses
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))
@@ -174,7 +174,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should trigger address update
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))
@@ -206,7 +206,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should trigger address update with public addresses
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))
@@ -239,7 +239,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.unknown),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should trigger address update (treat as private)
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))
@@ -366,7 +366,7 @@ void main() {
 
         // Act
         await autoRelay.start();
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert
         verify(mockEventBus.emitter(EvtAutoRelayAddrsUpdated))

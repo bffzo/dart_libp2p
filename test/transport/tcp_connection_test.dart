@@ -275,7 +275,7 @@ void main() {
       clientSocketStreamController.add(chunk1);
       // At this point, readFuture should still be waiting as only 2 bytes are available.
       // Add a small delay to simulate network latency and allow processing of chunk1
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       clientSocketStreamController.add(chunk2); // Add the rest of the data
 
@@ -359,7 +359,7 @@ void main() {
 
       clientSocketStreamController
           .add(Uint8List.fromList([1, 2, 3])); // Add only 3 bytes
-      await Future.delayed(Duration.zero); // Allow processing
+      await Future<void>.delayed(Duration.zero); // Allow processing
       await clientSocketStreamController.close(); // Close the stream
 
       expect(readFuture, throwsA(isA<StateError>()));
@@ -421,7 +421,7 @@ void main() {
       // Step 6: Verify the connection auto-closes.
       // Further reads would fail because the connection is marked closed.
       // This is expected due to TCPConnection's auto-close behavior.
-      await Future.delayed(Duration.zero); // Allow auto-close to propagate
+      await Future<void>.delayed(Duration.zero); // Allow auto-close to propagate
       expect(clientConnection.isClosed, isTrue,
           reason:
               'Connection should be closed after stream controller is closed and read from buffer completed.',);
@@ -455,7 +455,7 @@ void main() {
 
       // Verify connection is closed after the error
       // Need a slight delay for the async error handling and close() to complete
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
       expect(clientConnection.isClosed, isTrue,
           reason: 'Connection should be closed after socket.add error',);
     });
@@ -473,7 +473,7 @@ void main() {
           clientConnection.write(data), throwsA(isA<SocketException>()),);
 
       // Verify connection is closed
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
       expect(clientConnection.isClosed, isTrue,
           reason: 'Connection should be closed after socket.flush error',);
     });
@@ -580,7 +580,7 @@ void main() {
       final closeFuture = clientConnection.close();
 
       // Allow microtasks to run for close operations
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       expect(clientConnection.isClosed, isTrue);
       verify(mockSocketClient.close()).called(1);
@@ -623,7 +623,7 @@ void main() {
       final readFuture = clientConnection.read(5); // Start a read
 
       // Don't send data, then close the connection
-      await Future.delayed(
+      await Future<void>.delayed(
           const Duration(milliseconds: 10),); // Ensure read is pending
 
       final closeFuture = clientConnection.close();
@@ -680,7 +680,7 @@ void main() {
       // This relies on openConnection being called before the error is thrown from listen.
       // TCPConnection._initialize calls openConnection then socket.listen.
       // If listen's onError is called immediately, openConnection would have been called.
-      await Future.delayed(Duration
+      await Future<void>.delayed(Duration
           .zero,); // Allow async operations in error handling to complete
       verify(mockScope.done()).called(1);
     });
@@ -734,7 +734,7 @@ void main() {
               localPeerId, remotePeerId, mockResourceManager, false,),
           throwsA(equals(setPeerError)),);
 
-      await Future.delayed(Duration.zero); // Allow async error handling
+      await Future<void>.delayed(Duration.zero); // Allow async error handling
       verify(mockScope.done())
           .called(1); // Crucial: scope.done() should be called on error
       await tempController.close();

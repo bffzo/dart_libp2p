@@ -222,7 +222,7 @@ void main() {
         // Multiple addrs() lookups concurrently (like holepunch + other services)
         for (var i = 0; i < 5; i++) {
           futures.add(
-            Future.delayed(Duration(milliseconds: i * 10), () async {
+            Future<void>.delayed(Duration(milliseconds: i * 10), () async {
               print(
                 '🔎 Lookup $i: Looking up addresses for peer $targetPeerId in peerstore...',
               );

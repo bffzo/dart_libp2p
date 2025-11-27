@@ -46,7 +46,7 @@ void main() {
 
       // Wait for sessions to initialize
       print('\nWaiting for sessions to initialize...');
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       print('Sessions initialized');
 
       try {

@@ -317,7 +317,7 @@ class AutoNATv2ServerImpl implements AutoNATv2Server {
           amplificationAttackPreventionDialWait.inMilliseconds + 1,
         ),
       );
-      Future.delayed(waitTime);
+      Future<void>.delayed(waitTime);
     }
 
     // Dial back to the peer

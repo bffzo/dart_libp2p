@@ -132,7 +132,7 @@ void main() {
       await clientConnection.write(testData);
 
       // Allow some time for data to be processed
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       expect(
         serverReceivedData.isNotEmpty,
@@ -190,12 +190,12 @@ void main() {
       acceptedSocket.add(chunk1);
       await acceptedSocket.flush();
       // Small delay to ensure packets are sent separately if OS buffers
-      await Future.delayed(const Duration(milliseconds: 20));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
       print('Test: Server sending chunk 2 (${chunk2.length} bytes)');
       acceptedSocket.add(chunk2);
       await acceptedSocket.flush();
-      await Future.delayed(const Duration(milliseconds: 20));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
       print('Test: Server sending chunk 3 (${chunk3.length} bytes)');
       acceptedSocket.add(chunk3);
@@ -244,7 +244,7 @@ void main() {
       print('Test: Server sending full chunk (${chunkFull.length} bytes)');
       acceptedSocket.add(chunkFull);
       await acceptedSocket.flush();
-      await Future.delayed(
+      await Future<void>.delayed(
         const Duration(milliseconds: 10),
       ); // Ensure it's sent
 
@@ -254,7 +254,7 @@ void main() {
       );
       acceptedSocket.add(chunkPartialSent);
       await acceptedSocket.flush();
-      await Future.delayed(
+      await Future<void>.delayed(
         const Duration(milliseconds: 10),
       ); // Ensure it's sent
 
@@ -262,7 +262,7 @@ void main() {
       print('Test: Server closing its socket');
       await acceptedSocket.close();
       // Wait for onDone to propagate on client side if necessary, though read should handle it
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Client reads the first full chunk
       print('Test: Client reading first full chunk');

@@ -51,7 +51,7 @@ Future<void> runStompExample() async {
   print('✅ STOMP server started');
 
   // Give the server a moment to start
-  await Future.delayed(const Duration(milliseconds: 100));
+  await Future<void>.delayed(const Duration(milliseconds: 100));
 
   // Connect client to server
   print('\n🔗 Connecting client to server...');

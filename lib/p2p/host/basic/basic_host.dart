@@ -1546,11 +1546,11 @@ class _AddressChangeNotifiee implements Notifiee {
 
   @override
   Future<void> connected(Network network, Conn conn) async {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }

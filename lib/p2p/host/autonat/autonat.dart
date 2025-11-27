@@ -172,7 +172,7 @@ class AmbientAutoNAT implements AutoNAT, Notifiee {
 
   Future<void> _background() async {
     _log('Background task started.');
-    await Future.delayed(_config.bootDelay); // Initial boot delay
+    await Future<void>.delayed(_config.bootDelay); // Initial boot delay
 
     // Fallback timer for address changes
     _addrChangeTicker = Timer.periodic(const Duration(minutes: 30), (_) {

@@ -109,7 +109,7 @@ void main() {
         );
 
         // Give time for cleanup to complete
-        await Future.delayed(const Duration(seconds: 5));
+        await Future<void>.delayed(const Duration(seconds: 5));
       });
     });
 
@@ -283,13 +283,13 @@ void main() {
         print('[Lifecycle Test] Data read by listener.');
 
         // Wait for idle state (using shorter timeout)
-        await Future.delayed(const Duration(seconds: 2));
+        await Future<void>.delayed(const Duration(seconds: 2));
 
         // Trigger closing and closed states
         await dialerConn.close();
 
         // Wait for all state changes
-        await Future.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
 
         print('Final states: $states');
@@ -343,7 +343,7 @@ void main() {
         await transport.connectionManager.closeConnection(dialerConn);
 
         // Wait for all state changes
-        await Future.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
 
         expect(dialerConn.isClosed, isTrue);
@@ -404,7 +404,7 @@ void main() {
               'Writing to a stream of a closed connection should throw StateError.',
         );
 
-        await Future.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 1));
         await subscription.cancel();
 
         expect(

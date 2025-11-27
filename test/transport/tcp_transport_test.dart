@@ -251,7 +251,7 @@ void main() {
         // Give both sessions a moment to initialize their read loops
         // and potentially exchange any initial session-level frames if applicable.
         // This might help if there's a race condition in session startup.
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       });
 
       tearDown(() async {
@@ -277,7 +277,7 @@ void main() {
         final serverAcceptStreamFuture = serverYamuxSession!.acceptStream();
 
         // Allow the acceptStream future to be processed by the event loop
-        await Future.delayed(const Duration(milliseconds: 50)); // Small delay
+        await Future<void>.delayed(const Duration(milliseconds: 50)); // Small delay
 
         // Now client opens the stream
         final clientStream = await clientYamuxSession!.openStream(Context());
@@ -337,7 +337,7 @@ void main() {
         final serverAcceptStreamFuture = serverYamuxSession!.acceptStream();
 
         // Allow the acceptStream future to be processed by the event loop
-        await Future.delayed(const Duration(milliseconds: 50)); // Small delay
+        await Future<void>.delayed(const Duration(milliseconds: 50)); // Small delay
 
         // Now client opens the stream
         final clientStream = await clientYamuxSession!.openStream(Context());

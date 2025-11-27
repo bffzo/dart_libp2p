@@ -74,7 +74,7 @@ void main() {
       print('Relay server created: ${relayPeerId.toBase58()}');
       print('Relay addresses: ${relayHost.addrs}');
 
-      await Future.delayed(
+      await Future<void>.delayed(
         const Duration(milliseconds: 500),
       ); // Give it time to start
       print('Relay service should now be active (via forceReachability)');
@@ -189,7 +189,7 @@ void main() {
       // print('Hosts closed');
 
       // Give connections a moment to finish closing, but don't wait too long
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       print('✅ Teardown complete');
     });
 
@@ -220,7 +220,7 @@ void main() {
         );
         // Give AutoNAT time to probe and determine reachability
         // bootDelay=500ms + probe time + AutoRelay processing
-        await Future.delayed(const Duration(seconds: 2));
+        await Future<void>.delayed(const Duration(seconds: 2));
         print('✅ AutoNAT should have detected reachability by now');
 
         // Debug: Check what protocols the relay server advertises
@@ -244,7 +244,7 @@ void main() {
         print(
           '\n⏳ Step 2: Waiting for AutoRelay to discover relay (bootDelay=5s + processing)...',
         );
-        await Future.delayed(const Duration(seconds: 12));
+        await Future<void>.delayed(const Duration(seconds: 12));
 
         // Step 3: Verify peers advertise circuit addresses
         print('\n🔍 Step 3: Verifying circuit relay addresses...');

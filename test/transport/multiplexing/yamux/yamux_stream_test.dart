@@ -377,7 +377,7 @@ void main() {
       stream.write(data).then((_) => writeCompleted.complete());
 
       // Give it a moment to send the first chunk
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Should have sent only 10 bytes
       expect(sentFrames.length, equals(1));
@@ -417,7 +417,7 @@ void main() {
         await stream.write(data); // Should add 1 data frame.
 
         // Add a more substantial delay to allow async sendFrame to complete
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
         print(
           '[TEST DEBUG] writes data correctly - After stream.write and delay. sentFrames.length: ${sentFrames.length}',
@@ -470,7 +470,7 @@ void main() {
         stream.write(data).then((_) => writeCompleted.complete());
 
         // Wait for first chunk
-        await Future.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Should have sent first chunk
         expect(sentFrames.length, equals(1));
@@ -552,7 +552,7 @@ void main() {
         stream.write(data).then((_) => writeCompleted.complete());
 
         // Wait for first frame to be sent
-        await Future.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Verify first frame respects window size
         expect(sentFrames.length, equals(1));
@@ -588,7 +588,7 @@ void main() {
         final data = Uint8List.fromList([1, 2, 3]);
         await stream.write(data); // Should add 1 data frame
         // Add a substantial delay
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print(
           '[TEST DEBUG] closes stream gracefully - After write and delay. sentFrames.length: ${sentFrames.length}',
         );
@@ -597,7 +597,7 @@ void main() {
         await stream
             .close(); // Should send 1 FIN frame (which is a data frame with FIN flag)
         // Add a substantial delay
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print(
           '[TEST DEBUG] closes stream gracefully - After close and delay. sentFrames.length: ${sentFrames.length}',
         );
@@ -661,7 +661,7 @@ void main() {
         // print('Read operation started');
         //
         // // Give the read a chance to start
-        // await Future.delayed(Duration(milliseconds: 10));
+        // await Future<void>.delayed(Duration(milliseconds: 10));
         // print('Waited for read to start');
         //
         // // Close the stream
@@ -695,7 +695,7 @@ void main() {
         // Close the stream
         print('Closing stream...');
         await stream.close();
-        await Future.delayed(
+        await Future<void>.delayed(
           const Duration(
             milliseconds: 1,
           ),

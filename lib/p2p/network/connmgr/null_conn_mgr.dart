@@ -21,12 +21,12 @@ class NoopNotifiee implements Notifiee {
 
   @override
   Future<void> connected(Network network, Conn conn) async {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }
 
@@ -72,7 +72,7 @@ class NullConnMgr implements ConnManager {
 
   @override
   Future<void> dispose() {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override
@@ -95,7 +95,7 @@ class NullConnMgr implements ConnManager {
 
   @override
   Future<void> closeConnection(TransportConn conn) {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override

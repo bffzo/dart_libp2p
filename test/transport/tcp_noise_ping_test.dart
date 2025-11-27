@@ -205,7 +205,7 @@ void main() {
           return serverStream;
         });
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         clientStream = await (clientUpgradedConn as core_mux_types.MuxedConn)
             .openStream(core_context.Context()) as YamuxStream;

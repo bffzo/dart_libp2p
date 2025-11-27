@@ -73,7 +73,7 @@ void main() {
         await host!.start();
 
         // Allow some time for network events and address resolution
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
 
         final reportedAddrs = host!.addrs;
         print('Host reported addresses: $reportedAddrs');

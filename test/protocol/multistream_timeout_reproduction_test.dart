@@ -118,11 +118,11 @@ class HangingMockStream implements P2PStream<Uint8List> {
 
     if (_shouldHangForever) {
       // This simulates a peer that never responds - hangs indefinitely
-      await Future.delayed(const Duration(hours: 1));
+      await Future<void>.delayed(const Duration(hours: 1));
       return Uint8List(0);
     } else {
       // This simulates a very slow peer
-      await Future.delayed(_hangDuration);
+      await Future<void>.delayed(_hangDuration);
       return Uint8List.fromList([1, 2, 3, 4, 5]);
     }
   }

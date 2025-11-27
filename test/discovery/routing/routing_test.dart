@@ -23,7 +23,7 @@ class MockContentRouting implements ContentRouting {
     lastAnnounce = announce;
 
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(const Duration(seconds: 61)); // Force a timeout
     }
 
     if (shouldThrowError) {
@@ -34,7 +34,7 @@ class MockContentRouting implements ContentRouting {
   @override
   Stream<AddrInfo> findProvidersAsync(CID cid, int count) async* {
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(const Duration(seconds: 61)); // Force a timeout
       return;
     }
 
@@ -70,7 +70,7 @@ class MockDiscovery implements Discovery {
     lastOptions = options;
 
     if (shouldTimeout) {
-      await Future.delayed(const Duration(seconds: 61)); // Force a timeout
+      await Future<void>.delayed(const Duration(seconds: 61)); // Force a timeout
     }
 
     if (shouldThrowError) {

@@ -109,7 +109,7 @@ void main() {
         );
 
         // Give time for async processing
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should be started
         // We can't directly verify the internal state, but we can check
@@ -138,7 +138,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should not be started
         // No stream handler should be registered for private peers
@@ -166,7 +166,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.unknown),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should not be started for unknown reachability
         verifyNever(mockHost.setStreamHandler(any, any));
@@ -195,13 +195,13 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Then become private (stop relay)
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Relay service should be stopped
         verify(mockHost.removeStreamHandler(any)).called(greaterThan(0));
@@ -228,7 +228,7 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Clear invocations for second check
         clearInteractions(mockHost);
@@ -236,7 +236,7 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not register handler again (relay already running)
         verifyNever(mockHost.setStreamHandler(any, any));
@@ -279,7 +279,7 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Act & Assert - Should close relay and clean up
         expect(() async => manager.close(), returnsNormally);
@@ -345,7 +345,7 @@ void main() {
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not crash, error logged internally
         expect(true, isTrue); // If we got here, error was handled
@@ -373,13 +373,13 @@ void main() {
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.public),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Act - Try to stop relay (will fail internally)
         reachabilityController.add(
           EvtLocalReachabilityChanged(reachability: Reachability.private),
         );
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should not crash
         expect(true, isTrue);
@@ -402,7 +402,7 @@ void main() {
 
         // Act - Add error to stream
         reachabilityController.addError(Exception('Stream error'));
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         // Assert - Should handle error gracefully
         expect(true, isTrue);

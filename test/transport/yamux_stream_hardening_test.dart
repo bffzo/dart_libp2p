@@ -99,7 +99,7 @@ void main() {
       final readFuture = stream.read();
 
       // Wait a bit to ensure the read is waiting
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // The read should eventually timeout and throw YamuxStreamTimeoutException
       expect(
@@ -143,7 +143,7 @@ void main() {
       );
 
       // Give the read operation time to start waiting
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Reset the stream while read is waiting
       await stream.reset();
@@ -161,13 +161,13 @@ void main() {
       // completer is actually active. The earlier reads will hang.
       final readFutures = <Future<Uint8List>>[];
       readFutures.add(stream.read().catchError((e) => Uint8List(0)));
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       readFutures.add(stream.read().catchError((e) => Uint8List(0)));
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       readFutures.add(stream.read().catchError((e) => Uint8List(0)));
 
       // Reset the stream while the last read is waiting
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       await stream.reset();
 
       // The last read should complete, but the earlier ones will hang
@@ -255,7 +255,7 @@ void main() {
       );
 
       // Give the read operation time to start waiting
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Cancel the read to avoid timeout
       await stream.reset();

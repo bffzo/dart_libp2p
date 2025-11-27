@@ -103,7 +103,7 @@ void main() {
         () async {
       expect(
         () => UDXExceptionUtils.withTimeout(
-          Future.delayed(const Duration(seconds: 2)),
+          Future<void>.delayed(const Duration(seconds: 2)),
           const Duration(milliseconds: 100),
           'test-operation',
         ),

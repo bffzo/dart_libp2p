@@ -177,13 +177,13 @@ class YamuxSession implements Multiplexer, core_mux.MuxedConn, Conn {
     Future<void> applyAdaptiveDelay() async {
       if (isSessionUnderStress()) {
         // Apply longer delay when session is under stress
-        await Future.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
         logFrameProcessing(
           '$_logPrefix Applied stress-relief delay (10ms) due to slow frame processing',
         );
       } else {
         // Standard batch processing delay
-        await Future.delayed(_batchProcessingDelay);
+        await Future<void>.delayed(_batchProcessingDelay);
         logFrameProcessing(
           '$_logPrefix Applied standard batch processing delay (${_batchProcessingDelay.inMilliseconds}ms)',
         );
@@ -213,7 +213,7 @@ class YamuxSession implements Multiplexer, core_mux.MuxedConn, Conn {
           );
         } else {
           // Minimal yield for event loop cooperation during normal processing
-          await Future.delayed(Duration.zero);
+          await Future<void>.delayed(Duration.zero);
         }
 
         // Ensure we have enough bytes for at least a header

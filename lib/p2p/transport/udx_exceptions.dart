@@ -147,7 +147,7 @@ class UDXExceptionHandler {
           );
         }
 
-        await Future.delayed(delay);
+        await Future<void>.delayed(delay);
 
         // Update delay for next iteration
         delay = Duration(

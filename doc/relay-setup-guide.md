@@ -118,7 +118,7 @@ print('✅ Connected to relay server');
 // Wait for AmbientAutoNATv2 + AutoRelay initialization
 // bootDelay (500ms) + probes (1-2s) + AutoRelay (2-3s) ≈ 5-6s total
 print('⏰ Waiting for automatic reachability detection and relay reservations...');
-await Future.delayed(Duration(seconds: 6));
+await Future<void>.delayed(Duration(seconds: 6));
 
 // Verify circuit addresses are advertised
 final myAddrs = host.addrs;
@@ -168,7 +168,7 @@ await host.start();
 // No manual connect() calls needed!
 
 // Wait for AmbientAutoNATv2 + AutoRelay initialization
-await Future.delayed(Duration(seconds: 6));
+await Future<void>.delayed(Duration(seconds: 6));
 
 // Verify circuit addresses are advertised
 final myAddrs = host.addrs;
@@ -215,7 +215,7 @@ await emitter.close();
 print('✅ AutoRelay manually triggered');
 
 // Wait for reservations
-await Future.delayed(Duration(seconds: 10));
+await Future<void>.delayed(Duration(seconds: 10));
 ```
 
 **Note:** Manual triggering is **not recommended** for production. Use AmbientAutoNATv2 for automatic, reliable reachability detection.
@@ -411,7 +411,7 @@ test('Circuit relay with ping (automatic detection)', () async {
   
   // 4. Wait for AmbientAutoNATv2 + AutoRelay
   // No manual event emission needed!
-  await Future.delayed(Duration(seconds: 6));
+  await Future<void>.delayed(Duration(seconds: 6));
   
   // 5. Verify circuit addresses
   final circuitAddrs = peerA.host.addrs.where((a) => 
@@ -493,7 +493,7 @@ await _connectToRelayServers();
 // 5. Wait for AmbientAutoNATv2 + AutoRelay initialization
 // No manual event emission needed!
 print('⏰ Waiting for automatic reachability detection and relay reservations...');
-await Future.delayed(Duration(seconds: 5));
+await Future<void>.delayed(Duration(seconds: 5));
 
 // 6. Circuit addresses now available
 print('📍 My addresses: ${host.addrs}');
@@ -540,7 +540,7 @@ print('📍 My addresses: ${host.addrs}');
    ```dart
    // AmbientAutoNATv2: bootDelay + probes (500ms + 1-2s)
    // AutoRelay: discovery + reservation (2-3s)
-   await Future.delayed(Duration(seconds: 6));
+   await Future<void>.delayed(Duration(seconds: 6));
    ```
 
 4. **Check AmbientAutoNATv2 logs for errors:**

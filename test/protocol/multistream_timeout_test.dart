@@ -50,12 +50,12 @@ class TimeoutMockStream implements P2PStream<Uint8List> {
   Future<Uint8List> read([int? maxLength]) async {
     if (_shouldTimeout) {
       // Simulate a hanging read that will timeout
-      await Future.delayed(const Duration(minutes: 5));
+      await Future<void>.delayed(const Duration(minutes: 5));
       return Uint8List(0);
     }
 
     // Simulate normal read with delay
-    await Future.delayed(_readDelay);
+    await Future<void>.delayed(_readDelay);
     if (_isClosed) {
       return Uint8List(0);
     }

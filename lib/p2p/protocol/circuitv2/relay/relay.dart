@@ -152,7 +152,7 @@ class Relay {
     print('[Relay] Reservation response sent and flushed');
 
     // Add a small delay to ensure the data is transmitted
-    await Future.delayed(const Duration(milliseconds: 50));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
   }
 
   /// Handles a connection request.

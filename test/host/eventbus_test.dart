@@ -48,7 +48,7 @@ void main() {
       await emitter.emit(event);
 
       // Wait for events to be processed
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that the event was received
       expect(events.length, equals(1));
@@ -79,7 +79,7 @@ void main() {
       await testEmitter.emit(TestEvent('Event 2'));
 
       // Wait for events to be processed
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that all events were received
       expect(events.length, equals(3));
@@ -114,7 +114,7 @@ void main() {
       await anotherEmitter.emit(AnotherTestEvent(42));
 
       // Wait for events to be processed
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Verify that all events were received
       expect(events.length, equals(2));
@@ -147,7 +147,7 @@ void main() {
       });
 
       // Wait for events to be processed
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
       // Print events for debugging
       print('[DEBUG_LOG] Events in stateful emitter test: ${events.length}');

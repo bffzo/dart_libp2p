@@ -227,7 +227,7 @@ void main() {
           print(
             '\n⏰ Waiting 10 seconds for AmbientAutoNATv2 and AutoRelay initialization...',
           );
-          await Future.delayed(const Duration(seconds: 10));
+          await Future<void>.delayed(const Duration(seconds: 10));
 
           // Get peer and relay information
           final peerAStatus =
@@ -380,7 +380,7 @@ void main() {
             }, // Full circuit addresses with dest peer ID
           );
 
-          await Future.delayed(const Duration(seconds: 3));
+          await Future<void>.delayed(const Duration(seconds: 3));
           print(
             '✅ Peers introduced via complete dialable circuit relay addresses',
           );

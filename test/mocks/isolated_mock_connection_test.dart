@@ -35,7 +35,7 @@ void main() {
       ]);
 
       // Write data after a small delay
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       final testData = List.generate(
         3, (i) => Uint8List.fromList([1, 2, 3]), // Fixed values for each array
       );

@@ -207,7 +207,7 @@ void main() {
 
           // Pause to test connection persistence
           print('Pausing for 3 seconds to test connection persistence...');
-          // await Future.delayed(Duration(seconds: 3));
+          // await Future<void>.delayed(Duration(seconds: 3));
 
           // Phase 6: Verify connection is still alive after pause
           print('Phase 6: Verifying connection persistence...');
@@ -390,7 +390,7 @@ void main() {
           }
 
           // Brief pause to let streams establish
-          // await Future.delayed(Duration(milliseconds: 100));
+          // await Future<void>.delayed(Duration(milliseconds: 100));
 
           // Verify connection consistency
           final connections = swarmB.connsToPeer(swarmA.localPeer);
@@ -413,7 +413,7 @@ void main() {
           }
 
           // Brief pause between cycles
-          // await Future.delayed(Duration(milliseconds: 50));
+          // await Future<void>.delayed(Duration(milliseconds: 50));
           print('Cycle $cycle completed');
         }
 
@@ -840,7 +840,7 @@ Future<void> _performConcurrentEchoTest({
   required Swarm swarmA,
 }) async {
   // Add some randomness to test concurrent behavior
-  await Future.delayed(Duration(milliseconds: Random().nextInt(100)));
+  await Future<void>.delayed(Duration(milliseconds: Random().nextInt(100)));
 
   await _performEchoTest(
     clientConn: clientConn,
@@ -881,7 +881,7 @@ Future<void> _runBackgroundEchoServer({
         if (!cancellation.isCompleted) {
           print('Background server error accepting stream: $e');
           // Brief pause before retrying
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
         }
       }
     }

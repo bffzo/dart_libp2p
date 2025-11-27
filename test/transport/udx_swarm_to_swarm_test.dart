@@ -260,7 +260,7 @@ void main() {
           return serverP2PStream;
         });
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         final clientP2PStream = await ((clientSwarmConn as dynamic).conn
                     as core_mux_types.MuxedConn)

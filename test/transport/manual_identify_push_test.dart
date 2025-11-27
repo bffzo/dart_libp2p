@@ -461,7 +461,7 @@ void main() {
         await clientIdentifyStream.close();
         await serverIdentifyStream.close();
         testLog.info('Initial identify exchange streams closed.');
-        await Future.delayed(const Duration(milliseconds: 200)); // Settle
+        await Future<void>.delayed(const Duration(milliseconds: 200)); // Settle
 
         // --- Simulate Identify Push (Server initiates) ---
         testLog.info(

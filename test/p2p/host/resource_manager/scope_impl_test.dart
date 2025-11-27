@@ -737,7 +737,7 @@ void main() {
       }
 
       // Add a small delay to see if it affects the state reading
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // print('DEBUG TEST: About to check childScope.stat.memory. Current value: ${childScope.stat.memory}'); // Removed
       if (childScope.stat.memory != 0) {

@@ -195,7 +195,7 @@ class MdnsDiscovery implements Discovery {
       final serviceName = '$_serviceName.${MdnsConstants.mdnsDomain}';
 
       // Wait a moment for the network to settle and other services to be advertised
-      await Future.delayed(const Duration(milliseconds: 1500));
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
 
       // Start immediate discovery
       await _performDiscoveryQuery(serviceName);

@@ -263,7 +263,7 @@ class IntegrationTestPeer {
       await _setupRelayServer();
 
       // Give relay service a moment to fully initialize
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       print('📍 Relay server listening on addresses:');
       for (final addr in host.addrs) {
@@ -274,7 +274,7 @@ class IntegrationTestPeer {
       await _setupPeerConnections();
 
       // Give connections a moment to establish
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       // STEP 4: AmbientAutoNATv2 automatically handles reachability detection
       await _triggerAutoRelay();
@@ -285,7 +285,7 @@ class IntegrationTestPeer {
       print(
         '⏰ Waiting 5 seconds for AmbientAutoNATv2 and AutoRelay initialization...',
       );
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
 
       print('📍 Listening on addresses after AutoRelay initialization:');
       for (final addr in host.addrs) {
@@ -318,7 +318,7 @@ class IntegrationTestPeer {
 
     // Keep the peer alive
     while (true) {
-      await Future.delayed(const Duration(seconds: 10));
+      await Future<void>.delayed(const Duration(seconds: 10));
       print(
         '💓 Peer $peerName heartbeat - Connected peers: ${host.network.peers.length}',
       );

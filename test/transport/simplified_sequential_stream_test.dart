@@ -197,7 +197,7 @@ void main() {
         isNotNull,
         reason: 'Upgraded server connection should not be null.',
       );
-      await Future.delayed(
+      await Future<void>.delayed(
         const Duration(milliseconds: 200),
       ); // Allow Yamux sessions to fully init
       testLog.info('=== Test Setup Complete ===');
@@ -274,7 +274,7 @@ void main() {
       testLog.info('First stream closed.');
 
       // Add a small delay to ensure closure propagates and resources are settled
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       testLog.info('Delay after closing first stream.');
 
       // 2. Second Stream (Simulating Ping)

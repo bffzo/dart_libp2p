@@ -363,7 +363,7 @@ void main() {
             return serverP2PStream;
           });
 
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
 
           final clientP2PStream =
               await ((clientConn as dynamic).conn as core_mux_types.MuxedConn)
@@ -421,7 +421,7 @@ void main() {
           await serverP2PStream.close();
         } finally {
           // Don't close connections immediately to avoid resource issues
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
           await clientConn.close();
           await serverConn.close();
         }
@@ -454,7 +454,7 @@ void main() {
 
         for (final chunk in chunks) {
           await clientStream.write(chunk);
-          await Future.delayed(const Duration(milliseconds: 20));
+          await Future<void>.delayed(const Duration(milliseconds: 20));
         }
         await clientStream.closeWrite();
 
@@ -485,7 +485,7 @@ void main() {
           }
         }();
 
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         await clientStream.reset();
 
         expect(clientStream.isClosed, isTrue);
@@ -634,7 +634,7 @@ void main() {
         return serverStream;
       });
 
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       final clientStream = await ((clientConn as dynamic).conn
               as core_mux_types.MuxedConn)
           .openStream(core_context.Context()) as core_network_stream.P2PStream;
@@ -664,7 +664,7 @@ void main() {
         }();
 
         // Client sends data then closes write
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending ${testData.length} bytes');
         await clientStream.write(testData);
 
@@ -706,7 +706,7 @@ void main() {
         }();
 
         // Client resets the stream abruptly
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Calling reset() - this should abruptly terminate');
         await clientStream.reset();
         print('[Client] reset() completed');
@@ -749,11 +749,11 @@ void main() {
         }();
 
         // Client sends chunks with delays
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         for (var i = 0; i < chunks.length; i++) {
           print('[Client] Sending chunk ${i + 1}: ${chunks[i].length} bytes');
           await clientStream.write(chunks[i]);
-          await Future.delayed(
+          await Future<void>.delayed(
             const Duration(milliseconds: 100),
           ); // Simulate network delay
         }
@@ -808,11 +808,11 @@ void main() {
         }();
 
         // Client sends the protocol packet in two parts to ensure proper protocol parsing
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending length prefix: 4 bytes');
         await clientStream.write(lengthPrefix.buffer.asUint8List());
 
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending message data: ${message.length} bytes');
         await clientStream.write(message);
 
@@ -913,7 +913,7 @@ void main() {
           print('[Server] Successfully read data after timeout recovery');
         }();
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
         print('[Client] Sending data after timeout test...');
         await clientStream.write(testData);
 

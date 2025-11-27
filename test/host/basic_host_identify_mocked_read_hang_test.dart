@@ -758,7 +758,7 @@ void main() {
         print(
           '[TEST] About to delay before checking hostB.addrs. Current hostB.addrs: $allAddrs',
         );
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
         allAddrs = hostB.addrs;
         print(
           '[TEST] After delay, checking hostB.addrs. Current hostB.addrs: $allAddrs',
@@ -775,7 +775,7 @@ void main() {
         final connectOperation =
             hostA.connect(serverAddrInfo, context: core_context.Context());
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         final dialerTransportConn = MockTransportConn(
           transport: mockTransportA,
@@ -806,7 +806,7 @@ void main() {
             'Host A connect() operation completed. Identify should be running/hanging now.',
           );
 
-          await Future.delayed(const Duration(seconds: 3));
+          await Future<void>.delayed(const Duration(seconds: 3));
 
           if (readOnHangingStreamWasCalled &&
               hangingIdentifyStreamForA._hangingReadCompleter != null &&

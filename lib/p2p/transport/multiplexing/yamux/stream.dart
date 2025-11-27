@@ -410,19 +410,19 @@ class YamuxStream implements P2PStream<Uint8List>, core_mux.MuxedStream {
 
     if (avgLatency > _verySlowWriteThreshold) {
       // Very slow transport - significant delay
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       _log.finer(
         '$_logPrefix Applied 50ms pacing for very slow transport (avg: ${avgLatency.inMilliseconds}ms)',
       );
     } else if (avgLatency > _slowWriteThreshold) {
       // Slow transport - moderate delay
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       _log.finer(
         '$_logPrefix Applied 10ms pacing for slow transport (avg: ${avgLatency.inMilliseconds}ms)',
       );
     } else {
       // Fast transport - minimal delay to yield control
-      await Future.delayed(const Duration(milliseconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
     }
   }
 
@@ -716,7 +716,7 @@ class YamuxStream implements P2PStream<Uint8List>, core_mux.MuxedStream {
         );
 
         // Brief delay before retry
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     }
 
@@ -949,7 +949,7 @@ class YamuxStream implements P2PStream<Uint8List>, core_mux.MuxedStream {
 
       // Yield control after processing a batch to prevent event loop blocking
       if (processedInBatch >= _maxFramesPerBatch) {
-        await Future.delayed(_frameProcessingDelay);
+        await Future<void>.delayed(_frameProcessingDelay);
         processedInBatch = 0;
         _log.fine(
           '$_logPrefix Applied frame processing delay after batch. Remaining queue: ${_frameQueue.length}',

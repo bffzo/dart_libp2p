@@ -287,7 +287,7 @@ void main() {
       print(
         'setUpAll: Delaying for 2 seconds after host starts to allow services to settle...',
       );
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
       print('setUpAll: Delay finished.');
     });
 
@@ -390,7 +390,7 @@ void main() {
         print(
           'TEST: Delaying for 2 seconds to allow Identify protocol to settle...',
         );
-        await Future.delayed(const Duration(seconds: 2));
+        await Future<void>.delayed(const Duration(seconds: 2));
         print('TEST: Delay finished.');
 
         // Verify connection from client's perspective (optional, newStream is the real test)

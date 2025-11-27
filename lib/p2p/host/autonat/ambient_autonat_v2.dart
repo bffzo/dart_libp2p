@@ -132,8 +132,8 @@ class AmbientAutoNATv2 {
     _log.fine('Scheduling probe in ${nextProbeAfter.inSeconds}s '
         '(force: $forceProbe, status: $_currentStatus, confidence: $_confidence)');
 
-    // Schedule probe using Future.delayed for better error handling
-    _scheduledProbe = Future.delayed(nextProbeAfter).then((_) async {
+    // Schedule probe using Future<void>.delayed for better error handling
+    _scheduledProbe = Future<void>.delayed(nextProbeAfter).then((_) async {
       // Check if this probe is still valid (not superseded by a newer schedule)
       if (_closed || probeGeneration != _probeGeneration) {
         _log.fine(

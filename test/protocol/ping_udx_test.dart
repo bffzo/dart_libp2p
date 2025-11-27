@@ -65,7 +65,7 @@ void main() {
 
       // Wait for all connections to be closed
       while (host1.network.conns.isNotEmpty || host2.network.conns.isNotEmpty) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     });
 

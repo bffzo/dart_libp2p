@@ -92,20 +92,20 @@ void main() {
 
     test('NAT manager discovers NAT device', () async {
       // Wait for NAT discovery
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
       expect(natManager.hasDiscoveredNAT(), isTrue);
     });
 
     test('NAT manager handles listen address changes', () async {
       // Wait for NAT discovery
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       // Add a listen address
       final addr = MultiAddr('/ip4/127.0.0.1/tcp/12345');
       network.listen([addr]);
 
       // Wait for mapping
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
 
       // Get the mapping
       final mapping = natManager.getMapping(addr);
@@ -120,7 +120,7 @@ void main() {
       network.removeListenAddress(addr);
 
       // Wait for unmapping
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
 
       // Mapping should be gone
       expect(natManager.getMapping(addr), isNull);
@@ -128,7 +128,7 @@ void main() {
 
     test('NAT manager handles multiple listen addresses', () async {
       // Wait for NAT discovery
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       // Add multiple listen addresses (TCP only; see note below)
       final addr1 = MultiAddr('/ip4/127.0.0.1/tcp/12346');
@@ -141,7 +141,7 @@ void main() {
       network.listen([addr1, addr2]);
 
       // Wait for mappings
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
 
       // Get the mappings
       final mapping1 = natManager.getMapping(addr1);
@@ -164,14 +164,14 @@ void main() {
 
     test('NAT manager handles close gracefully', () async {
       // Wait for NAT discovery
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       // Add a listen address
       final addr = MultiAddr('/ip4/127.0.0.1/tcp/12349');
       network.listen([addr]);
 
       // Wait for mapping
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
 
       // Close the NAT manager
       await natManager.close();
@@ -184,7 +184,7 @@ void main() {
     test('NAT manager exposes current behavior and traversal strategy',
         () async {
       // Wait for NAT discovery
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       // Verify current behavior is not unknown
       expect(
@@ -209,7 +209,7 @@ void main() {
       });
 
       // Wait for NAT discovery and callback
-      await Future.delayed(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(seconds: 5));
 
       // Verify callback was called with valid behaviors
       expect(oldBehavior, isNotNull, reason: 'Old behavior should not be null');

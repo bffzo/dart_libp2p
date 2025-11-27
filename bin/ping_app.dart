@@ -313,7 +313,7 @@ Future<void> main(List<String> arguments) async {
           }
         }
         // Always delay if the loop continues (which it will, until SIGINT)
-        await Future.delayed(Duration(seconds: pingIntervalSec));
+        await Future<void>.delayed(Duration(seconds: pingIntervalSec));
       }
     } else if (listenAddrStr != null) {
       // This case implies targetAddrStr is null

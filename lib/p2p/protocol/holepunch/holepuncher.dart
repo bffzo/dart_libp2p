@@ -177,7 +177,7 @@ class HolePuncher {
 
         // Wait for sync to reach the other peer and then punch a hole for it in our NAT
         // by attempting a connect to it.
-        await Future.delayed(Duration(milliseconds: synTime));
+        await Future<void>.delayed(Duration(milliseconds: synTime));
 
         final pi = PeerInfo(peerId: peerId, addrs: addrs.toSet());
         _tracer?.startHolePunch(peerId, addrs, rtt);
@@ -359,7 +359,7 @@ class _NetNotifiee implements Notifiee {
 
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-    return Future.delayed(const Duration(milliseconds: 10));
+    return Future<void>.delayed(const Duration(milliseconds: 10));
   }
 
   @override

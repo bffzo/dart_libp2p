@@ -276,7 +276,7 @@ void main() {
           fail('HTTP test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );
@@ -428,7 +428,7 @@ void main() {
           fail('POST JSON test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );
@@ -601,7 +601,7 @@ void main() {
           fail('Advanced HTTP features test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );
@@ -779,7 +779,7 @@ void main() {
           fail('PUT/DELETE test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );
@@ -805,7 +805,7 @@ void main() {
             final currentCount = ++requestCounter;
 
             // Simulate some processing time
-            await Future.delayed(const Duration(milliseconds: 50));
+            await Future<void>.delayed(const Duration(milliseconds: 50));
 
             return HttpResponse.json({
               'request_id': requestId,
@@ -938,7 +938,7 @@ void main() {
           fail('Concurrent requests test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 45)),
     );
@@ -1179,7 +1179,7 @@ void main() {
           fail('Error scenarios test failed: $e');
         }
 
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );

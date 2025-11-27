@@ -111,7 +111,7 @@ void main() {
       );
 
       // Wait for grace period plus a little buffer
-      await Future.delayed(gracePeriod * 3 ~/ 2);
+      await Future<void>.delayed(gracePeriod * 3 ~/ 2);
 
       // Verify removePeer was not called
       verifyNever(pstore.removePeer(peerId));
@@ -143,7 +143,7 @@ void main() {
       );
 
       // Wait to ensure the event is processed
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Close the manager
       await manager.close();

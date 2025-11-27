@@ -62,7 +62,7 @@ void main() async {
     print('-----------------------------\n');
 
     // Wait a moment for initial discovery
-    await Future.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(seconds: 2));
     chatClient.showPeerList();
 
     // Start input processing loop

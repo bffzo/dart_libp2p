@@ -295,7 +295,7 @@ void main() {
       await tracker.initialize();
 
       // Wait for a short time
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Change mock behavior
       final newBehavior = NatBehavior(
@@ -305,7 +305,7 @@ void main() {
       mockStunClientPool.setMockBehavior(newBehavior);
 
       // Wait for periodic check to happen
-      await Future.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       // Check that behavior was updated
       expect(
@@ -337,7 +337,7 @@ void main() {
       mockStunClientPool.setMockBehavior(newBehavior);
 
       // Wait for what would have been a periodic check
-      await Future.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       // Check that behavior was not updated
       expect(

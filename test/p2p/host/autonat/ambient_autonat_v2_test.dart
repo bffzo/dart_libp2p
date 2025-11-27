@@ -104,7 +104,7 @@ void main() {
         mockAutoNATv2,
         config: config,
       );
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Assert
       verify(
@@ -149,7 +149,7 @@ void main() {
       );
 
       // Wait for probe to be scheduled and executed
-      await Future.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 3));
 
       // Assert - probe should have been called
       verify(mockAutoNATv2.getReachability(any)).called(greaterThan(0));
@@ -172,7 +172,7 @@ void main() {
       );
 
       // Wait for boot delay and initial probe
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Assert - reachability should be public
       expect(ambient.status, Reachability.public);
@@ -208,7 +208,7 @@ void main() {
       );
 
       // Wait for boot delay and initial probe
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Assert - reachability should be private
       expect(ambient.status, Reachability.private);
@@ -248,19 +248,19 @@ void main() {
       );
 
       // Wait for initial probe
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(ambient.confidence, 0); // First result
 
       // Wait for second probe (retry interval)
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(ambient.confidence, 1);
 
       // Wait for third probe
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(ambient.confidence, 2);
 
       // Wait for fourth probe
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(ambient.confidence, 3); // Max confidence
 
       await ambient.close();
@@ -281,7 +281,7 @@ void main() {
       );
 
       // Wait for initial probe to establish confidence
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Manually set high confidence for testing
       // (In real scenario, this would happen after multiple probes)
@@ -295,7 +295,7 @@ void main() {
       );
 
       // Wait a bit for processing
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // New probe should be scheduled
       // Verify by checking that getReachability was called again
@@ -353,7 +353,7 @@ void main() {
       );
 
       // Wait for probe
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Assert
       verify(mockAutoNATv2.getReachability(any)).called(greaterThan(0));
