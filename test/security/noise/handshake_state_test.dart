@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:dart_libp2p/p2p/security/noise/handshake_state.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('XXHandshakeState', () {
@@ -8,17 +8,20 @@ void main() {
     });
 
     test('has correct state values', () {
-      expect(XXHandshakeState.values, containsAll([
-        XXHandshakeState.initial,
-        XXHandshakeState.sentE,
-        XXHandshakeState.sentEES,
-        XXHandshakeState.complete,
-        XXHandshakeState.error,
-      ]));
+      expect(
+        XXHandshakeState.values,
+        containsAll([
+          XXHandshakeState.initial,
+          XXHandshakeState.sentE,
+          XXHandshakeState.sentEES,
+          XXHandshakeState.complete,
+          XXHandshakeState.error,
+        ]),
+      );
     });
 
     test('states are in correct order', () {
-      final states = XXHandshakeState.values;
+      const states = XXHandshakeState.values;
       expect(states[0], equals(XXHandshakeState.initial));
       expect(states[1], equals(XXHandshakeState.sentE));
       expect(states[2], equals(XXHandshakeState.sentEES));
@@ -34,4 +37,4 @@ void main() {
       expect(XXHandshakeState.error.toString(), contains('error'));
     });
   });
-} 
+}

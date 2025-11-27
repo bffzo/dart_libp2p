@@ -1,7 +1,8 @@
 /// Yamux-specific exception handling and classification
-/// 
+///
 /// This module provides comprehensive exception handling for Yamux multiplexer
 /// operations, similar to the UDX exception handling system.
+library;
 
 import 'dart:async';
 import 'dart:io';
@@ -12,12 +13,6 @@ final _log = Logger('YamuxExceptions');
 
 /// Base class for all Yamux-related exceptions
 abstract class YamuxException implements Exception {
-  final String message;
-  final dynamic originalException; // Changed to dynamic to handle both Exception and Error
-  final StackTrace? originalStackTrace;
-  final DateTime timestamp;
-  final Map<String, dynamic> context;
-
   YamuxException._internal(
     this.message, {
     this.originalException,
@@ -26,6 +21,12 @@ abstract class YamuxException implements Exception {
     DateTime? timestamp,
   })  : timestamp = timestamp ?? DateTime.now(),
         context = context ?? const {};
+  final String message;
+  final dynamic
+      originalException; // Changed to dynamic to handle both Exception and Error
+  final StackTrace? originalStackTrace;
+  final DateTime timestamp;
+  final Map<String, dynamic> context;
 
   @override
   String toString() => 'YamuxException: $message';
@@ -43,22 +44,15 @@ abstract class YamuxException implements Exception {
 
 /// Exception thrown when a Yamux stream is in an invalid state for the requested operation
 class YamuxStreamStateException extends YamuxException {
-  final String currentState;
-  final String requestedOperation;
-  final int streamId;
-
   YamuxStreamStateException(
-    String message, {
+    super.message, {
     required this.currentState,
     required this.requestedOperation,
     required this.streamId,
-    dynamic originalException, // Changed to dynamic
-    StackTrace? originalStackTrace,
+    super.originalException, // Changed to dynamic
+    super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
-          message,
-          originalException: originalException,
-          originalStackTrace: originalStackTrace,
           context: {
             'currentState': currentState,
             'requestedOperation': requestedOperation,
@@ -66,6 +60,9 @@ class YamuxStreamStateException extends YamuxException {
             ...?context,
           },
         );
+  final String currentState;
+  final String requestedOperation;
+  final int streamId;
 
   @override
   String toString() =>
@@ -87,22 +84,15 @@ class YamuxStreamStateException extends YamuxException {
 
 /// Exception thrown when a Yamux stream operation times out
 class YamuxStreamTimeoutException extends YamuxException {
-  final Duration timeout;
-  final String operation;
-  final int streamId;
-
   YamuxStreamTimeoutException(
-    String message, {
+    super.message, {
     required this.timeout,
     required this.operation,
     required this.streamId,
-    Exception? originalException,
-    StackTrace? originalStackTrace,
+    Exception? super.originalException,
+    super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
-          message,
-          originalException: originalException,
-          originalStackTrace: originalStackTrace,
           context: {
             'timeout': timeout.toString(),
             'operation': operation,
@@ -110,6 +100,9 @@ class YamuxStreamTimeoutException extends YamuxException {
             ...?context,
           },
         );
+  final Duration timeout;
+  final String operation;
+  final int streamId;
 
   @override
   String toString() =>
@@ -131,26 +124,22 @@ class YamuxStreamTimeoutException extends YamuxException {
 
 /// Exception thrown when a Yamux stream encounters a protocol error
 class YamuxStreamProtocolException extends YamuxException {
-  final String protocolError;
-  final int streamId;
-
   YamuxStreamProtocolException(
-    String message, {
+    super.message, {
     required this.protocolError,
     required this.streamId,
-    Exception? originalException,
-    StackTrace? originalStackTrace,
+    Exception? super.originalException,
+    super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
-          message,
-          originalException: originalException,
-          originalStackTrace: originalStackTrace,
           context: {
             'protocolError': protocolError,
             'streamId': streamId,
             ...?context,
           },
         );
+  final String protocolError;
+  final int streamId;
 
   @override
   String toString() =>
@@ -171,26 +160,23 @@ class YamuxStreamProtocolException extends YamuxException {
 
 /// Exception thrown when a Yamux session encounters an error
 class YamuxSessionException extends YamuxException {
-  final String sessionError;
-
   YamuxSessionException(
-    String message, {
+    super.message, {
     required this.sessionError,
-    Exception? originalException,
-    StackTrace? originalStackTrace,
+    Exception? super.originalException,
+    super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
-          message,
-          originalException: originalException,
-          originalStackTrace: originalStackTrace,
           context: {
             'sessionError': sessionError,
             ...?context,
           },
         );
+  final String sessionError;
 
   @override
-  String toString() => 'YamuxSessionException: $message (Session error: $sessionError)';
+  String toString() =>
+      'YamuxSessionException: $message (Session error: $sessionError)';
 
   @override
   YamuxException _copyWith({Map<String, dynamic>? context}) {
@@ -226,9 +212,9 @@ class YamuxExceptionHandler {
     // Handle StateError specifically (most common Yamux stream error)
     // StateError extends Error, not Exception
     if (exception is StateError) {
-      final stateError = exception as StateError;
+      final stateError = exception;
       final message = stateError.message;
-      
+
       // Check for specific state-related errors
       if (message.contains('reset') || message.contains('Reset')) {
         return YamuxStreamStateException(
@@ -241,7 +227,7 @@ class YamuxExceptionHandler {
           context: baseContext,
         );
       }
-      
+
       if (message.contains('closed') || message.contains('Closed')) {
         return YamuxStreamStateException(
           'Stream operation failed: stream is closed',
@@ -253,7 +239,7 @@ class YamuxExceptionHandler {
           context: baseContext,
         );
       }
-      
+
       if (message.contains('closing') || message.contains('Closing')) {
         return YamuxStreamStateException(
           'Stream operation failed: stream is closing',
@@ -265,7 +251,7 @@ class YamuxExceptionHandler {
           context: baseContext,
         );
       }
-      
+
       // Generic state error
       return YamuxStreamStateException(
         'Stream operation failed due to invalid state: $message',
@@ -281,7 +267,7 @@ class YamuxExceptionHandler {
     // Handle timeout exceptions
     if (exception is TimeoutException) {
       return YamuxStreamTimeoutException(
-        'Yamux stream operation timed out: ${exception.toString()}',
+        'Yamux stream operation timed out: $exception',
         timeout: exception.duration ?? const Duration(seconds: 30),
         operation: operation ?? 'unknown',
         streamId: streamId ?? -1,
@@ -294,7 +280,7 @@ class YamuxExceptionHandler {
     // Handle socket exceptions (underlying transport issues)
     if (exception is SocketException) {
       return YamuxStreamProtocolException(
-        'Yamux stream socket error: ${exception.toString()}',
+        'Yamux stream socket error: $exception',
         protocolError: 'socket_error',
         streamId: streamId ?? -1,
         originalException: exception,
@@ -306,7 +292,7 @@ class YamuxExceptionHandler {
     // Handle format exceptions (protocol parsing errors)
     if (exception is FormatException) {
       return YamuxStreamProtocolException(
-        'Yamux stream protocol format error: ${exception.toString()}',
+        'Yamux stream protocol format error: $exception',
         protocolError: 'format_error',
         streamId: streamId ?? -1,
         originalException: exception,
@@ -317,7 +303,7 @@ class YamuxExceptionHandler {
 
     // Generic Yamux exception for unclassified errors
     return YamuxStreamProtocolException(
-      'Yamux stream error: ${exception.toString()}',
+      'Yamux stream error: $exception',
       protocolError: 'unknown_error',
       streamId: streamId ?? -1,
       originalException: exception,
@@ -341,7 +327,7 @@ class YamuxExceptionHandler {
         // Already classified, just rethrow
         rethrow;
       }
-      
+
       // Handle both Exception and Error types (StateError extends Error, not Exception)
       if (e is Exception || e is Error) {
         final classified = classifyYamuxException(
@@ -352,16 +338,16 @@ class YamuxExceptionHandler {
           currentState: currentState,
           context: context,
         );
-        
+
         _log.warning(
           'Yamux operation failed: ${classified.message}',
           classified.originalException,
           classified.originalStackTrace,
         );
-        
+
         throw classified;
       }
-      
+
       // Other types (shouldn't happen in normal operation)
       rethrow;
     }
@@ -373,12 +359,12 @@ class YamuxExceptionHandler {
     if (exception is YamuxStreamStateException) {
       return false;
     }
-    
+
     // Timeout exceptions might be recoverable with retry
     if (exception is YamuxStreamTimeoutException) {
       return true;
     }
-    
+
     // Some protocol exceptions might be recoverable
     if (exception is YamuxStreamProtocolException) {
       // Socket errors are usually not recoverable
@@ -392,7 +378,7 @@ class YamuxExceptionHandler {
       // Unknown errors - be conservative
       return false;
     }
-    
+
     // Session exceptions are generally not recoverable
     return false;
   }
@@ -404,17 +390,17 @@ class YamuxExceptionHandler {
       // If stream is already reset or closed, no need to reset again
       return !['reset', 'closed'].contains(exception.currentState);
     }
-    
+
     // Protocol exceptions usually warrant a reset
     if (exception is YamuxStreamProtocolException) {
       return true;
     }
-    
+
     // Timeout exceptions might warrant a reset
     if (exception is YamuxStreamTimeoutException) {
       return true;
     }
-    
+
     // Session exceptions don't reset individual streams
     return false;
   }
@@ -429,7 +415,9 @@ class YamuxExceptionUtils {
         await stream.close();
       }
     } catch (e) {
-      _log.warning('Error during safe stream close${context != null ? ' ($context)' : ''}: $e');
+      _log.warning(
+        'Error during safe stream close${context != null ? ' ($context)' : ''}: $e',
+      );
     }
   }
 
@@ -440,7 +428,9 @@ class YamuxExceptionUtils {
         await stream.reset();
       }
     } catch (e) {
-      _log.warning('Error during safe stream reset${context != null ? ' ($context)' : ''}: $e');
+      _log.warning(
+        'Error during safe stream reset${context != null ? ' ($context)' : ''}: $e',
+      );
     }
   }
 

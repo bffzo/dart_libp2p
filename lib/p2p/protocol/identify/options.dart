@@ -4,28 +4,12 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/p2p/protocol/identify/opts.go
 /// to Dart, using native Dart idioms.
+library;
 
-import 'metrics.dart';
+import 'package:dart_libp2p/p2p/protocol/identify/metrics.dart';
 
 /// Options for configuring the identify service.
 class IdentifyOptions {
-  /// The protocol version string that will be used to identify the family of protocols used by the peer.
-  final String? protocolVersion;
-  
-  /// The user agent this node will identify itself with to peers.
-  final String? userAgent;
-  
-  /// Whether to disable populating signed peer records on the outgoing Identify response.
-  /// If true, ONLY sends the unsigned addresses.
-  final bool disableSignedPeerRecord;
-  
-  /// The metrics tracer to use for collecting metrics.
-  final MetricsTracer? metricsTracer;
-  
-  /// Whether to disable the observed address manager.
-  /// This also effectively disables the NAT emitter and EvtNATDeviceTypeChanged.
-  final bool disableObservedAddrManager;
-  
   /// Creates a new set of identify options.
   const IdentifyOptions({
     this.protocolVersion,
@@ -34,7 +18,24 @@ class IdentifyOptions {
     this.metricsTracer,
     this.disableObservedAddrManager = false,
   });
-  
+
+  /// The protocol version string that will be used to identify the family of protocols used by the peer.
+  final String? protocolVersion;
+
+  /// The user agent this node will identify itself with to peers.
+  final String? userAgent;
+
+  /// Whether to disable populating signed peer records on the outgoing Identify response.
+  /// If true, ONLY sends the unsigned addresses.
+  final bool disableSignedPeerRecord;
+
+  /// The metrics tracer to use for collecting metrics.
+  final MetricsTracer? metricsTracer;
+
+  /// Whether to disable the observed address manager.
+  /// This also effectively disables the NAT emitter and EvtNATDeviceTypeChanged.
+  final bool disableObservedAddrManager;
+
   /// Creates a copy of these options with the given changes.
   IdentifyOptions copyWith({
     String? protocolVersion,
@@ -46,9 +47,11 @@ class IdentifyOptions {
     return IdentifyOptions(
       protocolVersion: protocolVersion ?? this.protocolVersion,
       userAgent: userAgent ?? this.userAgent,
-      disableSignedPeerRecord: disableSignedPeerRecord ?? this.disableSignedPeerRecord,
+      disableSignedPeerRecord:
+          disableSignedPeerRecord ?? this.disableSignedPeerRecord,
       metricsTracer: metricsTracer ?? this.metricsTracer,
-      disableObservedAddrManager: disableObservedAddrManager ?? this.disableObservedAddrManager,
+      disableObservedAddrManager:
+          disableObservedAddrManager ?? this.disableObservedAddrManager,
     );
   }
 }

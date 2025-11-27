@@ -1,23 +1,25 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:dcid/dcid.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
-import 'package:dart_libp2p/core/routing/options.dart';
 
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/core/routing/options.dart';
+import 'package:dcid/dcid.dart';
 
 /// Error thrown when a routing operation fails to find the requested record
 class NotFoundError implements Exception {
-  final String message;
   const NotFoundError([this.message = 'routing: not found']);
+  final String message;
   @override
   String toString() => message;
 }
 
 /// Error thrown when a routing operation is not supported
 class NotSupportedError implements Exception {
+  const NotSupportedError([
+    this.message = 'routing: operation or key not supported',
+  ]);
   final String message;
-  const NotSupportedError([this.message = 'routing: operation or key not supported']);
   @override
   String toString() => message;
 }
@@ -33,7 +35,7 @@ abstract class ContentProviding {
 /// ContentDiscovery is able to retrieve providers for a given CID using the Routing system.
 abstract class ContentDiscovery {
   /// Search for peers who are able to provide a given key
-  /// 
+  ///
   /// When count is 0, this method will return an unbounded number of results.
   Stream<AddrInfo> findProvidersAsync(CID cid, int count);
 }
@@ -85,7 +87,7 @@ abstract class Routing implements ContentRouting, PeerRouting, ValueStore {
 
 /// Returns the key used to retrieve public keys from a value store.
 String keyForPublicKey(PeerId id) {
-  return '/pk/${id.toString()}';
+  return '/pk/$id';
 }
 
 /// Retrieves the public key associated with the given peer ID from the value store.
@@ -105,8 +107,8 @@ Future<dynamic> getPublicKey(ValueStore store, PeerId id) async {
 
   // If the store is a PubKeyFetcher, use the optimized method
   if (store is PubKeyFetcher) {
-    PubKeyFetcher pkFetcher = store as PubKeyFetcher;
-    return await pkFetcher.getPublicKey(id);
+    final pkFetcher = store as PubKeyFetcher;
+    return pkFetcher.getPublicKey(id);
   }
 
   // Otherwise, use the regular getValue method

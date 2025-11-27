@@ -1,49 +1,43 @@
 /// AddrBook implementation for the memory-based peerstore.
+library;
 
 import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/certified_addr_book.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:dart_libp2p/core/record/envelope.dart';
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 
-import '../../../../core/peer/pb/peer_record.pb.dart';
-
-
 /// Logger for the address book.
 final _log = Logger('peerstore');
 
-
 class PeerRecordState {
+  PeerRecordState(this._envelope, this._seq);
   final Envelope _envelope;
   final int _seq;
 
   Envelope get envelope => _envelope;
   int get seq => _seq;
-
-  PeerRecordState(this._envelope, this._seq);
-
 }
 
 /// An address with an expiration time.
 class ExpiringAddr {
-  final MultiAddr addr;
-  Duration ttl;
-  DateTime expiry;
-  final PeerId peer;
-  int heapIndex = -1;
-
   ExpiringAddr({
     required this.addr,
     required this.ttl,
     required this.expiry,
     required this.peer,
   });
+  final MultiAddr addr;
+  Duration ttl;
+  DateTime expiry;
+  final PeerId peer;
+  int heapIndex = -1;
 
   bool expiredBy(DateTime t) {
     return !t.isBefore(expiry);
@@ -61,11 +55,10 @@ bool ttlIsConnected(Duration ttl) {
 
 /// A collection of peer addresses.
 class PeerAddrs {
+  PeerAddrs();
   final _addrs = HashMap<String, Map<String, ExpiringAddr>>();
   final _expiringHeap = <ExpiringAddr>[];
   final _lock = Lock();
-
-  PeerAddrs();
 
   int get length => _expiringHeap.length;
 
@@ -97,52 +90,52 @@ class PeerAddrs {
   void _siftDown(int index) {
     // No change to _siftDown itself, but it relies on correct heap state.
     // Added a defensive check at the start of _siftUpOrDown which calls this.
-      final item = _expiringHeap[index];
-      final halfLength = _expiringHeap.length ~/ 2;
-      while (index < halfLength) {
-        var childIndex = 2 * index + 1;
-        var child = _expiringHeap[childIndex];
-        final rightIndex = childIndex + 1;
-        if (rightIndex < _expiringHeap.length) {
-          final right = _expiringHeap[rightIndex];
-          if (right.expiry.isBefore(child.expiry)) {
-            childIndex = rightIndex;
-            child = right;
-          }
+    final item = _expiringHeap[index];
+    final halfLength = _expiringHeap.length ~/ 2;
+    while (index < halfLength) {
+      var childIndex = 2 * index + 1;
+      var child = _expiringHeap[childIndex];
+      final rightIndex = childIndex + 1;
+      if (rightIndex < _expiringHeap.length) {
+        final right = _expiringHeap[rightIndex];
+        if (right.expiry.isBefore(child.expiry)) {
+          childIndex = rightIndex;
+          child = right;
         }
-        if (!child.expiry.isBefore(item.expiry)) {
-          break;
-        }
-        _expiringHeap[index] = child;
-        _expiringHeap[childIndex] = item;
-        item.heapIndex = childIndex;
-        child.heapIndex = index;
-        index = childIndex;
       }
+      if (!child.expiry.isBefore(item.expiry)) {
+        break;
+      }
+      _expiringHeap[index] = child;
+      _expiringHeap[childIndex] = item;
+      item.heapIndex = childIndex;
+      child.heapIndex = index;
+      index = childIndex;
+    }
   }
 
   // Helper to consolidate sift logic, assuming index is valid for _expiringHeap
   // and heap is not empty when this is called for sifting an element *at* index.
   void _siftUpOrDown(int index) {
+    // Defensive check: If heap is empty or index is out of bounds, nothing to sift.
+    if (_expiringHeap.isEmpty || index < 0 || index >= _expiringHeap.length) {
+      return;
+    }
 
-      // Defensive check: If heap is empty or index is out of bounds, nothing to sift.
-      if (_expiringHeap.isEmpty || index < 0 || index >= _expiringHeap.length) {
-        return;
-      }
-
-      // Sift up if item at index is smaller than parent
-      if (index > 0 && _expiringHeap[index].expiry.isBefore(
-          _expiringHeap[(index - 1) ~/ 2].expiry)) {
-        _siftUp(index);
-      } else {
-        // Else, sift down. _siftDown is safe for heap of size 1 (index 0, halfLength 0, loop doesn't run)
-        _siftDown(index);
-      }
+    // Sift up if item at index is smaller than parent
+    if (index > 0 &&
+        _expiringHeap[index]
+            .expiry
+            .isBefore(_expiringHeap[(index - 1) ~/ 2].expiry)) {
+      _siftUp(index);
+    } else {
+      // Else, sift down. _siftDown is safe for heap of size 1 (index 0, halfLength 0, loop doesn't run)
+      _siftDown(index);
+    }
   }
 
   Future<void> push(ExpiringAddr a) async {
-
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       a.heapIndex = _expiringHeap.length;
       _expiringHeap.add(a);
       _siftUp(a.heapIndex);
@@ -150,17 +143,17 @@ class PeerAddrs {
   }
 
   Future<ExpiringAddr> pop() async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       if (_expiringHeap.isEmpty) {
         // Should not happen if called correctly, but defensive.
-        throw StateError("Cannot pop from an empty heap");
+        throw StateError('Cannot pop from an empty heap');
       }
-      final ExpiringAddr result = _expiringHeap[0];
+      final result = _expiringHeap[0];
 
       if (_expiringHeap.length == 1) {
         _expiringHeap.removeLast();
       } else {
-        final ExpiringAddr last = _expiringHeap.removeLast();
+        final last = _expiringHeap.removeLast();
         _expiringHeap[0] = last;
         last.heapIndex = 0;
         _siftDown(0); // _siftDown is safe for heap of size 1 (now at index 0)
@@ -172,30 +165,29 @@ class PeerAddrs {
   }
 
   Future<void> remove(int index) async {
-
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       if (index < 0 || index >= _expiringHeap.length) {
         // Invalid index or empty heap if length is 0
         return;
       }
 
-      final ExpiringAddr itemToRemove = _expiringHeap[index];
+      final itemToRemove = _expiringHeap[index];
 
-      final int lastIndex = _expiringHeap.length - 1;
+      final lastIndex = _expiringHeap.length - 1;
       if (index == lastIndex) {
         // Removing the last element, just pop it.
         _expiringHeap.removeLast();
       } else {
         // Not the last element. Swap with the last, then sift.
-        final ExpiringAddr lastItem = _expiringHeap
-            .removeLast(); // Get last and shrink heap.
+        final lastItem =
+            _expiringHeap.removeLast(); // Get last and shrink heap.
         _expiringHeap[index] = lastItem; // Place lastItem at 'index'.
         lastItem.heapIndex = index; // Update lastItem's heapIndex.
         _siftUpOrDown(index); // Re-heapify the element now at 'index'.
       }
 
       itemToRemove.heapIndex =
-      -1; // Crucial: mark the targeted item as out of heap.
+          -1; // Crucial: mark the targeted item as out of heap.
     });
   }
 
@@ -219,7 +211,7 @@ class PeerAddrs {
   }
 
   Future<ExpiringAddr?> findAddr(PeerId p, MultiAddr addr) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final peerKey = p.toString();
       final addrKey = addr.toString();
 
@@ -242,8 +234,7 @@ class PeerAddrs {
   }
 
   Future<ExpiringAddr?> popIfExpired(DateTime now) async {
-
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       if (_expiringHeap.isNotEmpty && !now.isBefore(nextExpiry())) {
         final ea = await pop();
         final peerKey = ea.peer.toString();
@@ -274,7 +265,6 @@ class PeerAddrs {
         _siftUp(a.heapIndex);
       }
     });
-
   }
 
   // Unlocked version for internal use when already holding MemoryAddrBook._lock
@@ -291,7 +281,6 @@ class PeerAddrs {
   }
 
   Future<void> insert(ExpiringAddr a) async {
-
     await _lock.synchronized(() async {
       a.heapIndex = -1;
       final peerKey = a.peer.toString();
@@ -333,28 +322,26 @@ class PeerAddrs {
   }
 
   Future<List> getKeys() async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       return _addrs.keys.toList();
     });
   }
 
   Future<bool> containsKey(String peerKey) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final result = _addrs.containsKey(peerKey);
       return result;
     });
-
   }
 
   Future<List<ExpiringAddr>?> getPeerKeyValues(String peerKey) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       return _addrs[peerKey]?.values.toList();
     });
-
   }
 
   Future<Map<String, ExpiringAddr>?> getPeerKeys(String peerKey) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final result = _addrs[peerKey];
       return result;
     });
@@ -400,13 +387,12 @@ class AddrSub {
 
 /// A manager for address subscriptions.
 class AddrSubManager {
+  AddrSubManager();
   final _subs = HashMap<String, List<AddrSub>>();
   final _lock = Lock();
 
-  AddrSubManager();
-
   Future<void> removeSub(PeerId p, AddrSub s) async {
-    await _lock.synchronized( ()async {
+    await _lock.synchronized(() async {
       final peerKey = p.toString();
       final subs = _subs[peerKey];
       if (subs == null || subs.isEmpty) {
@@ -429,7 +415,7 @@ class AddrSubManager {
   }
 
   Future<void> broadcastAddr(PeerId p, MultiAddr addr) async {
-    await _lock.synchronized( () async {
+    await _lock.synchronized(() async {
       final peerKey = p.toString();
       final subs = _subs[peerKey];
       if (subs == null) {
@@ -442,10 +428,13 @@ class AddrSubManager {
     });
   }
 
-  Future<Stream<MultiAddr>> addrStream(PeerId p, List<MultiAddr> initial) async {
+  Future<Stream<MultiAddr>> addrStream(
+    PeerId p,
+    List<MultiAddr> initial,
+  ) async {
     final sub = AddrSub();
 
-    await _lock.synchronized( () async {
+    await _lock.synchronized(() async {
       final peerKey = p.toString();
       if (!_subs.containsKey(peerKey)) {
         _subs[peerKey] = <AddrSub>[];
@@ -462,29 +451,31 @@ class AddrSubManager {
   }
 }
 
-
 const defaultMaxSignedPeerRecords = 100000;
-const defaultMaxUnconnectedAddrs  = 1000000;
-
+const defaultMaxUnconnectedAddrs = 1000000;
 
 /// A memory-based implementation of the AddrBook interface.
 class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
+  /// Creates a new memory-based address book implementation.
+  MemoryAddrBook({int maxUnconnectedAddrs = 1000000})
+      : _maxUnconnectedAddrs = maxUnconnectedAddrs;
   final PeerAddrs _addrs = PeerAddrs();
   final _lock = Lock();
   final AddrSubManager _subManager = AddrSubManager();
   final int _maxUnconnectedAddrs;
-  Map<PeerId, PeerRecordState> _signedPeerRecords = {};
+  final Map<PeerId, PeerRecordState> _signedPeerRecords = {};
 
-  var maxUnconnectedAddrs  = defaultMaxUnconnectedAddrs;
-  var maxSignedPeerRecords = defaultMaxSignedPeerRecords;
-
-  /// Creates a new memory-based address book implementation.
-  MemoryAddrBook({int maxUnconnectedAddrs = 1000000}) : _maxUnconnectedAddrs = maxUnconnectedAddrs;
+  int maxUnconnectedAddrs = defaultMaxUnconnectedAddrs;
+  int maxSignedPeerRecords = defaultMaxSignedPeerRecords;
 
   @override
   Future<void> addAddr(PeerId p, MultiAddr addr, Duration ttl) async {
-    await _lock.synchronized( () async {
-      await _addAddrs(p, [addr], ttl);  // FIXED: Call unlocked version to avoid nested deadlock!
+    await _lock.synchronized(() async {
+      await _addAddrs(
+        p,
+        [addr],
+        ttl,
+      ); // FIXED: Call unlocked version to avoid nested deadlock!
     });
   }
 
@@ -496,24 +487,28 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
   }
 
   Future<void> _addAddrs(PeerId p, List<MultiAddr> addrs, Duration ttl) async {
-    await _addAddrsUnlocked(p, addrs, ttl);  // FIXED: Added missing await!
+    await _addAddrsUnlocked(p, addrs, ttl); // FIXED: Added missing await!
   }
 
-  Future<void> _addAddrsUnlocked(PeerId p, List<MultiAddr> addrs, Duration ttl) async {
-
+  Future<void> _addAddrsUnlocked(
+    PeerId p,
+    List<MultiAddr> addrs,
+    Duration ttl,
+  ) async {
     // If ttl is zero, exit. nothing to do.
     if (ttl <= Duration.zero) {
       return;
     }
 
     // We are over limit, drop these addrs.
-    if (!ttlIsConnected(ttl) && _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
+    if (!ttlIsConnected(ttl) &&
+        _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
       return;
     }
 
     final exp = DateTime.now().add(ttl);
-    
-    for (int i = 0; i < addrs.length; i++) {
+
+    for (var i = 0; i < addrs.length; i++) {
       final addr = addrs[i];
 
       final a = _addrs._findAddrUnlocked(p, addr);
@@ -521,7 +516,7 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
       if (a == null) {
         // Not found, announce it.
         final entry = ExpiringAddr(addr: addr, expiry: exp, ttl: ttl, peer: p);
-        
+
         _addrs._insertUnlocked(entry);
 
         _subManager.broadcastAddr(p, addr);
@@ -551,70 +546,76 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
   @override
   Future<void> setAddrs(PeerId p, List<MultiAddr> addrs, Duration ttl) async {
     // await _lock.synchronized( () async {
-      final exp = DateTime.now().add(ttl);
-      for (final addr in addrs) {
-        // TODO: Handle peer ID in multiaddr
+    final exp = DateTime.now().add(ttl);
+    for (final addr in addrs) {
+      // TODO: Handle peer ID in multiaddr
 
-        final a = await _addrs.findAddr(p, addr);
-        if (a != null) {
-          if (ttl > Duration.zero) {
-            if (a.isConnected() && !ttlIsConnected(ttl) && _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
-              await _addrs.delete(a);
-            } else {
-              a.expiry = exp;
-              a.ttl = ttl;
-              await _addrs.update(a);
-              _subManager.broadcastAddr(p, addr);
-            }
-          } else {
+      final a = await _addrs.findAddr(p, addr);
+      if (a != null) {
+        if (ttl > Duration.zero) {
+          if (a.isConnected() &&
+              !ttlIsConnected(ttl) &&
+              _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
             await _addrs.delete(a);
-          }
-        } else {
-          if (ttl > Duration.zero) {
-            if (!ttlIsConnected(ttl) && _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
-              continue;
-            }
-            final entry = ExpiringAddr(addr: addr, expiry: exp, ttl: ttl, peer: p);
-            await _addrs.insert(entry);
+          } else {
+            a.expiry = exp;
+            a.ttl = ttl;
+            await _addrs.update(a);
             _subManager.broadcastAddr(p, addr);
           }
+        } else {
+          await _addrs.delete(a);
+        }
+      } else {
+        if (ttl > Duration.zero) {
+          if (!ttlIsConnected(ttl) &&
+              _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
+            continue;
+          }
+          final entry =
+              ExpiringAddr(addr: addr, expiry: exp, ttl: ttl, peer: p);
+          await _addrs.insert(entry);
+          _subManager.broadcastAddr(p, addr);
         }
       }
+    }
     // });
   }
 
   @override
   Future<void> updateAddrs(PeerId p, Duration oldTTL, Duration newTTL) async {
     // await _lock.synchronized(() async {
-      final peerKey = p.toString();
-      if (!await _addrs.containsKey(peerKey)) {
-        return;
-      }
+    final peerKey = p.toString();
+    if (!await _addrs.containsKey(peerKey)) {
+      return;
+    }
 
-      final exp = DateTime.now().add(newTTL);
-      final peerkeyValues = await _addrs.getPeerKeyValues(peerKey);
-      for (final a in peerkeyValues!) {
-        if (a.ttl == oldTTL) {
-          if (newTTL == Duration.zero) {
+    final exp = DateTime.now().add(newTTL);
+    final peerkeyValues = await _addrs.getPeerKeyValues(peerKey);
+    for (final a in peerkeyValues!) {
+      if (a.ttl == oldTTL) {
+        if (newTTL == Duration.zero) {
+          await _addrs.delete(a);
+        } else {
+          // We are over limit, drop these addresses.
+          if (ttlIsConnected(oldTTL) &&
+              !ttlIsConnected(newTTL) &&
+              _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
             await _addrs.delete(a);
           } else {
-            // We are over limit, drop these addresses.
-            if (ttlIsConnected(oldTTL) && !ttlIsConnected(newTTL) && _addrs.numUnconnectedAddrs() >= _maxUnconnectedAddrs) {
-              await _addrs.delete(a);
-            } else {
-              a.ttl = newTTL;
-              a.expiry = exp;
-              await _addrs.update(a);
-            }
+            a.ttl = newTTL;
+            a.expiry = exp;
+            await _addrs.update(a);
           }
         }
       }
+    }
     // });
   }
 
   @override
   Future<List<MultiAddr>> addrs(PeerId p) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final peerKey = p.toString();
       if (!_addrs._containsKeyUnlocked(peerKey)) {
         return <MultiAddr>[];
@@ -645,7 +646,7 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
       final peerKey = id.toString();
       if (await _addrs.containsKey(peerKey)) {
         final peerKeys = await _addrs.getPeerKeys(peerKey);
-        for (final a in await peerKeys!.values) {
+        for (final a in peerKeys!.values) {
           initial.add(a.addr);
         }
       }
@@ -682,17 +683,16 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
     });
   }
 
-
   @override
   Future<bool> consumePeerRecord(Envelope recordEnvelope, Duration ttl) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       try {
         final r = await recordEnvelope.record();
-        final rec = r as PeerRecord;
+        final rec = r;
         final pId = PeerId.fromBytes(Uint8List.fromList(rec.peerId));
 
         final pubKey = await pId.extractPublicKey();
-        final pubkeyEquals = await pubKey?.equals(recordEnvelope.publicKey) ;
+        final pubkeyEquals = await pubKey?.equals(recordEnvelope.publicKey);
         if (pubkeyEquals != null && !pubkeyEquals) {
           throw Exception('signing key does not match PeerID in PeerRecord');
         }
@@ -702,18 +702,19 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
         if (lastState != null && lastState.seq > rec.seq.toInt()) {
           return false;
         }
-        
+
         // check if we are over the max signed peer record limit
-        if (lastState == null && _signedPeerRecords.length >= maxSignedPeerRecords) {
+        if (lastState == null &&
+            _signedPeerRecords.length >= maxSignedPeerRecords) {
           throw Exception('too many signed peer records');
         }
-        
-        _signedPeerRecords[pId] = PeerRecordState(
-          recordEnvelope,
-          rec.seq.toInt()
-        );
 
-        final List<MultiAddr> addrs = rec.addresses.map((e) => MultiAddr.fromBytes(Uint8List.fromList(e.multiaddr))).toList();
+        _signedPeerRecords[pId] =
+            PeerRecordState(recordEnvelope, rec.seq.toInt());
+
+        final addrs = rec.addresses
+            .map((e) => MultiAddr.fromBytes(Uint8List.fromList(e.multiaddr)))
+            .toList();
         _addAddrsUnlocked(pId, addrs, ttl);
         return true;
       } on TypeError {
@@ -722,13 +723,11 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
     });
   }
 
-
   @override
   Future<Envelope?> getPeerRecord(PeerId p) async {
-
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       final peerKey = p.toString();
-      if (! await _addrs.containsKey(peerKey)) {
+      if (!await _addrs.containsKey(peerKey)) {
         return null;
       }
       // The record may have expired, but not garbage collected.
@@ -745,7 +744,7 @@ class MemoryAddrBook implements AddrBook, CertifiedAddrBook {
     });
   }
 }
-   
+
 /// Creates a new memory-based address book implementation.
 MemoryAddrBook newAddrBook({int maxUnconnectedAddrs = 1000000}) {
   return MemoryAddrBook(maxUnconnectedAddrs: maxUnconnectedAddrs);

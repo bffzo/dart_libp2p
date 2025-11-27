@@ -1,21 +1,20 @@
 /// Package peerstore provides types and interfaces for local storage of address information,
 /// metadata, and public key material about libp2p peers.
+library;
 
 import 'dart:async';
 
+import 'package:dart_libp2p/core/crypto/keys.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/protocol/protocol.dart';
-
 import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/crypto/keys.dart';
-import 'package:dart_libp2p/core/certified_addr_book.dart';
 
 /// Error thrown when an item is not found in the peerstore.
 class ErrNotFound implements Exception {
-  final String message;
   const ErrNotFound([this.message = 'item not found']);
+  final String message;
   @override
   String toString() => 'ErrNotFound: $message';
 }
@@ -38,17 +37,24 @@ class AddressTTL {
   static const Duration ownObservedAddrTTL = Duration(minutes: 30);
 
   /// The ttl for a "permanent address" (e.g. bootstrap nodes).
-  static const Duration permanentAddrTTL = Duration(days: 365 * 100); // ~100 years
+  static const Duration permanentAddrTTL =
+      Duration(days: 365 * 100); // ~100 years
 
   /// The ttl used for the addresses of a peer to whom
   /// we're connected directly. This is basically permanent, as we will
   /// clear them + re-add under a TempAddrTTL after disconnecting.
-  static const Duration connectedAddrTTL = Duration(days: 365 * 100 - 1); // ~100 years - 1 day
+  static const Duration connectedAddrTTL =
+      Duration(days: 365 * 100 - 1); // ~100 years - 1 day
 }
-
 
 /// Configuration for the peer store
 class PeerStoreConfig {
+  const PeerStoreConfig({
+    this.maxPeers = 1000,
+    this.peerTTL = const Duration(hours: 24),
+    this.cleanupInterval = const Duration(minutes: 30),
+  });
+
   /// The maximum number of peers to store
   final int maxPeers;
 
@@ -57,12 +63,6 @@ class PeerStoreConfig {
 
   /// How often to clean up expired peers
   final Duration cleanupInterval;
-
-  const PeerStoreConfig({
-    this.maxPeers = 1000,
-    this.peerTTL = const Duration(hours: 24),
-    this.cleanupInterval = const Duration(minutes: 30),
-  });
 }
 
 /// Peerstore provides a thread-safe store of Peer related information.
@@ -89,7 +89,8 @@ abstract class Peerstore {
   KeyBook get keyBook;
 
 //   /// Adds or updates a peer
-  Future<void> addOrUpdatePeer(PeerId peerId, {
+  Future<void> addOrUpdatePeer(
+    PeerId peerId, {
     List<MultiAddr>? addrs,
     List<String>? protocols,
     Map<String, dynamic>? metadata,
@@ -128,7 +129,6 @@ abstract class PeerMetadata {
   Future<void> removePeer(PeerId id);
 
   Future<Map<String, dynamic>?> getAll(PeerId peerId);
-
 }
 
 /// AddrBook holds the multiaddrs of peers.
@@ -218,11 +218,17 @@ abstract class ProtoBook {
 
   /// SupportsProtocols returns the set of protocols the peer supports from among the given protocols.
   /// If the returned error is not null, the result is indeterminate.
-  Future<List<ProtocolID>> supportsProtocols(PeerId id, List<ProtocolID> protocols);
+  Future<List<ProtocolID>> supportsProtocols(
+    PeerId id,
+    List<ProtocolID> protocols,
+  );
 
   /// FirstSupportedProtocol returns the first protocol that the peer supports among the given protocols.
   /// If the peer does not support any of the given protocols, this function will return null.
-  Future<ProtocolID?> firstSupportedProtocol(PeerId id, List<ProtocolID> protocols);
+  Future<ProtocolID?> firstSupportedProtocol(
+    PeerId id,
+    List<ProtocolID> protocols,
+  );
 
   /// RemovePeer removes all protocols associated with a peer.
   void removePeer(PeerId id);

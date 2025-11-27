@@ -1,30 +1,17 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:logging/logging.dart'; // Added for logging
 
-import '../../core/connmgr/conn_manager.dart';
-import '../../core/multiaddr.dart';
-import '../../core/network/conn.dart';
-import '../../core/network/transport_conn.dart';
-import '../../core/network/mux.dart' show Multiplexer;
-import '../../core/network/rcmgr.dart' show ResourceManager;
-import 'listener.dart';
-import 'transport_config.dart';
+import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart' show ResourceManager;
+import 'package:dart_libp2p/core/network/transport_conn.dart';
+import 'package:dart_libp2p/p2p/transport/listener.dart';
+import 'package:dart_libp2p/p2p/transport/transport_config.dart';
+import 'package:logging/logging.dart'; // Added for logging
 // import 'connection_manager.dart'; // ConnManager is imported from core
 
 /// TCP implementation of the Listener interface
 class TCPListener implements Listener {
-  final Logger _logger = Logger('TCPListener'); // Added logger
-  final ServerSocket _server;
-  final MultiAddr _addr;
-  final TransportConfig _config;
-  final ConnManager _connManager;
-  // final Multiplexer _multiplexer; // Removed
-  final ResourceManager _resourceManager; // Kept, as _onConnection might need it for raw TCPConnection
-  final Future<TransportConn> Function(Socket socket, MultiAddr localAddr, MultiAddr remoteAddr) _onConnection;
-  final _connectionController = StreamController<TransportConn>();
-  bool _closed = false;
-
   /// Creates a new TCP listener
   TCPListener(
     this._server, {
@@ -33,7 +20,11 @@ class TCPListener implements Listener {
     required ConnManager connManager,
     // required Multiplexer multiplexer, // Removed
     required ResourceManager resourceManager, // Kept
-    required Future<TransportConn> Function(Socket socket, MultiAddr localAddr, MultiAddr remoteAddr) onConnection,
+    required Future<TransportConn> Function(
+      Socket socket,
+      MultiAddr localAddr,
+      MultiAddr remoteAddr,
+    ) onConnection,
   })  : _addr = addr,
         _config = config,
         _connManager = connManager,
@@ -42,14 +33,33 @@ class TCPListener implements Listener {
         _onConnection = onConnection {
     _server.listen(_handleConnection);
   }
+  final Logger _logger = Logger('TCPListener'); // Added logger
+  final ServerSocket _server;
+  final MultiAddr _addr;
+  final TransportConfig _config;
+  final ConnManager _connManager;
+  // final Multiplexer _multiplexer; // Removed
+  final ResourceManager
+      _resourceManager; // Kept, as _onConnection might need it for raw TCPConnection
+  final Future<TransportConn> Function(
+    Socket socket,
+    MultiAddr localAddr,
+    MultiAddr remoteAddr,
+  ) _onConnection;
+  final _connectionController = StreamController<TransportConn>();
+  bool _closed = false;
 
-  void _handleConnection(Socket socket) async {
+  Future<void> _handleConnection(Socket socket) async {
     // Create multiaddrs for local and remote endpoints from the accepted socket
-    final localRealAddr = MultiAddr('/ip4/${socket.address.address}/tcp/${socket.port}');
-    final remoteRealAddr = MultiAddr('/ip4/${socket.remoteAddress.address}/tcp/${socket.remotePort}');
-    
+    final localRealAddr =
+        MultiAddr('/ip4/${socket.address.address}/tcp/${socket.port}');
+    final remoteRealAddr = MultiAddr(
+      '/ip4/${socket.remoteAddress.address}/tcp/${socket.remotePort}',
+    );
+
     try {
-      final connection = await _onConnection(socket, localRealAddr, remoteRealAddr);
+      final connection =
+          await _onConnection(socket, localRealAddr, remoteRealAddr);
       if (!_connectionController.isClosed) {
         _connectionController.add(connection);
       } else {
@@ -62,7 +72,9 @@ class TCPListener implements Listener {
       try {
         await socket.close();
       } catch (closeError) {
-        print('Error closing socket after connection handling error: $closeError');
+        print(
+          'Error closing socket after connection handling error: $closeError',
+        );
       }
     }
   }
@@ -79,22 +91,34 @@ class TCPListener implements Listener {
   @override
   Future<void> close() async {
     if (_closed) {
-      _logger.fine('TCPListener for ${_addr.toString()} already closed.');
+      _logger.fine('TCPListener for $_addr already closed.');
       return;
     }
-    _logger.info('TCPListener for ${_addr.toString()} closing. Stack trace:\n${StackTrace.current}');
+    _logger.info(
+      'TCPListener for $_addr closing. Stack trace:\n${StackTrace.current}',
+    );
     _closed = true;
     try {
       await _server.close();
-      _logger.fine('TCPListener for ${_addr.toString()}: ServerSocket closed.');
+      _logger.fine('TCPListener for $_addr: ServerSocket closed.');
     } catch (e, s) {
-      _logger.warning('TCPListener for ${_addr.toString()}: Error closing ServerSocket: $e', e, s);
+      _logger.warning(
+        'TCPListener for $_addr: Error closing ServerSocket: $e',
+        e,
+        s,
+      );
     }
     try {
       await _connectionController.close();
-      _logger.fine('TCPListener for ${_addr.toString()}: ConnectionController closed.');
+      _logger.fine(
+        'TCPListener for $_addr: ConnectionController closed.',
+      );
     } catch (e, s) {
-      _logger.warning('TCPListener for ${_addr.toString()}: Error closing ConnectionController: $e', e, s);
+      _logger.warning(
+        'TCPListener for $_addr: Error closing ConnectionController: $e',
+        e,
+        s,
+      );
     }
   }
 

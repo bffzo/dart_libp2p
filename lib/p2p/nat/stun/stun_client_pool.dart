@@ -1,43 +1,13 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
-import 'stun_client.dart';
-import '../nat_type.dart';
-import '../nat_behavior.dart';
-import '../nat_behavior_discovery.dart';
+
+import 'package:dart_libp2p/p2p/nat/nat_behavior.dart';
+import 'package:dart_libp2p/p2p/nat/nat_behavior_discovery.dart';
+import 'package:dart_libp2p/p2p/nat/nat_type.dart';
+import 'package:dart_libp2p/p2p/nat/stun/stun_client.dart';
 
 /// A class that manages a pool of STUN clients for improved reliability and NAT detection
 class StunClientPool {
-  /// Default list of STUN servers to use
-  static const List<({String host, int port})> defaultStunServers = [
-    (host: 'stun.l.google.com', port: 19302),
-    (host: 'stun1.l.google.com', port: 19302),
-    (host: 'stun2.l.google.com', port: 19302),
-    (host: 'stun3.l.google.com', port: 19302),
-    (host: 'stun4.l.google.com', port: 19302)
-  ];
-
-  /// Default timeout for STUN requests
-  static const Duration defaultTimeout = Duration(seconds: 5);
-
-  /// Default health check interval
-  static const Duration defaultHealthCheckInterval = Duration(minutes: 5);
-
-  /// List of STUN clients in the pool
-  final List<_StunServerInfo> _servers = [];
-
-  /// Timeout for STUN requests
-  final Duration timeout;
-
-  /// Health check interval
-  final Duration healthCheckInterval;
-
-  /// Random number generator for server selection
-  final Random _random = Random();
-
-  /// Timer for periodic health checks
-  Timer? _healthCheckTimer;
-
   /// Creates a new STUN client pool
   ///
   /// [stunServers] - List of STUN servers to use
@@ -72,6 +42,36 @@ class StunClientPool {
     // Start periodic health checks
     _startHealthChecks();
   }
+
+  /// Default list of STUN servers to use
+  static const List<({String host, int port})> defaultStunServers = [
+    (host: 'stun.l.google.com', port: 19302),
+    (host: 'stun1.l.google.com', port: 19302),
+    (host: 'stun2.l.google.com', port: 19302),
+    (host: 'stun3.l.google.com', port: 19302),
+    (host: 'stun4.l.google.com', port: 19302),
+  ];
+
+  /// Default timeout for STUN requests
+  static const Duration defaultTimeout = Duration(seconds: 5);
+
+  /// Default health check interval
+  static const Duration defaultHealthCheckInterval = Duration(minutes: 5);
+
+  /// List of STUN clients in the pool
+  final List<_StunServerInfo> _servers = [];
+
+  /// Timeout for STUN requests
+  final Duration timeout;
+
+  /// Health check interval
+  final Duration healthCheckInterval;
+
+  /// Random number generator for server selection
+  final Random _random = Random();
+
+  /// Timer for periodic health checks
+  Timer? _healthCheckTimer;
 
   /// Starts periodic health checks
   void _startHealthChecks() {
@@ -162,7 +162,8 @@ class StunClientPool {
       // Need at least 2 servers for accurate detection
       await _checkServerHealth();
       // Try again after health check
-      final updatedHealthyServers = _servers.where((s) => s.healthScore > 30).toList();
+      final updatedHealthyServers =
+          _servers.where((s) => s.healthScore > 30).toList();
       if (updatedHealthyServers.length < 2) {
         // Still not enough healthy servers, use whatever we have
         if (_servers.isEmpty) {
@@ -179,8 +180,8 @@ class StunClientPool {
     }
 
     // Use at least 2 servers for detection
-    final serversToUse = healthyServers.length >= 2 
-        ? healthyServers.sublist(0, min(3, healthyServers.length)) 
+    final serversToUse = healthyServers.length >= 2
+        ? healthyServers.sublist(0, min(3, healthyServers.length))
         : _servers.sublist(0, min(3, _servers.length));
 
     // Get responses from multiple servers
@@ -245,7 +246,7 @@ class StunClientPool {
         final behavior = await discovery.discoverBehavior();
 
         // If we got a valid result (not unknown for both behaviors), return it
-        if (behavior.mappingBehavior != NatMappingBehavior.unknown || 
+        if (behavior.mappingBehavior != NatMappingBehavior.unknown ||
             behavior.filteringBehavior != NatFilteringBehavior.unknown) {
           return behavior;
         }
@@ -272,13 +273,15 @@ class StunClientPool {
 
     // Symmetric NAT has address-dependent or address-and-port-dependent mapping
     if (behavior.mappingBehavior == NatMappingBehavior.addressDependent ||
-        behavior.mappingBehavior == NatMappingBehavior.addressAndPortDependent) {
+        behavior.mappingBehavior ==
+            NatMappingBehavior.addressAndPortDependent) {
       return NatType.symmetric;
     }
 
     // Full cone NAT has endpoint-independent mapping and filtering
     if (behavior.mappingBehavior == NatMappingBehavior.endpointIndependent &&
-        behavior.filteringBehavior == NatFilteringBehavior.endpointIndependent) {
+        behavior.filteringBehavior ==
+            NatFilteringBehavior.endpointIndependent) {
       return NatType.fullCone;
     }
 
@@ -290,7 +293,8 @@ class StunClientPool {
 
     // Port restricted cone NAT has endpoint-independent mapping and address-and-port-dependent filtering
     if (behavior.mappingBehavior == NatMappingBehavior.endpointIndependent &&
-        behavior.filteringBehavior == NatFilteringBehavior.addressAndPortDependent) {
+        behavior.filteringBehavior ==
+            NatFilteringBehavior.addressAndPortDependent) {
       return NatType.portRestricted;
     }
 
@@ -299,16 +303,27 @@ class StunClientPool {
   }
 
   /// Gets the current health status of all servers in the pool
-  List<({String host, int port, int healthScore, Duration? lastResponseTime, DateTime? lastSuccessTime, int consecutiveFailures})> 
-      getServerHealthStatus() {
-    return _servers.map((s) => (
-      host: s.host,
-      port: s.port,
-      healthScore: s.healthScore,
-      lastResponseTime: s.lastResponseTime,
-      lastSuccessTime: s.lastSuccessTime,
-      consecutiveFailures: s.consecutiveFailures,
-    )).toList();
+  List<
+      ({
+        String host,
+        int port,
+        int healthScore,
+        Duration? lastResponseTime,
+        DateTime? lastSuccessTime,
+        int consecutiveFailures
+      })> getServerHealthStatus() {
+    return _servers
+        .map(
+          (s) => (
+            host: s.host,
+            port: s.port,
+            healthScore: s.healthScore,
+            lastResponseTime: s.lastResponseTime,
+            lastSuccessTime: s.lastSuccessTime,
+            consecutiveFailures: s.consecutiveFailures,
+          ),
+        )
+        .toList();
   }
 
   /// Adds a new STUN server to the pool
@@ -349,14 +364,6 @@ class StunClientPool {
 
 /// Internal class to track STUN server information
 class _StunServerInfo {
-  final StunClient client;
-  final String host;
-  final int port;
-  int healthScore;
-  Duration? lastResponseTime;
-  DateTime? lastSuccessTime;
-  int consecutiveFailures;
-
   _StunServerInfo({
     required this.client,
     required this.host,
@@ -366,4 +373,11 @@ class _StunServerInfo {
     required this.lastSuccessTime,
     required this.consecutiveFailures,
   });
+  final StunClient client;
+  final String host;
+  final int port;
+  int healthScore;
+  Duration? lastResponseTime;
+  DateTime? lastSuccessTime;
+  int consecutiveFailures;
 }

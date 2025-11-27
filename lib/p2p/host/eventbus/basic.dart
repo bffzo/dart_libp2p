@@ -2,21 +2,17 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/p2p/host/eventbus/basic.go
 /// to Dart, using native Dart idioms like Stream Controllers instead of Go channels.
+library;
 
 import 'dart:async';
 
+import 'package:dart_libp2p/core/event/bus.dart';
+import 'package:dart_libp2p/p2p/host/eventbus/metrics.dart';
+import 'package:dart_libp2p/p2p/host/eventbus/opts.dart';
 import 'package:synchronized/synchronized.dart';
-
-import '../../../core/event/bus.dart';
-import 'opts.dart';
-import 'metrics.dart';
 
 /// BasicBus is a type-based event delivery system
 class BasicBus implements EventBus {
-  final Map<String, _Node> _nodes = {};
-  final _WildcardNode _wildcard = _WildcardNode();
-  MetricsTracer? _metricsTracer;
-
   /// Creates a new BasicBus with the given options
   BasicBus({List<BusOption>? options}) : _metricsTracer = null {
     if (options != null) {
@@ -25,6 +21,9 @@ class BasicBus implements EventBus {
       }
     }
   }
+  final Map<String, _Node> _nodes = {};
+  final _WildcardNode _wildcard = _WildcardNode();
+  MetricsTracer? _metricsTracer;
 
   /// Sets the metrics tracer for this bus
   void setMetricsTracer(MetricsTracer tracer) {
@@ -48,7 +47,7 @@ class BasicBus implements EventBus {
 
     // Handle wildcard subscription
     if (identical(eventType, WildcardSubscription)) {
-      final controller = StreamController<Object>.broadcast(sync: false);
+      final controller = StreamController<Object>.broadcast();
       final sub = _WildcardSubscription(
         controller: controller,
         node: _wildcard,
@@ -72,9 +71,9 @@ class BasicBus implements EventBus {
       types = [eventType.toString()];
     }
 
-    final controller = StreamController<Object>.broadcast(sync: false);
-    final List<_Node> nodeListForSubscription = [];
-    final List<Future<void>> pendingInitializations = [];
+    final controller = StreamController<Object>.broadcast();
+    final nodeListForSubscription = <_Node>[];
+    final pendingInitializations = <Future<void>>[];
 
     final sub = _Subscription(
       controller: controller,
@@ -86,20 +85,27 @@ class BasicBus implements EventBus {
     );
 
     for (final eventTypeString in types) {
-      final future = _withNode(eventTypeString, (node) async {
-        await node.addSink(_NamedSink(controller: controller, name: sub.name));
-        nodeListForSubscription.add(node); // Add to the list passed to _Subscription
-        node.keepLast = true; // Always keep the last event when there are subscribers
-        _metricsTracer?.addSubscriber(eventTypeString);
-        // Deliver the last event directly if available
-        if (node.last != null) {
-          Future.microtask(() {
-            if (!controller.isClosed) {
-              controller.add(node.last!);
-            }
-          });
-        }
-      }, null);
+      final future = _withNode(
+        eventTypeString,
+        (node) async {
+          await node
+              .addSink(_NamedSink(controller: controller, name: sub.name));
+          nodeListForSubscription
+              .add(node); // Add to the list passed to _Subscription
+          node.keepLast =
+              true; // Always keep the last event when there are subscribers
+          _metricsTracer?.addSubscriber(eventTypeString);
+          // Deliver the last event directly if available
+          if (node.last != null) {
+            Future.microtask(() {
+              if (!controller.isClosed) {
+                controller.add(node.last!);
+              }
+            });
+          }
+        },
+        null,
+      );
       pendingInitializations.add(future);
     }
 
@@ -122,19 +128,23 @@ class BasicBus implements EventBus {
 
     late _Emitter emitter;
 
-    await _withNode(eventName, (node) async {
-      node.nEmitters++;
-      if (settings.makeStateful) {
-        node.keepLast = true;
-      }
-      emitter = _Emitter(
-        node: node,
-        type: eventName,
-        dropper: _tryDropNode,
-        wildcard: _wildcard,
-        metricsTracer: _metricsTracer,
-      );
-    }, null);
+    await _withNode(
+      eventName,
+      (node) async {
+        node.nEmitters++;
+        if (settings.makeStateful) {
+          node.keepLast = true;
+        }
+        emitter = _Emitter(
+          node: node,
+          type: eventName,
+          dropper: _tryDropNode,
+          wildcard: _wildcard,
+          metricsTracer: _metricsTracer,
+        );
+      },
+      null,
+    );
 
     return emitter;
   }
@@ -144,11 +154,15 @@ class BasicBus implements EventBus {
     return List.unmodifiable(_nodes.keys);
   }
 
-  Future<void> _withNode(String type, Future<void> Function(_Node) callback, Future<void> Function(_Node?)? asyncCallback) async {
-    _Node? node = _nodes[type.toString()];
+  Future<void> _withNode(
+    String type,
+    Future<void> Function(_Node) callback,
+    Future<void> Function(_Node?)? asyncCallback,
+  ) async {
+    var node = _nodes[type];
     if (node == null) {
       node = _Node(type: type, metricsTracer: _metricsTracer);
-      _nodes[type.toString()] = node;
+      _nodes[type] = node;
     }
 
     await node.lock.synchronized(() async {
@@ -161,30 +175,23 @@ class BasicBus implements EventBus {
   }
 
   Future<void> _tryDropNode(String type) async {
-    final node = _nodes[type.toString()];
+    final node = _nodes[type];
     if (node == null) {
-      return; 
+      return;
     }
 
-    bool shouldDrop = false;
+    var shouldDrop = false;
     if (node.nEmitters == 0 && node.sinks.isEmpty) {
       shouldDrop = true;
     }
 
     if (shouldDrop) {
-      _nodes.remove(type.toString());
+      _nodes.remove(type);
     }
   }
 }
 
 class _Emitter implements Emitter {
-  final _Node node;
-  final String type;
-  final Future<void> Function(String) dropper;
-  final _WildcardNode wildcard;
-  final MetricsTracer? metricsTracer;
-  bool _closed = false;
-
   _Emitter({
     required this.node,
     required this.type,
@@ -192,6 +199,12 @@ class _Emitter implements Emitter {
     required this.wildcard,
     this.metricsTracer,
   });
+  final _Node node;
+  final String type;
+  final Future<void> Function(String) dropper;
+  final _WildcardNode wildcard;
+  final MetricsTracer? metricsTracer;
+  bool _closed = false;
 
   @override
   Future<void> emit(Object event) async {
@@ -200,7 +213,9 @@ class _Emitter implements Emitter {
     }
 
     if (event.runtimeType.toString() != type) {
-      throw Exception('Emit called with wrong type. Expected: $type, got: ${event.toString()}');
+      throw Exception(
+        'Emit called with wrong type. Expected: $type, got: $event',
+      );
     }
 
     await node.emit(event);
@@ -226,28 +241,27 @@ class _Emitter implements Emitter {
 }
 
 class _NamedSink {
+  _NamedSink({required this.controller, required this.name});
   final StreamController<Object> controller;
   final String name;
-
-  _NamedSink({required this.controller, required this.name});
 }
 
 class _WildcardSubscription implements Subscription {
-  final StreamController<Object> _controller;
-  @override
-  Stream<Object> get stream => _controller.stream.asBroadcastStream();
-  final _WildcardNode node;
-  final String name;
-  final MetricsTracer? metricsTracer;
-  bool _closed = false;
-  final Lock _closeLock = Lock();
-
   _WildcardSubscription({
     required StreamController<Object> controller,
     required this.node,
     required this.name,
     this.metricsTracer,
   }) : _controller = controller;
+  final StreamController<Object> _controller;
+  @override
+  Stream<Object> get stream => _controller.stream.asBroadcastStream();
+  final _WildcardNode node;
+  @override
+  final String name;
+  final MetricsTracer? metricsTracer;
+  bool _closed = false;
+  final Lock _closeLock = Lock();
 
   @override
   Future<void> close() async {
@@ -260,7 +274,9 @@ class _WildcardSubscription implements Subscription {
       }
 
       await node.lock.synchronized(() async {
-        node.sinks.removeWhere((sink) => sink.name == name && sink.controller == _controller);
+        node.sinks.removeWhere(
+          (sink) => sink.name == name && sink.controller == _controller,
+        );
         metricsTracer?.removeSubscriber(WildcardSubscription.toString());
       });
     });
@@ -268,6 +284,15 @@ class _WildcardSubscription implements Subscription {
 }
 
 class _Subscription implements Subscription {
+  _Subscription({
+    required StreamController<Object> controller,
+    required this.nodes,
+    required List<Future<void>> pendingOps,
+    required this.dropper,
+    required this.name,
+    this.metricsTracer,
+  })  : _controller = controller,
+        _pendingOps = pendingOps;
   final StreamController<Object> _controller;
   @override
   Stream<Object> get stream => _controller.stream.asBroadcastStream();
@@ -281,23 +306,13 @@ class _Subscription implements Subscription {
   bool _initializationComplete = false;
   final Lock _closeLock = Lock();
 
-  _Subscription({
-    required StreamController<Object> controller,
-    required this.nodes,
-    required List<Future<void>> pendingOps,
-    required this.dropper,
-    required this.name,
-    this.metricsTracer,
-  })  : _controller = controller,
-        _pendingOps = pendingOps;
-
   Future<void> _ensureInitialized() async {
     if (!_initializationComplete) {
-      final List<Future<void>> opsToWait = List.from(_pendingOps);
+      final opsToWait = List<Future<void>>.from(_pendingOps);
       try {
         await Future.wait(opsToWait);
       } finally {
-        _initializationComplete = true; 
+        _initializationComplete = true;
       }
     }
   }
@@ -314,11 +329,13 @@ class _Subscription implements Subscription {
         await _controller.close();
       }
 
-      final List<_Node> nodesToProcess = List.from(nodes);
+      final nodesToProcess = List<_Node>.from(nodes);
 
       for (final node in nodesToProcess) {
         await node.lock.synchronized(() async {
-          node.sinks.removeWhere((sink) => sink.name == name && sink.controller == _controller);
+          node.sinks.removeWhere(
+            (sink) => sink.name == name && sink.controller == _controller,
+          );
           metricsTracer?.removeSubscriber(node.type);
           if (node.sinks.isEmpty && node.nEmitters == 0) {
             await dropper(node.type);
@@ -332,6 +349,7 @@ class _Subscription implements Subscription {
 }
 
 class _Node {
+  _Node({required this.type, this.metricsTracer});
   final Lock lock = Lock();
   final String type;
   final List<_NamedSink> sinks = [];
@@ -340,8 +358,6 @@ class _Node {
   int nEmitters = 0;
   bool keepLast = false;
   Object? last;
-
-  _Node({required this.type, this.metricsTracer});
 
   Future<void> addSink(_NamedSink sink) async {
     sinks.add(sink);
@@ -355,7 +371,7 @@ class _Node {
 
       // Iterate over a copy of sinks to avoid concurrent modification if a sink.controller.add throws
       // and somehow leads to modification of the sinks list (though unlikely with current structure).
-      final List<_NamedSink> sinksToNotify = List.from(sinks);
+      final sinksToNotify = List<_NamedSink>.from(sinks);
       for (final sink in sinksToNotify) {
         _sendSubscriberMetrics(metricsTracer, sink);
         try {
@@ -372,11 +388,11 @@ class _Node {
 }
 
 class _WildcardNode {
+  _WildcardNode({MetricsTracer? metricsTracer})
+      : _metricsTracer = metricsTracer;
   final Lock lock = Lock();
   final List<_NamedSink> sinks = [];
   MetricsTracer? _metricsTracer;
-
-  _WildcardNode({MetricsTracer? metricsTracer}) : _metricsTracer = metricsTracer;
 
   Future<void> addSink(_NamedSink sink) async {
     await lock.synchronized(() async {
@@ -385,7 +401,8 @@ class _WildcardNode {
     });
   }
 
-  Future<void> removeSink(StreamSink<Object> controller) async { // This method seems unused, but kept for now.
+  Future<void> removeSink(StreamSink<Object> controller) async {
+    // This method seems unused, but kept for now.
     await lock.synchronized(() async {
       sinks.removeWhere((sink) => sink.controller.sink == controller);
     });
@@ -396,7 +413,7 @@ class _WildcardNode {
 
     await lock.synchronized(() async {
       // Iterate over a copy of sinks
-      final List<_NamedSink> sinksToNotify = List.from(sinks);
+      final sinksToNotify = List<_NamedSink>.from(sinks);
       for (final sink in sinksToNotify) {
         _sendSubscriberMetrics(_metricsTracer, sink);
         try {
@@ -404,7 +421,8 @@ class _WildcardNode {
             sink.controller.add(event);
           }
         } catch (e) {
-          print('Warning: subscriber named "${sink.name}" is a slow consumer of wildcard events. '
+          print(
+              'Warning: subscriber named "${sink.name}" is a slow consumer of wildcard events. '
               'This can lead to libp2p stalling and hard to debug issues. Error: $e');
         }
       }

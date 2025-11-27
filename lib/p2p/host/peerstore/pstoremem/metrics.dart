@@ -1,4 +1,5 @@
 /// Metrics implementation for the memory-based peerstore.
+library;
 
 import 'dart:collection';
 
@@ -6,21 +7,19 @@ import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:synchronized/synchronized.dart';
 
-
 /// The smoothing factor for the exponentially weighted moving average.
 const latencyEWMASmoothing = 0.1;
 
 /// A memory-based implementation of the Metrics interface.
 class MemoryMetrics implements Metrics {
+  /// Creates a new memory-based metrics implementation.
+  MemoryMetrics();
   final _latencyMap = HashMap<String, Duration>();
   final _lock = Lock();
 
-  /// Creates a new memory-based metrics implementation.
-  MemoryMetrics();
-
   @override
   Future<Duration> latencyEWMA(PeerId id) async {
-    return await _lock.synchronized(() async {
+    return _lock.synchronized(() async {
       return _latencyMap[id.toString()] ?? Duration.zero;
     });
   }
@@ -34,7 +33,9 @@ class MemoryMetrics implements Metrics {
       // Calculate the new exponentially weighted moving average
       final oldNanos = oldLatency.inMicroseconds;
       final newNanos = latency.inMicroseconds;
-      final updatedNanos = (oldNanos * (1 - latencyEWMASmoothing) + newNanos * latencyEWMASmoothing).round();
+      final updatedNanos = (oldNanos * (1 - latencyEWMASmoothing) +
+              newNanos * latencyEWMASmoothing)
+          .round();
 
       _latencyMap[key] = Duration(microseconds: updatedNanos);
     });

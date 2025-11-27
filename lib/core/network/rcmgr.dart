@@ -1,19 +1,14 @@
 import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/protocol/protocol.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart'; // Provides concrete PeerId
 import 'package:dart_libp2p/core/network/common.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart'; // Provides concrete PeerId
+import 'package:dart_libp2p/core/protocol/protocol.dart';
 // conn.dart is not directly used by interfaces here, but might be by implementations
 
 // --- New/Explicit Definitions Start ---
 
 /// ScopeStat is a struct containing resource accounting information.
 class ScopeStat {
-  final int numStreamsInbound;
-  final int numStreamsOutbound;
-  final int numConnsInbound;
-  final int numConnsOutbound;
-  final int numFD;
-  final int memory; // Dart's int handles arbitrary precision, similar to Go's int64
+  // Dart's int handles arbitrary precision, similar to Go's int64
 
   const ScopeStat({
     this.numStreamsInbound = 0,
@@ -23,6 +18,12 @@ class ScopeStat {
     this.numFD = 0,
     this.memory = 0,
   });
+  final int numStreamsInbound;
+  final int numStreamsOutbound;
+  final int numConnsInbound;
+  final int numConnsOutbound;
+  final int numFD;
+  final int memory;
 }
 
 /// ResourceScope is the interface for all scopes.
@@ -57,7 +58,11 @@ abstract class ResourceManager implements ResourceScopeViewer {
   /// is scoped at the transient scope.
   /// The caller owns the returned scope and is responsible for calling Done in order to signify
   /// the end of the scope's span.
-  Future<ConnManagementScope> openConnection(Direction dir, bool usefd, MultiAddr endpoint);
+  Future<ConnManagementScope> openConnection(
+    Direction dir,
+    bool usefd,
+    MultiAddr endpoint,
+  );
 
   /// OpenStream creates a new stream scope, initially unnegotiated.
   /// An unnegotiated stream will be initially unattached to any protocol scope
@@ -80,10 +85,16 @@ abstract class ResourceScopeViewer {
   Future<T> viewTransient<T>(Future<T> Function(ResourceScope scope) f);
 
   /// ViewService retrieves a service-specific scope.
-  Future<T> viewService<T>(String service, Future<T> Function(ServiceScope scope) f);
+  Future<T> viewService<T>(
+    String service,
+    Future<T> Function(ServiceScope scope) f,
+  );
 
   /// ViewProtocol views the resource management scope for a specific protocol.
-  Future<T> viewProtocol<T>(ProtocolID protocol, Future<T> Function(ProtocolScope scope) f);
+  Future<T> viewProtocol<T>(
+    ProtocolID protocol,
+    Future<T> Function(ProtocolScope scope) f,
+  );
 
   /// ViewPeer views the resource management scope for a specific peer.
   Future<T> viewPeer<T>(PeerId peerId, Future<T> Function(PeerScope scope) f);
@@ -122,11 +133,12 @@ abstract class ConnManagementScope implements ResourceScopeSpan {
 abstract class ConnScope implements ResourceScope {}
 
 /// StreamManagementScope is the interface for stream resource scopes.
-abstract class StreamManagementScope implements ResourceScopeSpan, StreamScope{
+abstract class StreamManagementScope implements ResourceScopeSpan, StreamScope {
   ProtocolScope? get protocolScope;
   Future<void> setProtocol(ProtocolID protocol);
   ServiceScope? get serviceScope;
-  PeerScope get peerScope; // In Go, this is derived from the connection. Here it's explicit.
+  PeerScope
+      get peerScope; // In Go, this is derived from the connection. Here it's explicit.
 }
 
 /// StreamScope is the user view of a StreamScope.
@@ -138,31 +150,44 @@ abstract class StreamScope implements ResourceScope {
 class NullResourceManager implements ResourceManager {
   @override
   Future<T> viewSystem<T>(Future<T> Function(ResourceScope scope) f) async {
-    return await f(NullScope());
+    return f(NullScope());
   }
 
   @override
   Future<T> viewTransient<T>(Future<T> Function(ResourceScope scope) f) async {
-    return await f(NullScope());
+    return f(NullScope());
   }
 
   @override
-  Future<T> viewService<T>(String service, Future<T> Function(ServiceScope scope) f) async {
-    return await f(NullScope());
+  Future<T> viewService<T>(
+    String service,
+    Future<T> Function(ServiceScope scope) f,
+  ) async {
+    return f(NullScope());
   }
 
   @override
-  Future<T> viewProtocol<T>(ProtocolID protocol, Future<T> Function(ProtocolScope scope) f) async {
-    return await f(NullScope());
+  Future<T> viewProtocol<T>(
+    ProtocolID protocol,
+    Future<T> Function(ProtocolScope scope) f,
+  ) async {
+    return f(NullScope());
   }
 
   @override
-  Future<T> viewPeer<T>(PeerId peerId, Future<T> Function(PeerScope scope) f) async {
-    return await f(NullScope());
+  Future<T> viewPeer<T>(
+    PeerId peerId,
+    Future<T> Function(PeerScope scope) f,
+  ) async {
+    return f(NullScope());
   }
 
   @override
-  Future<ConnManagementScope> openConnection(Direction dir, bool usefd, MultiAddr endpoint) async {
+  Future<ConnManagementScope> openConnection(
+    Direction dir,
+    bool usefd,
+    MultiAddr endpoint,
+  ) async {
     return NullScope();
   }
 
@@ -176,12 +201,17 @@ class NullResourceManager implements ResourceManager {
 }
 
 /// NullScope is a stub for tests and initialization of default values
-class NullScope implements 
-    ResourceScope, ResourceScopeSpan, 
-    ServiceScope, ProtocolScope, PeerScope, 
-    ConnManagementScope, ConnScope, 
-    StreamManagementScope, StreamScope {
-      
+class NullScope
+    implements
+        ResourceScope,
+        ResourceScopeSpan,
+        ServiceScope,
+        ProtocolScope,
+        PeerScope,
+        ConnManagementScope,
+        ConnScope,
+        StreamManagementScope,
+        StreamScope {
   @override
   Future<void> reserveMemory(int size, int priority) async {}
 
@@ -206,24 +236,29 @@ class NullScope implements
   ProtocolID get protocol => '';
 
   @override
-  PeerId get peer => PeerId.fromString(''); // Assuming PeerId has a fromString constructor or similar
+  PeerId get peer => PeerId.fromString(
+        '',
+      ); // Assuming PeerId has a fromString constructor or similar
 
   // ConnManagementScope
   @override
-  PeerScope get peerScope => this; // NullScope acts as its own PeerScope for simplicity
+  PeerScope get peerScope =>
+      this; // NullScope acts as its own PeerScope for simplicity
 
   @override
   Future<void> setPeer(PeerId peerId) async {}
 
   // StreamManagementScope
   @override
-  ProtocolScope? get protocolScope => this; // NullScope acts as its own ProtocolScope
+  ProtocolScope? get protocolScope =>
+      this; // NullScope acts as its own ProtocolScope
 
   @override
   Future<void> setProtocol(ProtocolID protocol) async {}
 
   @override
-  ServiceScope? get serviceScope => this; // NullScope acts as its own ServiceScope
+  ServiceScope? get serviceScope =>
+      this; // NullScope acts as its own ServiceScope
 
   // StreamManagementScope & StreamScope
   @override

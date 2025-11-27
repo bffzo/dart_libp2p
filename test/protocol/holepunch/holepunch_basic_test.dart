@@ -1,22 +1,20 @@
-import 'dart:async';
-
 import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/network/network.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/network.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
-import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/holepunch_service.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/service.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart';
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
+import 'package:dart_libp2p/p2p/protocol/identify/id_service.dart';
 import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
 @GenerateMocks([
-  Host, 
-  Network, 
-  IDService, 
+  Host,
+  Network,
+  IDService,
   Peerstore,
 ])
 import 'holepunch_basic_test.mocks.dart';
@@ -36,12 +34,12 @@ void main() {
       mockIdService = MockIDService();
       mockPeerstore = MockPeerstore();
       testPeerId = await PeerId.random();
-      
+
       listenAddrs = () => [
-        MultiAddr('/ip4/127.0.0.1/tcp/4001'),
-        MultiAddr('/ip6/::1/tcp/4002'),
-      ];
-      
+            MultiAddr('/ip4/127.0.0.1/tcp/4001'),
+            MultiAddr('/ip6/::1/tcp/4002'),
+          ];
+
       // Setup basic mock stubs
       when(mockHost.network).thenReturn(mockNetwork);
       when(mockHost.peerStore).thenReturn(mockPeerstore);
@@ -59,7 +57,7 @@ void main() {
           listenAddrs,
           options: const HolePunchOptions(),
         );
-        
+
         expect(service, isNotNull);
         expect(service, isA<HolePunchService>());
       });
@@ -70,7 +68,7 @@ void main() {
           mockIdService,
           listenAddrs,
         );
-        
+
         expect(service, isNotNull);
         expect(service, isA<HolePunchService>());
       });
@@ -86,8 +84,8 @@ void main() {
       });
 
       test('should have reasonable timeout values', () {
-        expect(streamTimeout, equals(Duration(minutes: 1)));
-        expect(dialTimeout, equals(Duration(seconds: 5)));
+        expect(streamTimeout, equals(const Duration(minutes: 1)));
+        expect(dialTimeout, equals(const Duration(seconds: 5)));
         expect(maxRetries, equals(3));
         expect(maxMsgSize, equals(4 * 1024));
       });
@@ -95,18 +93,15 @@ void main() {
 
     group('HolePunch Options', () {
       test('should create options with custom values', () {
-        const options = HolePunchOptions(
-          tracer: null,
-          filter: null,
-        );
-        
+        const options = HolePunchOptions();
+
         expect(options.tracer, isNull);
         expect(options.filter, isNull);
       });
 
       test('should create default options', () {
         const options = HolePunchOptions();
-        
+
         expect(options.tracer, isNull);
         expect(options.filter, isNull);
       });
@@ -119,9 +114,9 @@ void main() {
           mockIdService,
           listenAddrs,
         );
-        
+
         expect(service, isA<HolePunchService>());
-        
+
         // Should have the required methods
         expect(service.directConnect, isA<Function>());
         expect(service.start, isA<Function>());
@@ -131,7 +126,7 @@ void main() {
 
     group('Service Lifecycle', () {
       late HolePunchServiceImpl service;
-      
+
       setUp(() {
         service = HolePunchServiceImpl(
           mockHost,
@@ -151,7 +146,7 @@ void main() {
 
       test('should start successfully', () async {
         await expectLater(service.start(), completes);
-        
+
         // Verify the service registered a stream handler
         verify(mockHost.setStreamHandler(protocolId, any)).called(1);
       });
@@ -159,7 +154,7 @@ void main() {
       test('should close successfully after starting', () async {
         await service.start();
         await expectLater(service.close(), completes);
-        
+
         // Verify cleanup happened
         verify(mockHost.removeStreamHandler(protocolId)).called(1);
       });

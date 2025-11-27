@@ -1,20 +1,19 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'stomp_constants.dart';
-import 'stomp_exceptions.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_constants.dart';
+import 'package:dart_libp2p/p2p/protocol/stomp/stomp_exceptions.dart';
 
 /// Represents a STOMP frame with command, headers, and body
 class StompFrame {
-  final String command;
-  final Map<String, String> headers;
-  final Uint8List? body;
-
   StompFrame({
     required this.command,
     Map<String, String>? headers,
     this.body,
   }) : headers = headers ?? <String, String>{};
+  final String command;
+  final Map<String, String> headers;
+  final Uint8List? body;
 
   /// Creates a STOMP frame from raw bytes
   static StompFrame fromBytes(Uint8List data) {
@@ -97,22 +96,22 @@ class StompFrame {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! StompFrame) return false;
-    
+
     if (command != other.command) return false;
     if (headers.length != other.headers.length) return false;
-    
+
     for (final entry in headers.entries) {
       if (other.headers[entry.key] != entry.value) return false;
     }
-    
+
     if (body == null && other.body == null) return true;
     if (body == null || other.body == null) return false;
     if (body!.length != other.body!.length) return false;
-    
-    for (int i = 0; i < body!.length; i++) {
+
+    for (var i = 0; i < body!.length; i++) {
       if (body![i] != other.body![i]) return false;
     }
-    
+
     return true;
   }
 
@@ -153,7 +152,8 @@ class StompFrameParser {
     }
 
     position = commandEnd + 1;
-    if (position < data.length && data[position - 1] == StompConstants.carriageReturn) {
+    if (position < data.length &&
+        data[position - 1] == StompConstants.carriageReturn) {
       position++; // Skip LF after CR
     }
 
@@ -166,11 +166,12 @@ class StompFrameParser {
       }
 
       final line = _extractLine(data, position, lineEnd);
-      
+
       // Empty line indicates end of headers
       if (line.isEmpty) {
         position = lineEnd + 1;
-        if (position < data.length && data[position - 1] == StompConstants.carriageReturn) {
+        if (position < data.length &&
+            data[position - 1] == StompConstants.carriageReturn) {
           position++; // Skip LF after CR
         }
         break;
@@ -187,11 +188,14 @@ class StompFrameParser {
 
       // Handle repeated headers (use first occurrence)
       if (!headers.containsKey(name)) {
-        headers[name] = _shouldEscapeHeaders(command) ? StompEscaping.unescape(value) : value;
+        headers[name] = _shouldEscapeHeaders(command)
+            ? StompEscaping.unescape(value)
+            : value;
       }
 
       position = lineEnd + 1;
-      if (position < data.length && data[position - 1] == StompConstants.carriageReturn) {
+      if (position < data.length &&
+          data[position - 1] == StompConstants.carriageReturn) {
         position++; // Skip LF after CR
       }
     }
@@ -201,7 +205,7 @@ class StompFrameParser {
     if (position < data.length) {
       // Find NULL terminator
       var bodyEnd = data.length;
-      for (int i = position; i < data.length; i++) {
+      for (var i = position; i < data.length; i++) {
         if (data[i] == StompConstants.nullByte) {
           bodyEnd = i;
           break;
@@ -217,13 +221,17 @@ class StompFrameParser {
       if (contentLengthStr != null) {
         final contentLength = int.tryParse(contentLengthStr);
         if (contentLength == null || contentLength < 0) {
-          throw StompFrameException('Invalid content-length: $contentLengthStr');
+          throw StompFrameException(
+            'Invalid content-length: $contentLengthStr',
+          );
         }
-        
+
         if (position + contentLength > bodyEnd) {
-          throw const StompFrameException('Content-length exceeds available body data');
+          throw const StompFrameException(
+            'Content-length exceeds available body data',
+          );
         }
-        
+
         bodyEnd = position + contentLength;
       }
 
@@ -243,7 +251,7 @@ class StompFrameParser {
   }
 
   static int _findLineEnd(Uint8List data, int start) {
-    for (int i = start; i < data.length; i++) {
+    for (var i = start; i < data.length; i++) {
       if (data[i] == StompConstants.lineFeed) {
         return i;
       }
@@ -254,12 +262,13 @@ class StompFrameParser {
   static String _extractLine(Uint8List data, int start, int end) {
     var actualEnd = end;
     // Handle CRLF
-    if (actualEnd > start && data[actualEnd - 1] == StompConstants.carriageReturn) {
+    if (actualEnd > start &&
+        data[actualEnd - 1] == StompConstants.carriageReturn) {
       actualEnd--;
     }
-    
+
     if (actualEnd <= start) return '';
-    
+
     try {
       return utf8.decode(data.sublist(start, actualEnd));
     } catch (e) {
@@ -269,7 +278,8 @@ class StompFrameParser {
 
   static bool _shouldEscapeHeaders(String command) {
     // CONNECT and CONNECTED frames don't escape headers for backward compatibility
-    return command != StompCommands.connect && command != StompCommands.connected;
+    return command != StompCommands.connect &&
+        command != StompCommands.connected;
   }
 }
 
@@ -289,8 +299,8 @@ class StompFrameSerializer {
     for (final entry in frame.headers.entries) {
       buffer.addAll(utf8.encode(entry.key));
       buffer.add(58); // ':'
-      
-      final value = _shouldEscapeHeaders(frame.command) 
+
+      final value = _shouldEscapeHeaders(frame.command)
           ? StompEscaping.escape(entry.value)
           : entry.value;
       buffer.addAll(utf8.encode(value));
@@ -313,7 +323,8 @@ class StompFrameSerializer {
 
   static bool _shouldEscapeHeaders(String command) {
     // CONNECT and CONNECTED frames don't escape headers for backward compatibility
-    return command != StompCommands.connect && command != StompCommands.connected;
+    return command != StompCommands.connect &&
+        command != StompCommands.connected;
   }
 }
 
@@ -332,7 +343,8 @@ class StompFrameValidator {
       throw const StompFrameException('Command cannot be empty');
     }
 
-    if (!StompCommands.isClientCommand(command) && !StompCommands.isServerCommand(command)) {
+    if (!StompCommands.isClientCommand(command) &&
+        !StompCommands.isServerCommand(command)) {
       throw StompFrameException('Unknown command: $command');
     }
   }
@@ -368,8 +380,12 @@ class StompFrameValidator {
       }
 
       // Validate header name doesn't contain invalid characters
-      if (entry.key.contains(':') || entry.key.contains('\n') || entry.key.contains('\r')) {
-        throw StompFrameException('Invalid characters in header name: ${entry.key}');
+      if (entry.key.contains(':') ||
+          entry.key.contains('\n') ||
+          entry.key.contains('\r')) {
+        throw StompFrameException(
+          'Invalid characters in header name: ${entry.key}',
+        );
       }
     }
 
@@ -382,37 +398,28 @@ class StompFrameValidator {
       case StompCommands.stomp:
         _requireHeader(frame, StompHeaders.acceptVersion);
         _requireHeader(frame, StompHeaders.host);
-        break;
       case StompCommands.connected:
         _requireHeader(frame, StompHeaders.version);
-        break;
       case StompCommands.send:
         _requireHeader(frame, StompHeaders.destination);
-        break;
       case StompCommands.subscribe:
         _requireHeader(frame, StompHeaders.destination);
         _requireHeader(frame, StompHeaders.id);
-        break;
       case StompCommands.unsubscribe:
         _requireHeader(frame, StompHeaders.id);
-        break;
       case StompCommands.ack:
       case StompCommands.nack:
         _requireHeader(frame, StompHeaders.id);
-        break;
       case StompCommands.begin:
       case StompCommands.commit:
       case StompCommands.abort:
         _requireHeader(frame, StompHeaders.transaction);
-        break;
       case StompCommands.message:
         _requireHeader(frame, StompHeaders.destination);
         _requireHeader(frame, StompHeaders.messageId);
         _requireHeader(frame, StompHeaders.subscription);
-        break;
       case StompCommands.receipt:
         _requireHeader(frame, StompHeaders.receiptId);
-        break;
     }
   }
 
@@ -452,7 +459,7 @@ class StompFrameValidator {
 
       if (frame.body != null && frame.body!.length != contentLength) {
         throw StompFrameException(
-          'Body length (${frame.body!.length}) does not match content-length ($contentLength)'
+          'Body length (${frame.body!.length}) does not match content-length ($contentLength)',
         );
       }
     }
@@ -544,7 +551,11 @@ class StompFrameFactory {
       headers[StompHeaders.contentLength] = frameBody.length.toString();
     }
 
-    return StompFrame(command: StompCommands.send, headers: headers, body: frameBody);
+    return StompFrame(
+      command: StompCommands.send,
+      headers: headers,
+      body: frameBody,
+    );
   }
 
   /// Creates a SUBSCRIBE frame
@@ -659,6 +670,10 @@ class StompFrameFactory {
       headers[StompHeaders.contentType] = 'text/plain';
     }
 
-    return StompFrame(command: StompCommands.error, headers: headers, body: frameBody);
+    return StompFrame(
+      command: StompCommands.error,
+      headers: headers,
+      body: frameBody,
+    );
   }
 }

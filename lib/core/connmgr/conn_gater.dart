@@ -1,21 +1,20 @@
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
-
-import '../network/conn.dart';
-import '../multiaddr.dart';
 
 /// Represents a reason for disconnecting from a peer.
 /// This is used to communicate the intention behind a Conn closure.
 class DisconnectReason {
+  const DisconnectReason({
+    required this.code,
+    required this.message,
+  });
+
   /// A unique identifier for this disconnect reason
   final int code;
 
   /// A human-readable message explaining the reason for disConn
   final String message;
-
-  const DisconnectReason({
-    required this.code,
-    required this.message,
-  });
 }
 
 /// ConnGater can be implemented by a type that supports active

@@ -2,13 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:dart_libp2p/core/discovery.dart';
+import 'package:dart_libp2p/core/host/host.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:mdns_dart/mdns_dart.dart';
-
-import '../../../core/discovery.dart';
-import '../../../core/peer/addr_info.dart';
-import '../../../core/host/host.dart';
-import '../../../core/multiaddr.dart';
-import '../../../core/peer/peer_id.dart';
 
 /// Constants for mDNS service
 class MdnsConstants {
@@ -33,6 +32,14 @@ abstract class MdnsNotifee {
 
 /// Implementation of mDNS discovery for libp2p using mdns_dart
 class MdnsDiscovery implements Discovery {
+  /// Creates a new MdnsDiscovery service
+  MdnsDiscovery(
+    this._host, {
+    String? serviceName,
+    MdnsNotifee? notifee,
+  })  : _serviceName = serviceName ?? MdnsConstants.serviceName,
+        _peerName = _generateRandomString(32 + Random().nextInt(32)),
+        _notifee = notifee;
   final Host _host;
   final String _serviceName;
   final String _peerName;
@@ -46,7 +53,7 @@ class MdnsDiscovery implements Discovery {
   StreamSubscription<ServiceEntry>? _discoverySubscription;
   Timer? _discoveryTimer;
   bool _isRunning = false;
-  
+
   // Track discovered services to avoid duplicates
   final Set<String> _discoveredServices = <String>{};
 
@@ -54,15 +61,6 @@ class MdnsDiscovery implements Discovery {
   set notifee(MdnsNotifee? value) {
     _notifee = value;
   }
-
-  /// Creates a new MdnsDiscovery service
-  MdnsDiscovery(this._host, {
-    String? serviceName,
-    MdnsNotifee? notifee,
-  }) : 
-    _serviceName = serviceName ?? MdnsConstants.serviceName,
-    _peerName = _generateRandomString(32 + Random().nextInt(32)),
-    _notifee = notifee;
 
   /// Starts the mDNS discovery service
   Future<void> start() async {
@@ -81,11 +79,10 @@ class MdnsDiscovery implements Discovery {
   Future<void> stop() async {
     if (!_isRunning) return;
 
-
     // Stop discovery
     _discoverySubscription?.cancel();
     _discoverySubscription = null;
-    
+
     // Stop periodic discovery timer
     _discoveryTimer?.cancel();
     _discoveryTimer = null;
@@ -104,7 +101,10 @@ class MdnsDiscovery implements Discovery {
   }
 
   @override
-  Future<Duration> advertise(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Duration> advertise(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     if (!_isRunning) {
       await start();
     }
@@ -114,7 +114,10 @@ class MdnsDiscovery implements Discovery {
   }
 
   @override
-  Future<Stream<AddrInfo>> findPeers(String ns, [List<DiscoveryOption> options = const []]) async {
+  Future<Stream<AddrInfo>> findPeers(
+    String ns, [
+    List<DiscoveryOption> options = const [],
+  ]) async {
     if (!_isRunning) {
       await start();
     }
@@ -156,7 +159,7 @@ class MdnsDiscovery implements Discovery {
       final txtRecords = <String>[];
       for (final addr in addresses) {
         // Append peer ID to create complete multiaddr
-        final fullAddr = '${addr.toString()}/p2p/${_host.id.toString()}';
+        final fullAddr = '$addr/p2p/${_host.id}';
         final txtRecord = '${MdnsConstants.dnsaddrPrefix}$fullAddr';
         txtRecords.add(txtRecord);
       }
@@ -181,7 +184,6 @@ class MdnsDiscovery implements Discovery {
 
       _server = MDNSServer(config);
       await _server!.start();
-
     } catch (e) {
       print('Failed to start mDNS service advertisement: $e');
     }
@@ -189,22 +191,20 @@ class MdnsDiscovery implements Discovery {
 
   /// Start discovering other peers using REAL mDNS discovery
   Future<void> _startDiscovery() async {
-
     try {
       final serviceName = '$_serviceName.${MdnsConstants.mdnsDomain}';
 
       // Wait a moment for the network to settle and other services to be advertised
       await Future.delayed(const Duration(milliseconds: 1500));
-      
+
       // Start immediate discovery
       await _performDiscoveryQuery(serviceName);
-      
+
       // Set up frequent discovery queries (every 5 seconds)
       // This compensates for MDNSClient.lookup() being a one-shot query
       _discoveryTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
         await _performDiscoveryQuery(serviceName);
       });
-
     } catch (e) {
       print('Failed to start mDNS discovery: $e');
     }
@@ -214,27 +214,24 @@ class MdnsDiscovery implements Discovery {
   Future<void> _performDiscoveryQuery(String serviceName) async {
     try {
       // Use MDNSClient.query() with longer timeout instead of lookup() which has 1s timeout
-      // Extract just the service part (remove .local if present)  
+      // Extract just the service part (remove .local if present)
       final serviceOnly = serviceName.replaceAll('.local', '');
       final params = QueryParams(
-        service: serviceOnly,  // Pass "_p2p._udp" not "_p2p._udp.local"
-        domain: 'local',
-        timeout: const Duration(seconds: 10), // Extended timeout for better discovery
-        wantUnicastResponse: false,
+        service: serviceOnly, // Pass "_p2p._udp" not "_p2p._udp.local"
+        timeout: const Duration(
+          seconds: 10,
+        ), // Extended timeout for better discovery
         reusePort: !Platform.isAndroid,
-        reuseAddress: true,
-        multicastHops: 1,
       );
-      
+
       final stream = await MDNSClient.query(params);
-      
+
       var serviceCount = 0;
-      
+
       await for (final serviceEntry in stream) {
         serviceCount++;
         _processDiscoveredService(serviceEntry);
       }
-      
     } catch (e) {
       print('mDNS discovery query error: $e');
     }
@@ -244,24 +241,26 @@ class MdnsDiscovery implements Discovery {
   void _processDiscoveredService(ServiceEntry serviceEntry) {
     try {
       // Create a unique key for this service
-      final serviceKey = '${serviceEntry.name}@${serviceEntry.host}:${serviceEntry.port}';
-      
+      final serviceKey =
+          '${serviceEntry.name}@${serviceEntry.host}:${serviceEntry.port}';
+
       // Check if we've already processed this service
       if (_discoveredServices.contains(serviceKey)) {
         return;
       }
-      
+
       // Mark as discovered
       _discoveredServices.add(serviceKey);
-      
+
       // Extract peer information from TXT records
       final addresses = <MultiAddr>[];
       PeerId? peerId;
 
       for (final txtRecord in serviceEntry.infoFields) {
         if (txtRecord.startsWith(MdnsConstants.dnsaddrPrefix)) {
-          final addrStr = txtRecord.substring(MdnsConstants.dnsaddrPrefix.length);
-          
+          final addrStr =
+              txtRecord.substring(MdnsConstants.dnsaddrPrefix.length);
+
           try {
             final addr = MultiAddr(addrStr);
             addresses.add(addr);
@@ -336,16 +335,18 @@ class MdnsDiscovery implements Discovery {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final random = Random();
     return String.fromCharCodes(
-      List.generate(length, (_) => chars.codeUnitAt(random.nextInt(chars.length)))
+      List.generate(
+        length,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
     );
   }
 }
 
 /// A notifee that forwards discovered peers to a stream
 class _StreamNotifee implements MdnsNotifee {
-  final StreamController<AddrInfo> _controller;
-
   _StreamNotifee(this._controller);
+  final StreamController<AddrInfo> _controller;
 
   @override
   void handlePeerFound(AddrInfo peer) {
@@ -357,9 +358,8 @@ class _StreamNotifee implements MdnsNotifee {
 
 /// A notifee that forwards discovered peers to multiple notifees
 class _CompositeNotifee implements MdnsNotifee {
-  final List<MdnsNotifee> _notifees;
-
   _CompositeNotifee(this._notifees);
+  final List<MdnsNotifee> _notifees;
 
   @override
   void handlePeerFound(AddrInfo peer) {

@@ -3,7 +3,12 @@ import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/network/common.dart';
 import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart' show StreamScope, StreamManagementScope, ScopeStat, ResourceScopeSpan; // Import new types
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show
+        ResourceScopeSpan,
+        ScopeStat,
+        StreamManagementScope,
+        StreamScope; // Import new types
 
 /// Represents a bidirectional channel between two agents in
 /// a libp2p network. "agent" is as granular as desired, potentially
@@ -68,9 +73,15 @@ abstract class P2PStream<T> {
   bool get isWritable;
 }
 
-
 /// Stores metadata pertaining to a given Stream
 class StreamStats {
+  StreamStats({
+    required this.direction,
+    required this.opened,
+    this.limited = false,
+    this.extra = const {},
+  });
+
   /// Direction specifies whether this is an inbound or an outbound connection
   final Direction direction; // Will now come from common.dart
 
@@ -82,11 +93,4 @@ class StreamStats {
 
   /// Additional metadata about this connection
   final Map<dynamic, dynamic> extra;
-
-  StreamStats({
-    required this.direction,
-    required this.opened,
-    this.limited = false,
-    this.extra = const {},
-  });
 }

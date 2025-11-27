@@ -1,20 +1,23 @@
-import 'dart:async';
-import 'package:dart_libp2p/core/network/network.dart' show Reachability; // For Reachability enum
-import './pb/autonat.pb.dart' as pb; // For pb.Message_ResponseStatus
+import 'package:dart_libp2p/core/network/network.dart'
+    show Reachability; // For Reachability enum
+import 'package:dart_libp2p/p2p/host/autonat/pb/autonat.pb.dart'
+    as pb; // For pb.Message_ResponseStatus
 
 abstract class MetricsTracer {
   void reachabilityStatus(Reachability status);
   void reachabilityStatusConfidence(int confidence);
   void receivedDialResponse(pb.Message_ResponseStatus status);
   void outgoingDialResponse(pb.Message_ResponseStatus status);
-  void outgoingDialRefused(String reason); // Corresponds to Go's OutgoingDialRefused
+  void outgoingDialRefused(
+    String reason,
+  ); // Corresponds to Go's OutgoingDialRefused
   void nextProbeTime(DateTime t); // Corresponds to Go's NextProbeTime
 }
 
 // Reasons for dial refusal, from Go's metrics.go
-const String dialRefusedReasonRateLimited = "rate limited";
-const String dialRefusedReasonDialBlocked = "dial blocked";
-const String dialRefusedReasonNoValidAddress = "no valid address";
+const String dialRefusedReasonRateLimited = 'rate limited';
+const String dialRefusedReasonDialBlocked = 'dial blocked';
+const String dialRefusedReasonNoValidAddress = 'no valid address';
 
 class NoOpMetricsTracer implements MetricsTracer {
   @override

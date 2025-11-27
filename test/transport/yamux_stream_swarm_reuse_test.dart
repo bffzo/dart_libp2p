@@ -1,40 +1,29 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:dart_libp2p/p2p/host/host.dart';
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
-import 'package:logging/logging.dart';
-
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/network/context.dart';
-import 'package:dart_libp2p/core/network/stream.dart';
-import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/common.dart';
-import 'package:dart_libp2p/core/peerstore.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart';
-import 'package:dart_libp2p/core/network/transport_conn.dart';
-import 'package:dart_libp2p/p2p/network/swarm/swarm.dart';
-import 'package:dart_libp2p/p2p/transport/basic_upgrader.dart';
-import 'package:dart_libp2p/p2p/transport/transport.dart';
-import 'package:dart_libp2p/p2p/transport/listener.dart';
 import 'package:dart_libp2p/config/config.dart';
 import 'package:dart_libp2p/config/stream_muxer.dart';
 import 'package:dart_libp2p/core/crypto/ed25519.dart';
-import 'package:dart_libp2p/core/crypto/keys.dart';
-import 'package:dart_libp2p/core/certified_addr_book.dart';
-import 'package:dart_libp2p/p2p/security/secured_connection.dart';
-
-// Import mocks for Yamux connection reuse testing
-import '../mocks/streamlined_mock_transport_conn.dart';
-import '../mocks/mock_security_protocol.dart';
-
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart';
+import 'package:dart_libp2p/core/network/transport_conn.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/core/peerstore.dart';
+import 'package:dart_libp2p/p2p/host/host.dart';
+import 'package:dart_libp2p/p2p/network/swarm/swarm.dart';
+import 'package:dart_libp2p/p2p/transport/basic_upgrader.dart';
+import 'package:dart_libp2p/p2p/transport/listener.dart';
+import 'package:dart_libp2p/p2p/transport/multiplexing/multiplexer.dart';
 // Import real Yamux implementation for testing
 import 'package:dart_libp2p/p2p/transport/multiplexing/yamux/session.dart';
-import 'package:dart_libp2p/p2p/transport/multiplexing/multiplexer.dart';
+import 'package:dart_libp2p/p2p/transport/transport.dart';
+import 'package:logging/logging.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
+
+import '../mocks/mock_security_protocol.dart';
+// Import mocks for Yamux connection reuse testing
+import '../mocks/streamlined_mock_transport_conn.dart';
 @GenerateMocks([
   ResourceManager,
   Peerstore,
@@ -78,37 +67,38 @@ void main() {
           .thenAnswer((_) async => mockStreamScope);
       when(mockResourceManager.viewPeer<PeerScope>(any, any))
           .thenAnswer((invocation) async {
-            final callback = invocation.positionalArguments[1] as Future<PeerScope> Function(PeerScope);
-            final mockPeerScope = MockPeerScope();
-            return await callback(mockPeerScope);
-          });
+        final callback = invocation.positionalArguments[1] as Future<PeerScope>
+            Function(PeerScope);
+        final mockPeerScope = MockPeerScope();
+        return callback(mockPeerScope);
+      });
       when(mockConnScope.setPeer(any)).thenAnswer((_) async {});
       when(mockConnScope.done()).thenReturn(null);
       when(mockStreamScope.done()).thenReturn(null);
       when(mockTransport.protocols).thenReturn([]);
       when(mockTransport.dispose()).thenAnswer((_) async {});
     });
-
-
-
   });
 }
 
 /// Creates a test swarm with mocked dependencies
-Future<Swarm> createTestSwarm({required String name, MockTransport? sharedTransport}) async {
+Future<Swarm> createTestSwarm({
+  required String name,
+  MockTransport? sharedTransport,
+}) async {
   print('Creating test swarm: $name');
-  
+
   // Generate test peer identity
   final keyPair = await generateEd25519KeyPair();
   final peerId = PeerId.fromPublicKey(keyPair.publicKey);
-  print('$name PeerId: ${peerId.toString()}');
-  
+  print('$name PeerId: $peerId');
+
   // Create mock peerstore
   final mockPeerstore = MockPeerstore();
   final mockKeyBook = MockKeyBook();
   final addrBook = MemoryAddrBook();
   final mockPeerMetadata = MockPeerMetadata();
-  
+
   // Configure peerstore mocks
   when(mockPeerstore.keyBook).thenReturn(mockKeyBook);
   when(mockPeerstore.addrBook).thenReturn(addrBook);
@@ -117,38 +107,39 @@ Future<Swarm> createTestSwarm({required String name, MockTransport? sharedTransp
   when(mockKeyBook.addPrivKey(any, any)).thenAnswer((_) async {});
   when(mockKeyBook.addPubKey(any, any)).thenAnswer((_) async {});
   when(mockPeerMetadata.put(any, any, any)).thenAnswer((_) async {});
-  
+
   // Create mock resource manager
   final mockResourceManager = MockResourceManager();
   final mockConnScope = MockConnManagementScope();
   final mockStreamScope = MockStreamManagementScope();
   final mockPeerScope = MockPeerScope();
-  
+
   when(mockResourceManager.openConnection(any, any, any))
       .thenAnswer((_) async => mockConnScope);
   when(mockResourceManager.openStream(any, any))
       .thenAnswer((_) async => mockStreamScope);
   when(mockResourceManager.viewPeer<PeerScope>(any, any))
       .thenAnswer((invocation) async {
-        final callback = invocation.positionalArguments[1] as Future<PeerScope> Function(PeerScope);
-        return await callback(mockPeerScope);
-      });
+    final callback = invocation.positionalArguments[1] as Future<PeerScope>
+        Function(PeerScope);
+    return callback(mockPeerScope);
+  });
   when(mockConnScope.setPeer(any)).thenAnswer((_) async {});
   when(mockConnScope.done()).thenReturn(null);
   when(mockStreamScope.done()).thenReturn(null);
-  
+
   // Use shared transport or create new one
   final mockTransport = sharedTransport ?? MockTransport();
   when(mockTransport.protocols).thenReturn([]);
   when(mockTransport.dispose()).thenAnswer((_) async {});
-  
+
   // Create config with mock protocols
   final config = Config();
   config.peerKey = keyPair;
-  
+
   // Add mock security protocol
   config.securityProtocols = [MockSecurityProtocol()];
-  
+
   // Add REAL Yamux muxer instead of mock
   config.muxers = [
     StreamMuxer(
@@ -157,7 +148,8 @@ Future<Swarm> createTestSwarm({required String name, MockTransport? sharedTransp
         // Use real YamuxSession instead of mock
         if (conn is! TransportConn) {
           throw ArgumentError(
-              'YamuxSession factory requires a TransportConn, but received ${conn.runtimeType}');
+            'YamuxSession factory requires a TransportConn, but received ${conn.runtimeType}',
+          );
         }
         return YamuxSession(
           conn,
@@ -167,10 +159,10 @@ Future<Swarm> createTestSwarm({required String name, MockTransport? sharedTransp
       },
     ),
   ];
-  
+
   // Create upgrader
   final upgrader = BasicUpgrader(resourceManager: mockResourceManager);
-  
+
   // Create and return swarm
   final swarm = Swarm(
     host: null, // Direct swarm usage
@@ -181,16 +173,20 @@ Future<Swarm> createTestSwarm({required String name, MockTransport? sharedTransp
     config: config,
     transports: [mockTransport],
   );
-  
+
   print('$name swarm created successfully');
   return swarm;
 }
 
 /// Sets up transport dialing mocks for connection establishment
-void setupTransportDialing(MockTransport mockTransport, PeerId targetPeer, MultiAddr targetAddr) {
+void setupTransportDialing(
+  MockTransport mockTransport,
+  PeerId targetPeer,
+  MultiAddr targetAddr,
+) {
   // Mock transport can dial the target address
   when(mockTransport.canDial(targetAddr)).thenReturn(true);
-  
+
   // Mock the dial operation
   when(mockTransport.dial(targetAddr)).thenAnswer((_) async {
     // Create a streamlined mock connection that handles protocol negotiation
@@ -202,10 +198,12 @@ void setupTransportDialing(MockTransport mockTransport, PeerId targetPeer, Multi
       localPeer: localPeer,
       remotePeer: targetPeer,
     );
-    
+
     print('Created mock transport connection: ${clientConn.id}');
-    print('Client: ${clientConn.localPeer.toString().substring(0, 8)}... → ${clientConn.remotePeer.toString().substring(0, 8)}...');
-    
+    print(
+      'Client: ${clientConn.localPeer.toString().substring(0, 8)}... → ${clientConn.remotePeer.toString().substring(0, 8)}...',
+    );
+
     // Return the client side connection (the one that will be used by the dialing swarm)
     return clientConn;
   });

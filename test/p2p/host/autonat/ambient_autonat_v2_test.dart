@@ -1,9 +1,5 @@
 import 'dart:async';
 
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
-
 import 'package:dart_libp2p/core/event/addrs.dart';
 import 'package:dart_libp2p/core/event/bus.dart';
 import 'package:dart_libp2p/core/event/identify.dart';
@@ -17,8 +13,20 @@ import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:dart_libp2p/core/protocol/autonatv2/autonatv2.dart';
 import 'package:dart_libp2p/p2p/host/autonat/ambient_autonat_v2.dart';
 import 'package:dart_libp2p/p2p/host/autonat/ambient_config.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
-@GenerateMocks([Host, EventBus, Emitter, Subscription, Peerstore, ProtoBook, AutoNATv2, Conn])
+@GenerateMocks([
+  Host,
+  EventBus,
+  Emitter,
+  Subscription,
+  Peerstore,
+  ProtoBook,
+  AutoNATv2,
+  Conn,
+])
 import 'ambient_autonat_v2_test.mocks.dart';
 
 void main() {
@@ -44,7 +52,7 @@ void main() {
       mockAutoNATv2 = MockAutoNATv2();
       mockConn = MockConn();
       eventStreamController = StreamController<dynamic>.broadcast();
-      
+
       config = const AmbientAutoNATv2Config(
         bootDelay: Duration(milliseconds: 100), // Short delay for testing
         retryInterval: Duration(seconds: 1),
@@ -62,8 +70,7 @@ void main() {
           .thenAnswer((_) async => mockEmitter);
       when(mockEmitter.emit(any)).thenAnswer((_) async {});
       when(mockEmitter.close()).thenAnswer((_) async {});
-      when(mockEventBus.subscribe(any))
-          .thenReturn(mockSubscription);
+      when(mockEventBus.subscribe(any)).thenReturn(mockSubscription);
       when(mockSubscription.stream)
           .thenAnswer((_) => eventStreamController.stream);
       when(mockSubscription.close()).thenAnswer((_) async {});
@@ -86,7 +93,7 @@ void main() {
       // Assert
       expect(ambient.status, Reachability.unknown);
       expect(ambient.confidence, 0);
-      
+
       await ambient.close();
     });
 
@@ -100,11 +107,13 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 50));
 
       // Assert
-      verify(mockEventBus.subscribe([
-        EvtLocalAddressesUpdated,
-        EvtPeerIdentificationCompleted,
-      ])).called(1);
-      
+      verify(
+        mockEventBus.subscribe([
+          EvtLocalAddressesUpdated,
+          EvtPeerIdentificationCompleted,
+        ]),
+      ).called(1);
+
       await ambient.close();
     });
 
@@ -113,13 +122,12 @@ void main() {
       final testPeerId = PeerId.fromString('12D3KooWTest');
       when(mockProtoBook.getProtocols(testPeerId))
           .thenAnswer((_) async => [AutoNATv2Protocols.dialProtocol]);
-      
+
       final result = _MockResult()
         ..reachability = Reachability.public
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((_) async => result);
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((_) async => result);
 
       // Act
       final ambient = await AmbientAutoNATv2.create(
@@ -127,7 +135,7 @@ void main() {
         mockAutoNATv2,
         config: config,
       );
-      
+
       // Emit peer identification event
       eventStreamController.add(
         EvtPeerIdentificationCompleted(
@@ -139,13 +147,13 @@ void main() {
           protocolVersion: 'test/1.0',
         ),
       );
-      
+
       // Wait for probe to be scheduled and executed
       await Future.delayed(const Duration(seconds: 3));
 
       // Assert - probe should have been called
       verify(mockAutoNATv2.getReachability(any)).called(greaterThan(0));
-      
+
       await ambient.close();
     });
 
@@ -154,9 +162,8 @@ void main() {
       final result = _MockResult()
         ..reachability = Reachability.public
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((_) async => result);
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((_) async => result);
 
       final ambient = await AmbientAutoNATv2.create(
         mockHost,
@@ -169,15 +176,20 @@ void main() {
 
       // Assert - reachability should be public
       expect(ambient.status, Reachability.public);
-      
+
       // Verify event was emitted
-      verify(mockEmitter.emit(
-        argThat(predicate((event) =>
-          event is EvtLocalReachabilityChanged &&
-          event.reachability == Reachability.public
-        )),
-      )).called(greaterThan(0));
-      
+      verify(
+        mockEmitter.emit(
+          argThat(
+            predicate(
+              (event) =>
+                  event is EvtLocalReachabilityChanged &&
+                  event.reachability == Reachability.public,
+            ),
+          ),
+        ),
+      ).called(greaterThan(0));
+
       await ambient.close();
     });
 
@@ -186,9 +198,8 @@ void main() {
       final result = _MockResult()
         ..reachability = Reachability.private
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((_) async => result);
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((_) async => result);
 
       final ambient = await AmbientAutoNATv2.create(
         mockHost,
@@ -201,15 +212,20 @@ void main() {
 
       // Assert - reachability should be private
       expect(ambient.status, Reachability.private);
-      
+
       // Verify event was emitted
-      verify(mockEmitter.emit(
-        argThat(predicate((event) =>
-          event is EvtLocalReachabilityChanged &&
-          event.reachability == Reachability.private
-        )),
-      )).called(greaterThan(0));
-      
+      verify(
+        mockEmitter.emit(
+          argThat(
+            predicate(
+              (event) =>
+                  event is EvtLocalReachabilityChanged &&
+                  event.reachability == Reachability.private,
+            ),
+          ),
+        ),
+      ).called(greaterThan(0));
+
       await ambient.close();
     });
 
@@ -218,17 +234,16 @@ void main() {
       final result = _MockResult()
         ..reachability = Reachability.public
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((_) async => result);
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((_) async => result);
 
       final ambient = await AmbientAutoNATv2.create(
         mockHost,
         mockAutoNATv2,
-        config: AmbientAutoNATv2Config(
-          bootDelay: const Duration(milliseconds: 100),
-          retryInterval: const Duration(milliseconds: 200),
-          refreshInterval: const Duration(seconds: 5),
+        config: const AmbientAutoNATv2Config(
+          bootDelay: Duration(milliseconds: 100),
+          retryInterval: Duration(milliseconds: 200),
+          refreshInterval: Duration(seconds: 5),
         ),
       );
 
@@ -247,7 +262,7 @@ void main() {
       // Wait for fourth probe
       await Future.delayed(const Duration(milliseconds: 300));
       expect(ambient.confidence, 3); // Max confidence
-      
+
       await ambient.close();
     });
 
@@ -256,9 +271,8 @@ void main() {
       final result = _MockResult()
         ..reachability = Reachability.public
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((_) async => result);
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((_) async => result);
 
       final ambient = await AmbientAutoNATv2.create(
         mockHost,
@@ -268,10 +282,10 @@ void main() {
 
       // Wait for initial probe to establish confidence
       await Future.delayed(const Duration(milliseconds: 200));
-      
+
       // Manually set high confidence for testing
       // (In real scenario, this would happen after multiple probes)
-      
+
       // Emit address change event
       eventStreamController.add(
         EvtLocalAddressesUpdated(
@@ -279,14 +293,14 @@ void main() {
           current: [],
         ),
       );
-      
+
       // Wait a bit for processing
       await Future.delayed(const Duration(milliseconds: 100));
 
       // New probe should be scheduled
       // Verify by checking that getReachability was called again
       verify(mockAutoNATv2.getReachability(any)).called(greaterThan(1));
-      
+
       await ambient.close();
     });
 
@@ -312,25 +326,24 @@ void main() {
         MultiAddr('/ip4/10.0.0.1/tcp/5000'),
         MultiAddr('/ip4/10.0.0.2/tcp/5001'),
       ];
-      
+
       final customConfig = AmbientAutoNATv2Config(
         bootDelay: const Duration(milliseconds: 100),
         retryInterval: const Duration(seconds: 1),
         refreshInterval: const Duration(seconds: 5),
         addressFunc: () => customAddrs,
       );
-      
+
       final result = _MockResult()
         ..reachability = Reachability.public
         ..validatedAddrs = [];
-      
-      when(mockAutoNATv2.getReachability(any))
-          .thenAnswer((invocation) async {
-            // Verify custom addresses were used
-            final requests = invocation.positionalArguments[0] as List<Request>;
-            expect(requests.length, customAddrs.length);
-            return result;
-          });
+
+      when(mockAutoNATv2.getReachability(any)).thenAnswer((invocation) async {
+        // Verify custom addresses were used
+        final requests = invocation.positionalArguments[0] as List<Request>;
+        expect(requests.length, customAddrs.length);
+        return result;
+      });
 
       // Act
       final ambient = await AmbientAutoNATv2.create(
@@ -344,7 +357,7 @@ void main() {
 
       // Assert
       verify(mockAutoNATv2.getReachability(any)).called(greaterThan(0));
-      
+
       await ambient.close();
     });
   });
@@ -354,14 +367,13 @@ void main() {
 class _MockResult implements Result {
   @override
   MultiAddr addr = MultiAddr('/ip4/1.2.3.4/tcp/4001');
-  
+
   @override
   Reachability reachability = Reachability.unknown;
-  
+
   @override
   int status = 0;
-  
+
   // Note: validatedAddrs is not part of the Result interface
   List<MultiAddr> validatedAddrs = [];
 }
-

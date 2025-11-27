@@ -7,16 +7,19 @@ import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/common.dart';
 // Conn, ConnState, ConnStats, Stats are used from conn.dart
 // ConnScope will come from rcmgr.dart
-import 'package:dart_libp2p/core/network/conn.dart' show Conn, ConnState, ConnStats, Stats; 
-import 'package:dart_libp2p/core/network/transport_conn.dart';
+import 'package:dart_libp2p/core/network/conn.dart'
+    show ConnState, ConnStats, Stats;
 import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show ConnScope, ResourceScopeSpan, ScopeStat;
 import 'package:dart_libp2p/core/network/stream.dart'; // For P2PStream
-import 'package:dart_libp2p/core/network/rcmgr.dart' show ConnScope, ScopeStat, ResourceScopeSpan, ResourceScope;
+import 'package:dart_libp2p/core/network/transport_conn.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 
 /// Mock connection specialized for secured connection tests
 /// Focuses on length prefixing and message boundaries
 class SecuredMockConnection implements TransportConn {
+  SecuredMockConnection(this._id);
   // Stream controllers for bidirectional communication
   final _incomingData = StreamController<List<int>>.broadcast();
   final _outgoingData = StreamController<List<int>>.broadcast();
@@ -31,8 +34,6 @@ class SecuredMockConnection implements TransportConn {
   final String _id;
   bool _closed = false;
   final writes = <Uint8List>[];
-
-  SecuredMockConnection(this._id);
 
   /// Creates a pair of connected secured mock connections
   static (SecuredMockConnection, SecuredMockConnection) createPair({
@@ -84,44 +85,52 @@ class SecuredMockConnection implements TransportConn {
   MultiAddr get remoteMultiaddr => MultiAddr('/ip4/127.0.0.1/tcp/5678');
 
   @override
-  PeerId get localPeer => throw UnimplementedError('localPeer not implemented in SecuredMockConnection');
+  PeerId get localPeer => throw UnimplementedError(
+        'localPeer not implemented in SecuredMockConnection',
+      );
 
   @override
-  PeerId get remotePeer => throw UnimplementedError('remotePeer not implemented in SecuredMockConnection');
+  PeerId get remotePeer => throw UnimplementedError(
+        'remotePeer not implemented in SecuredMockConnection',
+      );
 
   @override
   Future<PublicKey?> get remotePublicKey async => null;
 
   @override
-  ConnState get state => ConnState(
-    streamMultiplexer: 'mock-muxer/1.0.0',
-    security: 'mock-security/1.0.0',
-    transport: 'mock',
-    usedEarlyMuxerNegotiation: false,
-  );
+  ConnState get state => const ConnState(
+        streamMultiplexer: 'mock-muxer/1.0.0',
+        security: 'mock-security/1.0.0',
+        transport: 'mock',
+        usedEarlyMuxerNegotiation: false,
+      );
 
   @override
   ConnStats get stat => _MockConnStats(
-    stats: Stats(
-      direction: Direction.outbound,
-      opened: DateTime.now(),
-    ),
-    numStreams: 0,
-  );
+        stats: Stats(
+          direction: Direction.outbound,
+          opened: DateTime.now(),
+        ),
+        numStreams: 0,
+      );
 
   @override
   ConnScope get scope => _MockConnScope();
 
   @override
   Future<P2PStream> newStream(Context context) async {
-    throw UnimplementedError('Stream multiplexing not implemented in SecuredMockConnection');
+    throw UnimplementedError(
+      'Stream multiplexing not implemented in SecuredMockConnection',
+    );
   }
 
   @override
   Future<List<P2PStream>> get streams async => [];
 
   @override
-  Socket get socket => throw UnimplementedError('Socket is not implemented in SecuredMockConnection');
+  Socket get socket => throw UnimplementedError(
+        'Socket is not implemented in SecuredMockConnection',
+      );
 
   @override
   void setReadTimeout(Duration timeout) {}
@@ -151,7 +160,7 @@ class SecuredMockConnection implements TransportConn {
       // Wait until we have enough data
       while (_buffer.length < length) {
         final data = await _incomingData.stream.first.timeout(
-          Duration(seconds: 5),
+          const Duration(seconds: 5),
           onTimeout: () => throw TimeoutException('Read timed out'),
         );
         _buffer.addAll(data);
@@ -189,16 +198,15 @@ class SecuredMockConnection implements TransportConn {
 
 /// Mock implementation of ConnStats
 class _MockConnStats implements ConnStats {
+  const _MockConnStats({
+    required this.stats,
+    required this.numStreams,
+  });
   @override
   final Stats stats;
 
   @override
   final int numStreams;
-
-  const _MockConnStats({
-    required this.stats,
-    required this.numStreams,
-  });
 }
 
 /// Mock implementation of ConnScope
@@ -215,13 +223,16 @@ class _MockConnScope implements ConnScope {
   Future<void> reserveMemory(int size, int priority) async {}
 
   @override
-  ScopeStat get stat => const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
+  ScopeStat get stat =>
+      const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
 }
 
 /// Mock implementation of ResourceScopeSpan
-class _MockResourceScopeSpan implements ResourceScopeSpan { // ResourceScopeSpan from rcmgr.dart
+class _MockResourceScopeSpan implements ResourceScopeSpan {
+  // ResourceScopeSpan from rcmgr.dart
   @override
-  Future<ResourceScopeSpan> beginSpan() async { // ResourceScopeSpan from rcmgr.dart
+  Future<ResourceScopeSpan> beginSpan() async {
+    // ResourceScopeSpan from rcmgr.dart
     return this;
   }
 
@@ -235,5 +246,6 @@ class _MockResourceScopeSpan implements ResourceScopeSpan { // ResourceScopeSpan
   Future<void> reserveMemory(int size, int priority) async {}
 
   @override
-  ScopeStat get stat => const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
+  ScopeStat get stat =>
+      const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
 }

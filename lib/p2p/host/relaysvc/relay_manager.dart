@@ -3,34 +3,35 @@
 // license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'package:synchronized/synchronized.dart';
-import 'package:logging/logging.dart';
 
-import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/event/bus.dart';
 import 'package:dart_libp2p/core/event/reachability.dart';
+import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/network/network.dart'; // For Reachability enum
 import 'package:dart_libp2p/p2p/protocol/circuitv2/relay/relay.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/relay/resources.dart';
+import 'package:logging/logging.dart';
+import 'package:synchronized/synchronized.dart';
 
 /// RelayManager monitors the host's reachability and manages a Circuit Relay v2 service.
 /// If the host becomes publicly reachable, it starts the relay service.
 /// If the host is not publicly reachable, it stops the service.
 class RelayManager {
+  /// Private constructor for RelayManager.
+  RelayManager._(this._host, this._relayResourcesConfig);
   final Host _host;
   final Resources _relayResourcesConfig; // Configuration for the Relay service
 
   Relay? _activeRelay; // The managed instance of the Relay service
   final Lock _lock = Lock();
-  Subscription? _eventBusSubscription; // To hold the subscription object from EventBus
-  StreamSubscription<dynamic>? _reachabilityStreamSubscription; // To hold the listener on the stream
+  Subscription?
+      _eventBusSubscription; // To hold the subscription object from EventBus
+  StreamSubscription<dynamic>?
+      _reachabilityStreamSubscription; // To hold the listener on the stream
   bool _isClosed = false;
   Completer<void>? _backgroundCompleter;
 
   static final _log = Logger('RelayManager');
-
-  /// Private constructor for RelayManager.
-  RelayManager._(this._host, this._relayResourcesConfig);
 
   /// Creates and initializes a new RelayManager.
   ///
@@ -68,29 +69,39 @@ class RelayManager {
   void _startBackgroundListener() {
     // Subscribe to the event type.
     // Note: The stream from EventBus.subscribe is dynamic, so we cast the event.
-    _eventBusSubscription = _host.eventBus.subscribe(EvtLocalReachabilityChanged);
+    _eventBusSubscription =
+        _host.eventBus.subscribe(EvtLocalReachabilityChanged);
     _reachabilityStreamSubscription = _eventBusSubscription!.stream.listen(
-      (dynamic event) async { // Event is dynamic, needs casting
+      (dynamic event) async {
+        // Event is dynamic, needs casting
         if (_isClosed) return;
         if (event is EvtLocalReachabilityChanged) {
-          _log.fine('Received EvtLocalReachabilityChanged: ${event.reachability}');
+          _log.fine(
+            'Received EvtLocalReachabilityChanged: ${event.reachability}',
+          );
           await _handleReachabilityChanged(event.reachability);
         } else {
-          _log.warning('Received unknown event type on reachability stream: ${event.runtimeType}');
+          _log.warning(
+            'Received unknown event type on reachability stream: ${event.runtimeType}',
+          );
         }
       },
       onDone: () {
-        if (!_isClosed && _backgroundCompleter != null && !_backgroundCompleter!.isCompleted) {
+        if (!_isClosed &&
+            _backgroundCompleter != null &&
+            !_backgroundCompleter!.isCompleted) {
           _log.fine('Reachability event stream closed.');
           _backgroundCompleter!.complete();
         }
       },
       onError: (e, StackTrace s) {
         _log.severe('Error in reachability listener.', e, s);
-        if (!_isClosed && _backgroundCompleter != null && !_backgroundCompleter!.isCompleted) {
+        if (!_isClosed &&
+            _backgroundCompleter != null &&
+            !_backgroundCompleter!.isCompleted) {
           _backgroundCompleter!.completeError(e, s);
         }
-      }
+      },
     );
     _log.fine('Subscribed to reachability events.');
   }
@@ -113,12 +124,15 @@ class RelayManager {
               _activeRelay = null; // Ensure it's null if start failed
             }
           } else {
-            _log.fine('Host is public, Circuit Relay v2 service already running.');
+            _log.fine(
+              'Host is public, Circuit Relay v2 service already running.',
+            );
           }
-          break;
         default: // private, unknown
           if (_activeRelay != null) {
-            _log.fine('Host is not public ($reachability), stopping Circuit Relay v2 service.');
+            _log.fine(
+              'Host is not public ($reachability), stopping Circuit Relay v2 service.',
+            );
             try {
               await _activeRelay!.close();
               _log.fine('Circuit Relay v2 service stopped successfully.');
@@ -127,9 +141,10 @@ class RelayManager {
             }
             _activeRelay = null;
           } else {
-            _log.fine('Host is not public ($reachability), Circuit Relay v2 service already stopped.');
+            _log.fine(
+              'Host is not public ($reachability), Circuit Relay v2 service already stopped.',
+            );
           }
-          break;
       }
     });
   }
@@ -155,15 +170,19 @@ class RelayManager {
         _log.fine('Closing active Circuit Relay v2 service.');
         try {
           await _activeRelay!.close();
-        } catch (e,s) {
-            _log.warning('Error closing active Circuit Relay during RelayManager close.', e, s);
+        } catch (e, s) {
+          _log.warning(
+            'Error closing active Circuit Relay during RelayManager close.',
+            e,
+            s,
+          );
         }
         _activeRelay = null;
       }
     });
-    
+
     if (_backgroundCompleter != null && !_backgroundCompleter!.isCompleted) {
-        _backgroundCompleter!.complete();
+      _backgroundCompleter!.complete();
     }
     _log.fine('RelayManager closed.');
   }

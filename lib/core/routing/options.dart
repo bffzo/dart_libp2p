@@ -1,6 +1,7 @@
 /// Options for routing operations.
 ///
 /// This file is ported from go-libp2p/core/routing/options.go
+library;
 
 /// A function that modifies routing options.
 typedef Option = Function(RoutingOptions options);
@@ -18,7 +19,7 @@ class RoutingOptions {
 
   /// Apply the given options to this Options instance.
   void apply(List<Option> options) {
-    for (var option in options) {
+    for (final option in options) {
       option(this);
     }
   }
@@ -28,7 +29,7 @@ class RoutingOptions {
     return (RoutingOptions opts) {
       opts.expired = expired;
       opts.offline = offline;
-      
+
       if (other != null) {
         opts.other = Map<dynamic, dynamic>.from(other!);
       }

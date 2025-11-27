@@ -1,11 +1,7 @@
-import 'dart:async';
-
-import 'package:dart_libp2p/core/crypto/ed25519.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/core/crypto/keys.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/config/config.dart';
-import 'package:dart_libp2p/p2p/host/basic/basic_host.dart';
+import 'package:dart_libp2p/core/crypto/ed25519.dart';
+import 'package:dart_libp2p/core/crypto/keys.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/p2p/protocol/holepunch/util.dart';
 import 'package:test/test.dart';
 
@@ -33,27 +29,28 @@ void main() {
     group('Host Integration', () {
       late KeyPair keyPair;
       late PeerId peerId;
-      
+
       setUp(() async {
         keyPair = await generateEd25519KeyPair();
-        peerId = await PeerId.fromPublicKey(keyPair.publicKey);
+        peerId = PeerId.fromPublicKey(keyPair.publicKey);
       });
 
       test('should support holepunch configuration setting', () async {
         // Test that the configuration setting works as expected
         final enabledConfig = Config()..enableHolePunching = true;
         expect(enabledConfig.enableHolePunching, isTrue);
-        
+
         final disabledConfig = Config()..enableHolePunching = false;
         expect(disabledConfig.enableHolePunching, isFalse);
       });
 
-      test('should have independent holepunch setting from other features', () async {
+      test('should have independent holepunch setting from other features',
+          () async {
         final config = Config()
           ..enableHolePunching = true
           ..enableAutoNAT = false
           ..enableRelay = false;
-        
+
         expect(config.enableHolePunching, isTrue);
         expect(config.enableAutoNAT, isFalse);
         expect(config.enableRelay, isFalse);
@@ -73,14 +70,14 @@ void main() {
     group('Configuration Validation', () {
       test('should have consistent default settings', () {
         final config = Config();
-        
+
         // Holepunch should be enabled by default
         expect(config.enableHolePunching, isTrue);
-        
+
         // But AutoNAT and Relay should be disabled by default
         expect(config.enableAutoNAT, isFalse);
         expect(config.enableRelay, isFalse);
-        
+
         // While Ping should be enabled by default
         expect(config.enablePing, isTrue);
       });
@@ -90,7 +87,7 @@ void main() {
           ..enableHolePunching = true
           ..enableAutoNAT = true
           ..enableRelay = false;
-        
+
         expect(config.enableHolePunching, isTrue);
         expect(config.enableAutoNAT, isTrue);
         expect(config.enableRelay, isFalse);
@@ -101,7 +98,7 @@ void main() {
           ..enableHolePunching = false
           ..enableAutoNAT = false
           ..enableRelay = false;
-        
+
         expect(config.enableHolePunching, isFalse);
         expect(config.enableAutoNAT, isFalse);
         expect(config.enableRelay, isFalse);
@@ -113,7 +110,7 @@ void main() {
         final config = Config()
           ..enableHolePunching = true
           ..enableRelay = false;
-        
+
         expect(config.enableHolePunching, isTrue);
         expect(config.enableRelay, isFalse);
       });
@@ -122,7 +119,7 @@ void main() {
         final config = Config()
           ..enableHolePunching = true
           ..enableAutoNAT = false;
-        
+
         expect(config.enableHolePunching, isTrue);
         expect(config.enableAutoNAT, isFalse);
       });
@@ -132,7 +129,7 @@ void main() {
           ..enableHolePunching = true
           ..enableAutoNAT = true
           ..enableRelay = true;
-        
+
         expect(config.enableHolePunching, isTrue);
         expect(config.enableAutoNAT, isTrue);
         expect(config.enableRelay, isTrue);

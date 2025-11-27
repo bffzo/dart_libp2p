@@ -1,22 +1,22 @@
 /// NAT manager implementation for the basic host.
-/// 
+///
 /// This is a port of the Go implementation from go-libp2p/p2p/host/basic/natmgr.go
 /// to Dart, using native Dart idioms.
+library;
 
 import 'dart:async';
 import 'dart:io';
 
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
 import 'package:dart_libp2p/core/network/network.dart';
 import 'package:dart_libp2p/core/network/notifiee.dart';
-import 'package:logging/logging.dart';
-import 'package:synchronized/synchronized.dart';
-
-import '../../../core/network/conn.dart';
-import 'package:dart_libp2p/p2p/nat/nat_behavior_tracker.dart';
 import 'package:dart_libp2p/p2p/nat/nat_behavior.dart';
+import 'package:dart_libp2p/p2p/nat/nat_behavior_tracker.dart';
 import 'package:dart_libp2p/p2p/nat/nat_traversal_strategy.dart';
 import 'package:dart_libp2p/p2p/nat/stun/stun_client_pool.dart';
+import 'package:logging/logging.dart';
+import 'package:synchronized/synchronized.dart';
 
 final _log = Logger('natmgr');
 
@@ -46,7 +46,8 @@ abstract class NATManager {
 }
 
 /// Creates a new NAT manager.
-NATManager newNATManager(Network net, {
+NATManager newNATManager(
+  Network net, {
   StunClientPool? stunClientPool,
   Duration? behaviorCheckInterval,
 }) {
@@ -59,16 +60,15 @@ NATManager newNATManager(Network net, {
 
 /// Entry represents a protocol and port combination.
 class _Entry {
+  _Entry(this.protocol, this.port);
   final String protocol;
   final int port;
-
-  _Entry(this.protocol, this.port);
 
   static _Entry? fromMultiaddr(MultiAddr addr) {
     final parts = addr.toString().split('/');
     String? protocol;
     int? port;
-    for (int i = 0; i < parts.length - 1; i++) {
+    for (var i = 0; i < parts.length - 1; i++) {
       if (parts[i] == 'tcp' || parts[i] == 'udp') {
         protocol = parts[i];
         if (i + 1 < parts.length) {
@@ -98,6 +98,17 @@ class _Entry {
 
 /// NATManager implementation.
 class _NATManager implements NATManager {
+  _NATManager(
+    this._net, {
+    StunClientPool? stunClientPool,
+    Duration? behaviorCheckInterval,
+  })  : _stunClientPool = stunClientPool ?? StunClientPool(),
+        _behaviorTracker = NatBehaviorTracker(
+          stunClientPool: stunClientPool ?? StunClientPool(),
+          checkInterval: behaviorCheckInterval ?? const Duration(minutes: 10),
+        ) {
+    _start();
+  }
   final Network _net;
   final Lock _lock = Lock();
   final StunClientPool _stunClientPool;
@@ -107,19 +118,7 @@ class _NATManager implements NATManager {
   bool _closed = false;
   StreamSubscription? _trackerSub;
 
-  _NATManager(
-    this._net, {
-    StunClientPool? stunClientPool,
-    Duration? behaviorCheckInterval,
-  }) : _stunClientPool = stunClientPool ?? StunClientPool(),
-       _behaviorTracker = NatBehaviorTracker(
-         stunClientPool: stunClientPool ?? StunClientPool(),
-         checkInterval: behaviorCheckInterval ?? const Duration(minutes: 10),
-       ) {
-    _start();
-  }
-
-  void _start() async {
+  Future<void> _start() async {
     await _behaviorTracker.initialize();
     _net.notify(_NATManagerNetNotifiee(this));
     await _syncMappings();
@@ -142,14 +141,16 @@ class _NATManager implements NATManager {
 
   @override
   bool hasDiscoveredNAT() {
-    return _behaviorTracker.currentBehavior.mappingBehavior != NatMappingBehavior.unknown;
+    return _behaviorTracker.currentBehavior.mappingBehavior !=
+        NatMappingBehavior.unknown;
   }
 
   @override
   NatBehavior get currentBehavior => _behaviorTracker.currentBehavior;
 
   @override
-  TraversalStrategy get traversalStrategy => NatTraversalStrategy.selectStrategy(currentBehavior);
+  TraversalStrategy get traversalStrategy =>
+      NatTraversalStrategy.selectStrategy(currentBehavior);
 
   @override
   void addBehaviorChangeCallback(NatBehaviorChangeCallback callback) {
@@ -189,17 +190,22 @@ class _NATManager implements NATManager {
         try {
           // First try to bind to the requested port
           try {
-            socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, entry.port);
+            socket = await RawDatagramSocket.bind(
+              InternetAddress.anyIPv4,
+              entry.port,
+            );
           } catch (e) {
             // If that fails, bind to a random port
             socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
           }
-          
+
           final response = await _stunClientPool.discover();
-          if (response.externalAddress != null && response.externalPort != null) {
-            final ipPart = response.externalAddress!.type == InternetAddressType.IPv4
-                ? '/ip4/${response.externalAddress!.address}'
-                : '/ip6/${response.externalAddress!.address}';
+          if (response.externalAddress != null &&
+              response.externalPort != null) {
+            final ipPart =
+                response.externalAddress!.type == InternetAddressType.IPv4
+                    ? '/ip4/${response.externalAddress!.address}'
+                    : '/ip6/${response.externalAddress!.address}';
             final protocolPart = '/${entry.protocol}/${response.externalPort}';
             return MultiAddr('$ipPart$protocolPart');
           }
@@ -210,9 +216,10 @@ class _NATManager implements NATManager {
         // For TCP, we can use the default STUN discovery
         final response = await _stunClientPool.discover();
         if (response.externalAddress != null && response.externalPort != null) {
-          final ipPart = response.externalAddress!.type == InternetAddressType.IPv4
-              ? '/ip4/${response.externalAddress!.address}'
-              : '/ip6/${response.externalAddress!.address}';
+          final ipPart =
+              response.externalAddress!.type == InternetAddressType.IPv4
+                  ? '/ip4/${response.externalAddress!.address}'
+                  : '/ip6/${response.externalAddress!.address}';
           final protocolPart = '/${entry.protocol}/${response.externalPort}';
           return MultiAddr('$ipPart$protocolPart');
         }
@@ -238,9 +245,8 @@ class _NATManager implements NATManager {
 
 /// Network notifiee for the NAT manager.
 class _NATManagerNetNotifiee implements Notifiee {
-  final _NATManager _mgr;
-
   _NATManagerNetNotifiee(this._mgr);
+  final _NATManager _mgr;
 
   @override
   void listen(Network network, MultiAddr addr) {
@@ -254,11 +260,11 @@ class _NATManagerNetNotifiee implements Notifiee {
 
   @override
   Future<void> connected(Network network, Conn conn) async {
-    return await Future.delayed(Duration(milliseconds: 10));
+    return Future.delayed(const Duration(milliseconds: 10));
   }
 
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-    return await Future.delayed(Duration(milliseconds: 10));
+    return Future.delayed(const Duration(milliseconds: 10));
   }
 }

@@ -1,10 +1,10 @@
-import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
-import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/crypto/keys.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/peer/addr_info.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
 import 'package:dart_libp2p/core/protocol/protocol.dart';
-import 'package:dart_libp2p/core/crypto/keys.dart';
+import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
 
 /// A mock implementation of Peerstore for testing
 class MockPeerstore implements Peerstore {
@@ -16,7 +16,11 @@ class MockPeerstore implements Peerstore {
     return _addresses[peerId.toString()] ?? [];
   }
 
-  Future<void> addAddrs(PeerId peerId, List<MultiAddr> addrs, Duration ttl) async {
+  Future<void> addAddrs(
+    PeerId peerId,
+    List<MultiAddr> addrs,
+    Duration ttl,
+  ) async {
     final id = peerId.toString();
     if (!_addresses.containsKey(id)) {
       _addresses[id] = [];
@@ -70,7 +74,11 @@ class MockPeerstore implements Peerstore {
     _metadata[id]![key] = value;
   }
 
-  Future<void> setAddrs(PeerId peerId, List<MultiAddr> addrs, Duration ttl) async {
+  Future<void> setAddrs(
+    PeerId peerId,
+    List<MultiAddr> addrs,
+    Duration ttl,
+  ) async {
     final id = peerId.toString();
     _addresses[id] = List.from(addrs);
   }
@@ -80,7 +88,10 @@ class MockPeerstore implements Peerstore {
     _protocols[id] = List.from(protocols);
   }
 
-  Future<void> supportsProtocols(PeerId peerId, List<ProtocolID> protocols) async {
+  Future<void> supportsProtocols(
+    PeerId peerId,
+    List<ProtocolID> protocols,
+  ) async {
     // This is a simplification; in a real implementation we would check if the peer supports the protocols
     return;
   }
@@ -111,17 +122,22 @@ class MockPeerstore implements Peerstore {
   }
 
   @override
-  Future<void> addOrUpdatePeer(PeerId peerId, {List<MultiAddr>? addrs, List<String>? protocols, Map<String, dynamic>? metadata}) async {
+  Future<void> addOrUpdatePeer(
+    PeerId peerId, {
+    List<MultiAddr>? addrs,
+    List<String>? protocols,
+    Map<String, dynamic>? metadata,
+  }) async {
     if (addrs != null) {
       addAddrs(peerId, addrs, Duration.zero);
     }
 
     if (protocols != null) {
-      addProtocols(peerId, protocols.map((p) => p ).toList());
+      addProtocols(peerId, protocols.map((p) => p).toList());
     }
 
     if (metadata != null) {
-      for (var entry in metadata.entries) {
+      for (final entry in metadata.entries) {
         put(peerId, entry.key, entry.value);
       }
     }
@@ -139,7 +155,7 @@ class MockPeerstore implements Peerstore {
     return PeerInfo(
       peerId: peerId,
       addrs: _addresses[id]?.toSet(),
-      protocols: _protocols[id]?.map((p) => p.toString()).toSet(),
+      protocols: _protocols[id]?.map((p) => p).toSet(),
       metadata: _metadata[id],
     );
   }
@@ -147,9 +163,8 @@ class MockPeerstore implements Peerstore {
 
 /// Mock implementation of AddrBook
 class _MockAddrBook implements AddrBook {
-  final MockPeerstore _peerstore;
-
   _MockAddrBook(this._peerstore);
+  final MockPeerstore _peerstore;
 
   @override
   Future<List<MultiAddr>> addrs(PeerId id) async => _peerstore.addresses(id);
@@ -232,12 +247,12 @@ class _MockKeyBook implements KeyBook {
 
 /// Mock implementation of ProtoBook
 class _MockProtoBook implements ProtoBook {
+  _MockProtoBook(this._peerstore);
   final MockPeerstore _peerstore;
 
-  _MockProtoBook(this._peerstore);
-
   @override
-  Future<List<ProtocolID>> getProtocols(PeerId id) async => _peerstore.protocols(id);
+  Future<List<ProtocolID>> getProtocols(PeerId id) async =>
+      _peerstore.protocols(id);
 
   @override
   void addProtocols(PeerId id, List<ProtocolID> protocols) {
@@ -252,14 +267,18 @@ class _MockProtoBook implements ProtoBook {
   @override
   void removeProtocols(PeerId id, List<ProtocolID> protocols) {
     final currentProtocols = _peerstore.protocols(id);
-    final updatedProtocols = currentProtocols.where((p) => !protocols.contains(p)).toList();
+    final updatedProtocols =
+        currentProtocols.where((p) => !protocols.contains(p)).toList();
     _peerstore.setProtocols(id, updatedProtocols);
   }
 
   @override
-  Future<List<ProtocolID>> supportsProtocols(PeerId id, List<ProtocolID> protocols) async {
+  Future<List<ProtocolID>> supportsProtocols(
+    PeerId id,
+    List<ProtocolID> protocols,
+  ) async {
     final supported = _peerstore.protocols(id);
-    return protocols.where((p) => supported.contains(p)).toList();
+    return protocols.where(supported.contains).toList();
   }
 
   @override
@@ -268,7 +287,10 @@ class _MockProtoBook implements ProtoBook {
   }
 
   @override
-  Future<ProtocolID?> firstSupportedProtocol(PeerId id, List<ProtocolID> protocols) async {
+  Future<ProtocolID?> firstSupportedProtocol(
+    PeerId id,
+    List<ProtocolID> protocols,
+  ) async {
     final supported = await supportsProtocols(id, protocols);
     return supported.isNotEmpty ? supported.first : null;
   }
@@ -276,9 +298,8 @@ class _MockProtoBook implements ProtoBook {
 
 /// Mock implementation of PeerMetadata
 class _MockPeerMetadata implements PeerMetadata {
-  final MockPeerstore _peerstore;
-
   _MockPeerMetadata(this._peerstore);
+  final MockPeerstore _peerstore;
 
   @override
   dynamic get(PeerId id, String key) => _peerstore.get(id, key);

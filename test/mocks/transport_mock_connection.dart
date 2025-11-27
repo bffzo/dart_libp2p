@@ -4,10 +4,9 @@ import 'base_mock_connection.dart';
 /// Mock connection specialized for transport tests
 /// Focuses on simple protocol negotiation without message framing
 class TransportMockConnection extends BaseMockConnection {
+  TransportMockConnection([super.id = 'transport']);
   Uint8List? _nextReadResult;
   bool _shouldThrowOnRead = false;
-
-  TransportMockConnection([String id = 'transport']) : super(id);
 
   /// Sets the next read result
   set nextReadResult(Uint8List value) {
@@ -27,15 +26,15 @@ class TransportMockConnection extends BaseMockConnection {
   @override
   Future<Uint8List> read([int? length]) async {
     validateNotClosed();
-    
+
     if (_shouldThrowOnRead) {
       throw Exception('Mock read error');
     }
-    
+
     if (_nextReadResult == null) {
       throw StateError('No mock data set for read');
     }
-    
+
     return _nextReadResult!;
   }
 
@@ -44,4 +43,4 @@ class TransportMockConnection extends BaseMockConnection {
     validateNotClosed();
     recordWrite(data);
   }
-} 
+}

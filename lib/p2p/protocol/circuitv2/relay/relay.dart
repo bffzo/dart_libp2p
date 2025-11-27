@@ -5,7 +5,12 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dart_libp2p/core/host/host.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
+import 'package:dart_libp2p/p2p/discovery/peer_info.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/pb/circuit.pb.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/proto.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/relay/resources.dart';
@@ -16,14 +21,10 @@ import 'package:dart_libp2p/p2p/protocol/multistream/client.dart'; // For encode
 import 'package:fixnum/fixnum.dart';
 import 'package:meta/meta.dart';
 
-import '../../../../core/host/host.dart';
-import '../../../../core/network/stream.dart';
-import '../../../../core/network/context.dart';
-import '../../../../core/multiaddr.dart';
-import '../../../discovery/peer_info.dart';
-
 /// Relay implements the relay service for the p2p-circuit/v2 protocol.
 class Relay {
+  /// Creates a new relay service.
+  Relay(this._host, this._resources);
   final Host _host;
   final Resources _resources;
   final Map<String, DateTime> _reservations = {};
@@ -31,12 +32,12 @@ class Relay {
   Timer? _gcTimer;
   bool _closed = false;
 
-  /// Creates a new relay service.
-  Relay(this._host, this._resources);
-
   /// Starts the relay service.
   void start() {
-    _host.setStreamHandler(CircuitV2Protocol.protoIDv2Hop, (stream, remotePeer) => _handleStream(stream));
+    _host.setStreamHandler(
+      CircuitV2Protocol.protoIDv2Hop,
+      (stream, remotePeer) => _handleStream(stream),
+    );
     _startGarbageCollection();
   }
 
@@ -53,7 +54,10 @@ class Relay {
     try {
       // Read the length-delimited message (client sends with length prefix)
       print('[Relay] Creating stream reader for incoming message');
-      final reader = DelimitedReader(_p2pStreamToDartStream(stream), 4096); // maxMessageSize
+      final reader = DelimitedReader(
+        _p2pStreamToDartStream(stream),
+        4096,
+      ); // maxMessageSize
       print('[Relay] Reading message...');
       final pb = await reader.readMsg(HopMessage());
       print('[Relay] Message read successfully, type: ${pb.type}');
@@ -62,16 +66,16 @@ class Relay {
       switch (pb.type) {
         case HopMessage_Type.RESERVE:
           await _handleReserve(stream, pb);
-          break;
         case HopMessage_Type.CONNECT:
           await _handleConnect(stream, pb);
-          break;
         default:
           await _writeResponse(stream, Status.UNEXPECTED_MESSAGE);
           try {
             await stream.close();
           } catch (closeError) {
-            print('[Relay] Failed to close stream after unexpected message: $closeError');
+            print(
+              '[Relay] Failed to close stream after unexpected message: $closeError',
+            );
           }
       }
     } catch (e) {
@@ -90,7 +94,7 @@ class Relay {
     // For RESERVE requests, the peer making the reservation is the remote peer of the stream
     final peerId = stream.conn.remotePeer;
     print('[Relay] Handling RESERVE from peer: ${peerId.toBase58()}');
-    
+
     // Check if we have resources for a new reservation
     if (!_resources.canReserve(peerId)) {
       print('[Relay] Resource limit exceeded for peer: ${peerId.toBase58()}');
@@ -99,9 +103,12 @@ class Relay {
     }
 
     // Create a reservation
-    final expire = DateTime.now().add(Duration(seconds: _resources.reservationTtl));
+    final expire =
+        DateTime.now().add(Duration(seconds: _resources.reservationTtl));
     _reservations[peerId.toString()] = expire;
-    print('[Relay] Reservation created for peer: ${peerId.toBase58()}, expires: $expire');
+    print(
+      '[Relay] Reservation created for peer: ${peerId.toBase58()}, expires: $expire',
+    );
 
     // Create a reservation voucher
     final voucher = ReservationVoucherData(
@@ -114,49 +121,51 @@ class Relay {
     final reservation = Reservation()
       ..expire = Int64(expire.millisecondsSinceEpoch ~/ 1000)
       ..addrs.addAll(
-          _host.addrs
-              .where((addr) => !addr.toString().contains('/p2p-circuit'))  // ← Filter!
-              .map((addr) => addr.toBytes())
+        _host.addrs
+            .where(
+              (addr) => !addr.toString().contains('/p2p-circuit'),
+            ) // ← Filter!
+            .map((addr) => addr.toBytes()),
       )
       ..voucher = voucher.marshalRecord();
 
-  // Create a limit message
-  final limit = Limit()
-    ..duration = _resources.connectionDuration
-    ..data = Int64(_resources.connectionData);
+    // Create a limit message
+    final limit = Limit()
+      ..duration = _resources.connectionDuration
+      ..data = Int64(_resources.connectionData);
 
-  // Write the response (length-delimited)
-  final response = HopMessage()
-    ..type = HopMessage_Type.STATUS
-    ..status = Status.OK
-    ..reservation = reservation
-    ..limit = limit;
-  print('[Relay] Sending reservation response to peer: ${peerId.toBase58()}');
-  
-  // Write the message with a custom writer that tracks the write operation
-  final writeCompleter = Completer<void>();
-  final writer = StreamSinkFromP2PStream(stream, writeCompleter);
-  writeDelimitedMessage(writer, response);
-  
-  // Wait for the write to complete before returning
-  await writeCompleter.future;
-  print('[Relay] Reservation response sent and flushed');
-  
-  // Add a small delay to ensure the data is transmitted
-  await Future.delayed(Duration(milliseconds: 50));
-}
+    // Write the response (length-delimited)
+    final response = HopMessage()
+      ..type = HopMessage_Type.STATUS
+      ..status = Status.OK
+      ..reservation = reservation
+      ..limit = limit;
+    print('[Relay] Sending reservation response to peer: ${peerId.toBase58()}');
+
+    // Write the message with a custom writer that tracks the write operation
+    final writeCompleter = Completer<void>();
+    final writer = StreamSinkFromP2PStream(stream, writeCompleter);
+    writeDelimitedMessage(writer, response);
+
+    // Wait for the write to complete before returning
+    await writeCompleter.future;
+    print('[Relay] Reservation response sent and flushed');
+
+    // Add a small delay to ensure the data is transmitted
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
 
   /// Handles a connection request.
   Future<void> _handleConnect(P2PStream stream, HopMessage msg) async {
     // The SOURCE peer is the one who opened this HOP stream (the peer dialing)
     final srcPeerId = stream.conn.remotePeer;
-    
+
     // The DESTINATION peer is in msg.peer (the peer being dialed)
     if (!msg.hasPeer()) {
       await _writeResponse(stream, Status.MALFORMED_MESSAGE);
       return;
     }
-    
+
     final dstInfo = peerToPeerInfoV2(msg.peer);
     if (dstInfo.peerId.toString().isEmpty) {
       await _writeResponse(stream, Status.MALFORMED_MESSAGE);
@@ -167,7 +176,9 @@ class Relay {
     // (the peer being dialed TO needs the reservation, not the one dialing FROM)
     final reservation = _reservations[dstInfo.peerId.toString()];
     if (reservation == null || reservation.isBefore(DateTime.now())) {
-      print('[Relay] NO_RESERVATION: ${dstInfo.peerId} does not have an active reservation');
+      print(
+        '[Relay] NO_RESERVATION: ${dstInfo.peerId} does not have an active reservation',
+      );
       await _writeResponse(stream, Status.NO_RESERVATION);
       return;
     }
@@ -182,28 +193,35 @@ class Relay {
       // Open a STOP stream to the destination peer
       // Host.newStream() will:
       // 1. Check for existing connection (via connect())
-      // 2. Create stream on that connection (via network.newStream())  
+      // 2. Create stream on that connection (via network.newStream())
       // 3. Wait for identify
       // 4. Negotiate protocol
       // 5. Register protocol in peerstore
-      print('[Relay] Opening STOP stream to destination peer: ${dstInfo.peerId.toBase58()}');
-      final dstStream = await _host.newStream(
-        dstInfo.peerId, 
-        [CircuitV2Protocol.protoIDv2Stop], 
-        Context()
+      print(
+        '[Relay] Opening STOP stream to destination peer: ${dstInfo.peerId.toBase58()}',
       );
-      print('[Relay] STOP stream opened and protocol negotiated with destination peer: ${dstInfo.peerId.toBase58()}');
-      
+      final dstStream = await _host.newStream(
+        dstInfo.peerId,
+        [CircuitV2Protocol.protoIDv2Stop],
+        Context(),
+      );
+      print(
+        '[Relay] STOP stream opened and protocol negotiated with destination peer: ${dstInfo.peerId.toBase58()}',
+      );
+
       // Set handshake deadline for the STOP protocol handshake messages
       // This gives enough time for the STOP handshake to complete
-      await dstStream.setDeadline(DateTime.now().add(Duration(minutes: 1)));
+      await dstStream
+          .setDeadline(DateTime.now().add(const Duration(minutes: 1)));
       print('[Relay] Set 1-minute handshake deadline on STOP stream');
 
       // Create a stop message with SOURCE peer info
       print('[Relay] Creating STOP message...');
       final stopMsg = StopMessage()
         ..type = StopMessage_Type.CONNECT
-        ..peer = peerInfoToPeerV2(PeerInfo(peerId: srcPeerId, addrs: <MultiAddr>[].toSet()));
+        ..peer = peerInfoToPeerV2(
+          PeerInfo(peerId: srcPeerId, addrs: <MultiAddr>{}),
+        );
       print('[Relay] STOP message created, type: ${stopMsg.type}');
 
       // Write the message with length prefix (required for DelimitedReader on the receiving end)
@@ -212,9 +230,13 @@ class Relay {
       final messageBytes = stopMsg.writeToBuffer();
       print('[Relay] Message encoded to ${messageBytes.length} bytes');
       final lengthBytes = encodeVarint(messageBytes.length);
-      print('[Relay] Writing length prefix (${lengthBytes.length} bytes) to STOP stream...');
+      print(
+        '[Relay] Writing length prefix (${lengthBytes.length} bytes) to STOP stream...',
+      );
       await dstStream.write(lengthBytes);
-      print('[Relay] Length prefix written, now writing message bytes (${messageBytes.length} bytes)...');
+      print(
+        '[Relay] Length prefix written, now writing message bytes (${messageBytes.length} bytes)...',
+      );
       await dstStream.write(messageBytes);
       print('[Relay] Message bytes written, flushing stream...');
       // Flush the stream to ensure data is sent immediately
@@ -222,13 +244,19 @@ class Relay {
         // Most streams don't have a flush method, so we can't call it
         // The write should already flush automatically
       }
-      print('[Relay] STOP message written successfully to destination peer: ${dstInfo.peerId.toBase58()}');
+      print(
+        '[Relay] STOP message written successfully to destination peer: ${dstInfo.peerId.toBase58()}',
+      );
 
       // Read the response (destination sends with length prefix)
-      print('[Relay] Reading STOP response from destination peer: ${dstInfo.peerId.toBase58()}...');
+      print(
+        '[Relay] Reading STOP response from destination peer: ${dstInfo.peerId.toBase58()}...',
+      );
       final reader = DelimitedReader(_p2pStreamToDartStream(dstStream), 4096);
       final pb = await reader.readMsg(StopMessage());
-      print('[Relay] STOP response received from destination peer: ${dstInfo.peerId.toBase58()}, status: ${pb.status}');
+      print(
+        '[Relay] STOP response received from destination peer: ${dstInfo.peerId.toBase58()}, status: ${pb.status}',
+      );
 
       // Check the status
       if (pb.status != Status.OK) {
@@ -245,16 +273,24 @@ class Relay {
       await stream.setDeadline(null);
       await dstStream.setDeadline(null);
       print('[Relay] Cleared deadlines on relay streams:');
-      print('[Relay]   - HOP stream (from ${srcPeerId.toBase58()}): id=${stream.id()}');
-      print('[Relay]   - STOP stream (to ${dstInfo.peerId.toBase58()}): id=${dstStream.id()}');
+      print(
+        '[Relay]   - HOP stream (from ${srcPeerId.toBase58()}): id=${stream.id()}',
+      );
+      print(
+        '[Relay]   - STOP stream (to ${dstInfo.peerId.toBase58()}): id=${dstStream.id()}',
+      );
 
       // Add the connection to the active connections
-      final connKey = '${srcPeerId}-${dstInfo.peerId}';
+      final connKey = '$srcPeerId-${dstInfo.peerId}';
       final currentCount = _connections[connKey] ?? 0;
       _connections[connKey] = currentCount + 1;
-      print('[Relay] Active relay connections for ${srcPeerId.toBase58()} -> ${dstInfo.peerId.toBase58()}: ${currentCount + 1}');
+      print(
+        '[Relay] Active relay connections for ${srcPeerId.toBase58()} -> ${dstInfo.peerId.toBase58()}: ${currentCount + 1}',
+      );
       if (currentCount > 0) {
-        print('[Relay] ⚠️  WARNING: Multiple concurrent relay connections detected!');
+        print(
+          '[Relay] ⚠️  WARNING: Multiple concurrent relay connections detected!',
+        );
       }
 
       // Relay data between the peers
@@ -284,7 +320,7 @@ class Relay {
     PeerId srcPeer,
     PeerId dstPeer,
   ) {
-    final connKey = '${srcPeer}-${dstPeer}';
+    final connKey = '$srcPeer-$dstPeer';
     var cleanupDone = false;
 
     // Idempotent cleanup function
@@ -294,7 +330,7 @@ class Relay {
     void cleanup() {
       if (cleanupDone) return;
       cleanupDone = true;
-      
+
       // Update connection count
       final count = _connections[connKey] ?? 0;
       if (count <= 1) {
@@ -302,14 +338,16 @@ class Relay {
       } else {
         _connections[connKey] = count - 1;
       }
-      
-      print('[Relay] Cleanup completed for ${srcPeer.toBase58()} -> ${dstPeer.toBase58()}');
+
+      print(
+        '[Relay] Cleanup completed for ${srcPeer.toBase58()} -> ${dstPeer.toBase58()}',
+      );
     }
 
     // Relay data from source to destination
     Future<void> relaySourceToDest() async {
       try {
-        int bytesRelayed = 0;
+        var bytesRelayed = 0;
         while (true) {
           final data = await srcStream.read();
           if (data.isEmpty) {
@@ -339,12 +377,14 @@ class Relay {
     // Relay data from destination to source
     Future<void> relayDestToSource() async {
       try {
-        int bytesRelayed = 0;
+        var bytesRelayed = 0;
         while (true) {
           final data = await dstStream.read();
           if (data.isEmpty) {
             // EOF received - propagate to source via closeWrite
-            print('[Relay] EOF from destination after relaying $bytesRelayed bytes total');
+            print(
+              '[Relay] EOF from destination after relaying $bytesRelayed bytes total',
+            );
             await srcStream.closeWrite().catchError((e) {
               print('[Relay] Error closing write on source: $e');
             });
@@ -374,7 +414,7 @@ class Relay {
         relaySourceToDest(),
         relayDestToSource(),
       ]);
-      
+
       // Both directions completed - now it's safe to close any remaining open streams
       // This handles edge cases where closeWrite() didn't fully close the stream
       if (!srcStream.isClosed) {
@@ -390,7 +430,7 @@ class Relay {
         });
       }
     }
-    
+
     // Start relay (fire and forget - errors are handled within each direction)
     startRelay().catchError((e) {
       print('[Relay] Unexpected error in relay coordination: $e');
@@ -403,22 +443,26 @@ class Relay {
       final response = HopMessage()
         ..type = HopMessage_Type.STATUS
         ..status = status;
-      
+
       // Write with length prefix (required for DelimitedReader on the receiving end)
       final messageBytes = response.writeToBuffer();
       final lengthBytes = encodeVarint(messageBytes.length);
       await stream.write(lengthBytes);
       await stream.write(messageBytes);
-      print('[Relay] Sent HOP STATUS response: $status (${messageBytes.length} bytes)');
+      print(
+        '[Relay] Sent HOP STATUS response: $status (${messageBytes.length} bytes)',
+      );
     } catch (e) {
-      print('[Relay] Failed to write response (stream likely closed/reset): $e');
+      print(
+        '[Relay] Failed to write response (stream likely closed/reset): $e',
+      );
       // Don't rethrow - this is best-effort error reporting
     }
   }
 
   /// Starts the garbage collection timer.
   void _startGarbageCollection() {
-    _gcTimer = Timer.periodic(Duration(minutes: 1), (_) {
+    _gcTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _gc();
     });
   }
@@ -456,7 +500,8 @@ class Relay {
   }
 
   @visibleForTesting
-  Map<String, DateTime> get reservationsForTesting => Map.unmodifiable(_reservations);
+  Map<String, DateTime> get reservationsForTesting =>
+      Map.unmodifiable(_reservations);
 
   @visibleForTesting
   Map<String, int> get connectionsForTesting => Map.unmodifiable(_connections);
@@ -499,10 +544,9 @@ Stream<Uint8List> _p2pStreamToDartStream(P2PStream p2pStream) {
 
 /// Helper class to adapt P2PStream to a Sink<List<int>> for writeDelimitedMessage
 class StreamSinkFromP2PStream implements Sink<List<int>> {
+  StreamSinkFromP2PStream(this._stream, [this._writeCompleter]);
   final P2PStream _stream;
   final Completer<void>? _writeCompleter;
-  
-  StreamSinkFromP2PStream(this._stream, [this._writeCompleter]);
 
   @override
   void add(List<int> data) {
@@ -525,7 +569,7 @@ class StreamSinkFromP2PStream implements Sink<List<int>> {
   void close() {
     // Closing the sink doesn't necessarily close the underlying P2PStream
     // as the stream's lifecycle is managed by the caller
-    
+
     // If no writes were made and completer exists, complete it
     if (_writeCompleter != null && !_writeCompleter.isCompleted) {
       _writeCompleter.complete();

@@ -6,12 +6,11 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/p2p/protocol/holepunch
 /// to Dart, using native Dart idioms.
+library;
 
 import 'dart:async';
 
 import 'package:dart_libp2p/core/peer/peer_id.dart';
-
-
 
 /// HolePunchService is the interface for the holepunch service.
 abstract class HolePunchService {

@@ -1,24 +1,28 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
-import '../../core/connmgr/conn_manager.dart';
-import '../../core/multiaddr.dart';
-import '../../core/network/conn.dart';
-import '../../core/network/transport_conn.dart';
-import 'listener.dart';
-import 'transport.dart';
-import 'transport_config.dart';
-import 'connection_manager.dart'; // Re-added import for ConnectionManager
-import '../../core/network/mux.dart'; // Multiplexer no longer directly used by TCPTransport constructor
-import '../../core/network/rcmgr.dart' show ResourceManager;
-import '../../core/peer/peer_id.dart'; // For concrete PeerId class
-import 'tcp_connection.dart';
-import 'tcp_listener.dart';
+import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart' show ResourceManager;
+import 'package:dart_libp2p/core/network/transport_conn.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart'; // For concrete PeerId class
+import 'package:dart_libp2p/p2p/transport/connection_manager.dart'; // Re-added import for ConnectionManager
+import 'package:dart_libp2p/p2p/transport/listener.dart';
+import 'package:dart_libp2p/p2p/transport/tcp_connection.dart';
+import 'package:dart_libp2p/p2p/transport/tcp_listener.dart';
+import 'package:dart_libp2p/p2p/transport/transport.dart';
+import 'package:dart_libp2p/p2p/transport/transport_config.dart';
 import 'package:meta/meta.dart';
 
 /// TCP implementation of the Transport interface
 class TCPTransport implements Transport {
+  TCPTransport({
+    // required this.multiplexer, // Removed
+    required this.resourceManager,
+    TransportConfig? config,
+    ConnManager? connManager,
+  })  : config = config ?? TransportConfig.defaultConfig,
+        _connManager = connManager ?? ConnectionManager();
   static const _supportedProtocols = ['/ip4/tcp', '/ip6/tcp'];
 
   @override
@@ -30,14 +34,6 @@ class TCPTransport implements Transport {
 
   @visibleForTesting
   ConnManager get connectionManager => _connManager;
-
-  TCPTransport({
-    // required this.multiplexer, // Removed
-    required this.resourceManager,
-    TransportConfig? config,
-    ConnManager? connManager,
-  }) : config = config ?? TransportConfig.defaultConfig,
-       _connManager = connManager ?? ConnectionManager();
 
   @override
   Future<TransportConn> dial(MultiAddr addr, {Duration? timeout}) async {
@@ -53,7 +49,7 @@ class TCPTransport implements Transport {
 
     try {
       final socket = await Socket.connect(
-        host, 
+        host,
         port,
         timeout: effectiveTimeout,
       ).timeout(
@@ -64,26 +60,29 @@ class TCPTransport implements Transport {
       );
 
       // Create multiaddrs for local and remote endpoints
-      final localAddr = MultiAddr('/ip4/${socket.address.address}/tcp/${socket.port}');
-      final remoteAddr = MultiAddr('/ip4/${socket.remoteAddress.address}/tcp/${socket.remotePort}');
+      final localAddr =
+          MultiAddr('/ip4/${socket.address.address}/tcp/${socket.port}');
+      final remoteAddr = MultiAddr(
+        '/ip4/${socket.remoteAddress.address}/tcp/${socket.remotePort}',
+      );
 
       // Placeholder PeerIDs - these should be derived from a security handshake
       // which typically happens before or as part of the transport upgrade process.
       // For now, using fixed placeholders. This is a CRITICAL point for a real system.
       final localPeerId = await PeerId.random(); // Using PeerId.random()
-      final remotePeerId = await PeerId.random(); // Placeholder for remote PeerId (SHOULD COME FROM HANDSHAKE)
-
+      final remotePeerId = await PeerId
+          .random(); // Placeholder for remote PeerId (SHOULD COME FROM HANDSHAKE)
 
       final connection = await TCPConnection.create(
         socket,
         localAddr,
         remoteAddr,
-        localPeerId, 
-        remotePeerId, 
+        localPeerId,
+        remotePeerId,
         // multiplexer, // Removed
         resourceManager,
         false, // isServer = false for dial
-        legacyConnManager: _connManager
+        legacyConnManager: _connManager,
         // onIncomingStream callback removed from TCPConnection.create
       );
 
@@ -93,8 +92,8 @@ class TCPTransport implements Transport {
       // Stream-level deadlines are preferred with multiplexing.
 
       return connection;
-    } on TimeoutException catch (e) {
-      throw e;
+    } on TimeoutException {
+      rethrow;
     } catch (e) {
       throw Exception('Failed to connect: $e');
     }
@@ -120,7 +119,11 @@ class TCPTransport implements Transport {
         connManager: _connManager,
         // multiplexer: multiplexer, // This line was correctly commented out, but TCPListener itself needs update
         resourceManager: resourceManager,
-        onConnection: (Socket socket, MultiAddr localRealAddr, MultiAddr remoteRealAddr) async {
+        onConnection: (
+          Socket socket,
+          MultiAddr localRealAddr,
+          MultiAddr remoteRealAddr,
+        ) async {
           final localInstancePeerId = await PeerId.random();
           PeerId? remoteReceivedPeerId;
 
@@ -132,7 +135,7 @@ class TCPTransport implements Transport {
             remoteReceivedPeerId,
             resourceManager,
             true, // isServer = true
-            legacyConnManager: _connManager
+            legacyConnManager: _connManager,
             // onIncomingStream callback removed
           );
 
@@ -153,22 +156,25 @@ class TCPTransport implements Transport {
     // Check if the address has either ip4 or ip6 and tcp protocols
     final hasIP = addr.hasProtocol('ip4') || addr.hasProtocol('ip6');
     final hasTCP = addr.hasProtocol('tcp');
-    
+
     // Refuse circuit relay addresses - those should be handled by CircuitV2Client
     final hasCircuit = addr.hasProtocol('p2p-circuit');
     if (hasCircuit) {
       return false;
     }
-    
+
     return hasIP && hasTCP;
   }
 
   /// Closes all connections and cleans up resources
+  @override
   Future<void> dispose() async {
     // (_connManager as ConnectionManager).dispose(); // If it has a dispose method
     // Or iterate through active connections and close them if not managed by ConnManager directly.
     // For now, assuming ConnManager handles its own cleanup or this is done at a higher level.
-    print('TCPTransport dispose called. ConnManager should handle connection cleanup.');
+    print(
+      'TCPTransport dispose called. ConnManager should handle connection cleanup.',
+    );
   }
 
   @override
@@ -178,5 +184,4 @@ class TCPTransport implements Transport {
     final hasTCP = addr.hasProtocol('tcp');
     return hasIP && hasTCP;
   }
-
 }

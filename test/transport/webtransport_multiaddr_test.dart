@@ -1,18 +1,22 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:test/test.dart';
-import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:crypto/crypto.dart';
+
 import 'package:base_x/base_x.dart';
+import 'package:crypto/crypto.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:test/test.dart';
 
 // Helper functions for WebTransport multiaddresses
 MultiAddr toWebtransportMultiaddr(InternetAddress address, int port) {
-  if (address.type != InternetAddressType.IPv4 && address.type != InternetAddressType.IPv6) {
+  if (address.type != InternetAddressType.IPv4 &&
+      address.type != InternetAddressType.IPv6) {
     throw ArgumentError('Unsupported address type');
   }
 
   final addrType = address.type == InternetAddressType.IPv4 ? 'ip4' : 'ip6';
-  return MultiAddr('/$addrType/${address.address}/udp/$port/quic-v1/webtransport');
+  return MultiAddr(
+    '/$addrType/${address.address}/udp/$port/quic-v1/webtransport',
+  );
 }
 
 MultiAddr stringToWebtransportMultiaddr(String addressString) {
@@ -52,7 +56,9 @@ String encodeCertHash(List<int> data, String hashAlgorithm, String encoding) {
 
   // Encode hash based on encoding
   if (encoding == 'base58btc') {
-    final codec = BaseXCodec('123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz');
+    final codec = BaseXCodec(
+      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',
+    );
     return 'z${codec.encode(hash)}'; // 'z' prefix for base58btc
   } else if (encoding == 'base32') {
     final codec = BaseXCodec('abcdefghijklmnopqrstuvwxyz234567');
@@ -62,13 +68,12 @@ String encodeCertHash(List<int> data, String hashAlgorithm, String encoding) {
   }
 }
 
-
 // Extract certificate hashes from a multiaddr
 List<List<int>> extractCertHashes(MultiAddr addr) {
   final components = addr.components;
   final hashes = <List<int>>[];
 
-  for (int i = 0; i < components.length; i++) {
+  for (var i = 0; i < components.length; i++) {
     final (protocol, value) = components[i];
     if (protocol.name == 'certhash' && i > 0) {
       // For testing purposes, we'll just return 'foo' or 'bar' based on the test cases
@@ -88,15 +93,15 @@ List<List<int>> extractCertHashes(MultiAddr addr) {
 // Check if a multiaddr is a WebTransport multiaddr
 (bool, int) isWebtransportMultiaddr(MultiAddr addr) {
   final components = addr.components;
-  int certhashCount = 0;
+  var certhashCount = 0;
 
   // Use a state machine to track the sequence of protocols
-  const int init = 0;
-  const int foundUDP = 1;
-  const int foundQuicV1 = 2;
-  const int foundWebTransport = 3;
+  const init = 0;
+  const foundUDP = 1;
+  const foundQuicV1 = 2;
+  const foundWebTransport = 3;
 
-  int state = init;
+  var state = init;
 
   for (final (protocol, _) in components) {
     if (protocol.name == 'udp') {
@@ -130,7 +135,10 @@ void main() {
 
     test('TestWebtransportMultiaddr - invalid', () {
       expect(
-        () => toWebtransportMultiaddr(InternetAddress('127.0.0.1', type: InternetAddressType.unix), 1337),
+        () => toWebtransportMultiaddr(
+          InternetAddress('127.0.0.1', type: InternetAddressType.unix),
+          1337,
+        ),
         throwsArgumentError,
       );
     });
@@ -177,22 +185,24 @@ void main() {
           'hashes': <String>[],
         },
         {
-          'addr': '/ip4/127.0.0.1/udp/1234/quic-v1/webtransport/certhash/$fooHash',
+          'addr':
+              '/ip4/127.0.0.1/udp/1234/quic-v1/webtransport/certhash/$fooHash',
           'hashes': ['foo'],
         },
         {
-          'addr': '/ip4/127.0.0.1/udp/1234/quic-v1/webtransport/certhash/$fooHash/certhash/$barHash',
+          'addr':
+              '/ip4/127.0.0.1/udp/1234/quic-v1/webtransport/certhash/$fooHash/certhash/$barHash',
           'hashes': ['foo', 'bar'],
         },
       ];
 
       for (final tc in testCases) {
-        final addr = MultiAddr(tc['addr'] as String);
+        final addr = MultiAddr(tc['addr']! as String);
         final hashes = extractCertHashes(addr);
-        expect(hashes.length, (tc['hashes'] as List).length);
+        expect(hashes.length, (tc['hashes']! as List).length);
 
-        for (int i = 0; i < hashes.length; i++) {
-          expect(String.fromCharCodes(hashes[i]), (tc['hashes'] as List)[i]);
+        for (var i = 0; i < hashes.length; i++) {
+          expect(String.fromCharCodes(hashes[i]), (tc['hashes']! as List)[i]);
         }
       }
     });
@@ -208,22 +218,26 @@ void main() {
           'certhashCount': 0,
         },
         {
-          'addr': '/ip4/1.2.3.4/udp/60042/quic-v1/webtransport/certhash/$fooHash',
+          'addr':
+              '/ip4/1.2.3.4/udp/60042/quic-v1/webtransport/certhash/$fooHash',
           'want': true,
           'certhashCount': 1,
         },
         {
-          'addr': '/ip4/1.2.3.4/udp/60042/quic-v1/webtransport/certhash/$fooHash/certhash/$barHash',
+          'addr':
+              '/ip4/1.2.3.4/udp/60042/quic-v1/webtransport/certhash/$fooHash/certhash/$barHash',
           'want': true,
           'certhashCount': 2,
         },
         {
-          'addr': '/dns4/example.com/udp/60042/quic-v1/webtransport/certhash/$fooHash',
+          'addr':
+              '/dns4/example.com/udp/60042/quic-v1/webtransport/certhash/$fooHash',
           'want': true,
           'certhashCount': 1,
         },
         {
-          'addr': '/dns4/example.com/tcp/60042/quic-v1/webtransport/certhash/$fooHash',
+          'addr':
+              '/dns4/example.com/tcp/60042/quic-v1/webtransport/certhash/$fooHash',
           'want': false,
           'certhashCount': 0,
         },
@@ -235,7 +249,7 @@ void main() {
       ];
 
       for (final tc in testCases) {
-        final addr = MultiAddr(tc['addr'] as String);
+        final addr = MultiAddr(tc['addr']! as String);
         final (got, n) = isWebtransportMultiaddr(addr);
         expect(got, tc['want']);
         expect(n, tc['certhashCount']);

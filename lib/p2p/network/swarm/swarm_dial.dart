@@ -1,21 +1,30 @@
 import 'dart:async';
 
-import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/interfaces.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 // Corrected import for Protocol constants:
 import 'package:dart_libp2p/p2p/multiaddr/protocol.dart' as multiaddr_protocol;
-import 'package:dart_libp2p/core/network/context.dart';
-import 'package:dart_libp2p/core/network/network.dart';
 import 'package:logging/logging.dart';
 
-import '../../../core/interfaces.dart';
-import '../../../core/network/conn.dart';
-
 /// DialFunc is a function that dials a peer at a specific address
-typedef DialFunc = Future<Conn> Function(Context context, MultiAddr addr, PeerId peerId);
+typedef DialFunc = Future<Conn> Function(
+  Context context,
+  MultiAddr addr,
+  PeerId peerId,
+);
 
 /// AddrDialer is a helper for dialing multiple addresses in parallel
 class AddrDialer {
+  /// Creates a new AddrDialer
+  AddrDialer({
+    required PeerId peerId,
+    required List<MultiAddr> addrs,
+    required DialFunc dialFunc,
+    required Context context,
+  })  : _peerId = peerId,
+        _addrs = addrs,
+        _dialFunc = dialFunc,
+        _context = context;
   final Logger _logger = Logger('AddrDialer');
 
   /// The peer ID to dial
@@ -30,18 +39,6 @@ class AddrDialer {
   /// The context for the dial operation
   final Context _context;
 
-  /// Creates a new AddrDialer
-  AddrDialer({
-    required PeerId peerId,
-    required List<MultiAddr> addrs,
-    required DialFunc dialFunc,
-    required Context context,
-  }) : 
-    _peerId = peerId,
-    _addrs = addrs,
-    _dialFunc = dialFunc,
-    _context = context;
-
   /// Dials the addresses in parallel and returns the first successful connection
   Future<Conn> dial() async {
     if (_addrs.isEmpty) {
@@ -50,7 +47,7 @@ class AddrDialer {
 
     // Create a completer for the first successful connection
     final completer = Completer<Conn>();
-    
+
     // Track all errors for comprehensive reporting (3b)
     final errors = <String, Exception>{};
     var dialsInProgress = _addrs.length;
@@ -64,19 +61,17 @@ class AddrDialer {
         }
       }).catchError((error) {
         // Collect error for this address
-        errors[addr.toString()] = error is Exception 
-            ? error 
-            : Exception(error.toString());
-        
+        errors[addr.toString()] =
+            error is Exception ? error : Exception(error.toString());
+
         dialsInProgress--;
-        
+
         // If all dials failed, report all errors
         if (dialsInProgress == 0 && !completer.isCompleted) {
-          final errorMsg = errors.entries
-              .map((e) => '${e.key}: ${e.value}')
-              .join('; ');
+          final errorMsg =
+              errors.entries.map((e) => '${e.key}: ${e.value}').join('; ');
           completer.completeError(
-            Exception('Failed to dial any address. Errors: $errorMsg')
+            Exception('Failed to dial any address. Errors: $errorMsg'),
           );
         }
       });
@@ -105,9 +100,11 @@ class DelayDialRanker {
     final relayAddrs = <MultiAddr>[];
 
     for (final addr in addrs) {
-      bool isRelay = false;
-      for (final p in addr.protocols) { // This 'p' is of type multiaddr_protocol.Protocol
-        if (p.code == multiaddr_protocol.Protocols.circuit.code) { // Corrected access to P_CIRCUIT code
+      var isRelay = false;
+      for (final p in addr.protocols) {
+        // This 'p' is of type multiaddr_protocol.Protocol
+        if (p.code == multiaddr_protocol.Protocols.circuit.code) {
+          // Corrected access to P_CIRCUIT code
           isRelay = true;
           break;
         }
@@ -136,6 +133,14 @@ class DelayDialRanker {
 
 /// DialBackoff implements exponential backoff for failed dials
 class DialBackoff {
+  /// Creates a new DialBackoff
+  DialBackoff({
+    Duration baseDelay = const Duration(milliseconds: 100),
+    Duration maxDelay = const Duration(minutes: 5),
+  })  : _baseDelay = baseDelay,
+        _maxDelay = maxDelay,
+        _currentDelay = baseDelay;
+
   /// The base delay for backoff
   final Duration _baseDelay;
 
@@ -144,15 +149,6 @@ class DialBackoff {
 
   /// The current delay
   Duration _currentDelay;
-
-  /// Creates a new DialBackoff
-  DialBackoff({
-    Duration baseDelay = const Duration(milliseconds: 100),
-    Duration maxDelay = const Duration(minutes: 5),
-  }) : 
-    _baseDelay = baseDelay,
-    _maxDelay = maxDelay,
-    _currentDelay = baseDelay;
 
   /// Gets the next delay and increases the backoff
   Duration nextDelay() {

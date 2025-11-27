@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import '../../core/multiaddr.dart';
-import '../../core/network/conn.dart';
-import '../../core/network/transport_conn.dart';
-import '../../core/network/stream.dart';
+import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/transport_conn.dart';
 
 /// Represents a transport listener that can accept incoming connections
 abstract class Listener {
@@ -25,4 +23,4 @@ abstract class Listener {
 
   /// Returns true if this listener supports the given multiaddress
   bool supportsAddr(MultiAddr addr);
-} 
+}

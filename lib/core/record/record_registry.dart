@@ -2,9 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/peer/pb/peer_record.pb.dart';
 
-
 abstract class RecordBase {
-
   // Domain is the "signature domain" used when signing and verifying a particular
   // Record type. The Domain string should be unique to your Record type, and all
   // instances of the Record type must have the same Domain string.
@@ -20,7 +18,6 @@ abstract class RecordBase {
   // MarshalRecord converts a Record instance to a []byte, so that it can be used as an
   // Envelope payload.
   Uint8List marshalRecord();
-
 }
 
 /* Example Useage
@@ -77,9 +74,9 @@ class RecordRegistry {
 
   /// Register a record type with its factory function
   static void register<T extends PeerRecord>(
-      String codecString,
-      T Function(Uint8List) factory
-      ) {
+    String codecString,
+    T Function(Uint8List) factory,
+  ) {
     _factories[codecString] = factory;
     _typeToCodec[T] = codecString;
   }
@@ -105,12 +102,12 @@ class RecordRegistry {
   static T? unmarshalAs<T extends RecordBase>(Uint8List payload) {
     final codecString = _typeToCodec[T];
     if (codecString == null) {
-      throw Exception('Type ${T.toString()} not registered');
+      throw Exception('Type $T not registered');
     }
 
     final factory = _factories[codecString];
     if (factory == null) {
-      throw Exception('No factory found for registered type ${T.toString()}');
+      throw Exception('No factory found for registered type $T');
     }
 
     final record = factory(payload);

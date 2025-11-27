@@ -1,26 +1,29 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:dart_libp2p/core/crypto/keys.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/common.dart';
 // Conn, ConnState, ConnStats, Stats are used from conn.dart
 // ConnScope will come from rcmgr.dart
-import 'package:dart_libp2p/core/network/conn.dart' show Conn, ConnState, ConnStats, Stats;
+import 'package:dart_libp2p/core/network/conn.dart'
+    show Conn, ConnState, ConnStats, Stats;
 import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart'
+    show ConnScope, ResourceScopeSpan, ScopeStat;
 import 'package:dart_libp2p/core/network/stream.dart'; // For P2PStream
-import 'package:dart_libp2p/core/network/rcmgr.dart' show ConnScope, ScopeStat, ResourceScopeSpan, ResourceScope;
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:meta/meta.dart';
 
 /// Base class for mock connections that implements common behavior
 abstract class BaseMockConnection implements Conn {
+  BaseMockConnection(this.id);
+  @override
   final String id;
   bool _closed = false;
 
   // For test verification
   final writes = <Uint8List>[];
-
-  BaseMockConnection(this.id);
 
   @override
   bool get isClosed => _closed;
@@ -46,37 +49,41 @@ abstract class BaseMockConnection implements Conn {
 
   @override
   Future<P2PStream> newStream(Context context) async {
-    throw UnimplementedError('Stream multiplexing not implemented in mock connection');
+    throw UnimplementedError(
+      'Stream multiplexing not implemented in mock connection',
+    );
   }
 
   @override
   Future<List<P2PStream>> get streams async => [];
 
   @override
-  PeerId get localPeer => throw UnimplementedError('localPeer not implemented in mock connection');
+  PeerId get localPeer =>
+      throw UnimplementedError('localPeer not implemented in mock connection');
 
   @override
-  PeerId get remotePeer => throw UnimplementedError('remotePeer not implemented in mock connection');
+  PeerId get remotePeer =>
+      throw UnimplementedError('remotePeer not implemented in mock connection');
 
   @override
   Future<PublicKey?> get remotePublicKey async => null;
 
   @override
-  ConnState get state => ConnState(
-    streamMultiplexer: 'mock-muxer/1.0.0',
-    security: 'mock-security/1.0.0',
-    transport: 'mock',
-    usedEarlyMuxerNegotiation: false,
-  );
+  ConnState get state => const ConnState(
+        streamMultiplexer: 'mock-muxer/1.0.0',
+        security: 'mock-security/1.0.0',
+        transport: 'mock',
+        usedEarlyMuxerNegotiation: false,
+      );
 
   @override
   ConnStats get stat => _MockConnStats(
-    stats: Stats(
-      direction: Direction.outbound,
-      opened: DateTime.now(),
-    ),
-    numStreams: 0,
-  );
+        stats: Stats(
+          direction: Direction.outbound,
+          opened: DateTime.now(),
+        ),
+        numStreams: 0,
+      );
 
   @override
   ConnScope get scope => _MockConnScope();
@@ -102,16 +109,15 @@ abstract class BaseMockConnection implements Conn {
 
 /// Mock implementation of ConnStats
 class _MockConnStats implements ConnStats {
+  const _MockConnStats({
+    required this.stats,
+    required this.numStreams,
+  });
   @override
   final Stats stats;
 
   @override
   final int numStreams;
-
-  const _MockConnStats({
-    required this.stats,
-    required this.numStreams,
-  });
 }
 
 /// Mock implementation of ConnScope
@@ -128,13 +134,16 @@ class _MockConnScope implements ConnScope {
   Future<void> reserveMemory(int size, int priority) async {}
 
   @override
-  ScopeStat get stat => const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
+  ScopeStat get stat =>
+      const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
 }
 
 /// Mock implementation of ResourceScopeSpan
-class _MockResourceScopeSpan implements ResourceScopeSpan { // ResourceScopeSpan from rcmgr.dart
+class _MockResourceScopeSpan implements ResourceScopeSpan {
+  // ResourceScopeSpan from rcmgr.dart
   @override
-  Future<ResourceScopeSpan> beginSpan() async { // ResourceScopeSpan from rcmgr.dart
+  Future<ResourceScopeSpan> beginSpan() async {
+    // ResourceScopeSpan from rcmgr.dart
     return this;
   }
 
@@ -148,5 +157,6 @@ class _MockResourceScopeSpan implements ResourceScopeSpan { // ResourceScopeSpan
   Future<void> reserveMemory(int size, int priority) async {}
 
   @override
-  ScopeStat get stat => const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
+  ScopeStat get stat =>
+      const ScopeStat(); // Renamed scopeStat to stat. ScopeStat from rcmgr.dart
 }

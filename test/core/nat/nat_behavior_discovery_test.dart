@@ -1,24 +1,25 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:dart_libp2p/p2p/nat/nat_behavior.dart';
 import 'package:dart_libp2p/p2p/nat/nat_behavior_discovery.dart';
 import 'package:dart_libp2p/p2p/nat/stun/stun_client.dart';
 import 'package:test/test.dart';
+
 import 'stun/mock_stun_server.dart';
 
 /// A mock implementation of NatBehaviorDiscovery for testing
 class _MockNatBehaviorDiscovery extends NatBehaviorDiscovery {
-  final NatMappingBehavior mappingBehavior;
-  final NatFilteringBehavior filteringBehavior;
-
   _MockNatBehaviorDiscovery({
     required this.mappingBehavior,
     required this.filteringBehavior,
-  }) : super(stunClient: StunClient(
-    serverHost: 'stun.l.google.com',
-    stunPort: 19302,
-    timeout: Duration(seconds: 5),
-  ));
+  }) : super(
+          stunClient: StunClient(
+            timeout: const Duration(seconds: 5),
+          ),
+        );
+  final NatMappingBehavior mappingBehavior;
+  final NatFilteringBehavior filteringBehavior;
 
   @override
   Future<NatMappingBehavior> discoverMappingBehavior() async {
@@ -46,53 +47,63 @@ void main() {
 
     setUp(() {
       stunClient = StunClient(
-        serverHost: 'stun.l.google.com',
-        stunPort: 19302,
-        timeout: Duration(seconds: 5),
+        timeout: const Duration(seconds: 5),
       );
       discovery = NatBehaviorDiscovery(stunClient: stunClient);
     });
 
-    test('should discover NAT mapping behavior', () async {
-      final mappingBehavior = await discovery.discoverMappingBehavior();
-      expect(mappingBehavior, isNotNull);
+    test(
+      'should discover NAT mapping behavior',
+      () async {
+        final mappingBehavior = await discovery.discoverMappingBehavior();
+        expect(mappingBehavior, isNotNull);
 
-      // The actual behavior will depend on the network environment
-      // but it should be one of the defined behaviors
-      expect(
-        mappingBehavior,
-        anyOf(
-          equals(NatMappingBehavior.endpointIndependent),
-          equals(NatMappingBehavior.addressDependent),
-          equals(NatMappingBehavior.addressAndPortDependent),
-          equals(NatMappingBehavior.unknown),
-        ),
-      );
-    }, timeout: Timeout(Duration(seconds: 30)));
+        // The actual behavior will depend on the network environment
+        // but it should be one of the defined behaviors
+        expect(
+          mappingBehavior,
+          anyOf(
+            equals(NatMappingBehavior.endpointIndependent),
+            equals(NatMappingBehavior.addressDependent),
+            equals(NatMappingBehavior.addressAndPortDependent),
+            equals(NatMappingBehavior.unknown),
+          ),
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
 
-    test('should discover NAT filtering behavior', () async {
-      final filteringBehavior = await discovery.discoverFilteringBehavior();
-      expect(filteringBehavior, isNotNull);
+    test(
+      'should discover NAT filtering behavior',
+      () async {
+        final filteringBehavior = await discovery.discoverFilteringBehavior();
+        expect(filteringBehavior, isNotNull);
 
-      // The actual behavior will depend on the network environment
-      // but it should be one of the defined behaviors
-      expect(
-        filteringBehavior,
-        anyOf(
-          equals(NatFilteringBehavior.endpointIndependent),
-          equals(NatFilteringBehavior.addressDependent),
-          equals(NatFilteringBehavior.addressAndPortDependent),
-          equals(NatFilteringBehavior.unknown),
-        ),
-      );
-    }, timeout: Timeout(Duration(seconds: 30)));
+        // The actual behavior will depend on the network environment
+        // but it should be one of the defined behaviors
+        expect(
+          filteringBehavior,
+          anyOf(
+            equals(NatFilteringBehavior.endpointIndependent),
+            equals(NatFilteringBehavior.addressDependent),
+            equals(NatFilteringBehavior.addressAndPortDependent),
+            equals(NatFilteringBehavior.unknown),
+          ),
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
 
-    test('should discover comprehensive NAT behavior', () async {
-      final behavior = await discovery.discoverBehavior();
-      expect(behavior, isNotNull);
-      expect(behavior.mappingBehavior, isNotNull);
-      expect(behavior.filteringBehavior, isNotNull);
-    }, timeout: Timeout(Duration(seconds: 60)));
+    test(
+      'should discover comprehensive NAT behavior',
+      () async {
+        final behavior = await discovery.discoverBehavior();
+        expect(behavior, isNotNull);
+        expect(behavior.mappingBehavior, isNotNull);
+        expect(behavior.filteringBehavior, isNotNull);
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
   });
 
   group('NatBehaviorDiscovery with Mock Servers', () {
@@ -118,7 +129,7 @@ void main() {
       stunClient = StunClient(
         serverHost: 'localhost',
         stunPort: primaryServer.port,
-        timeout: Duration(seconds: 1),
+        timeout: const Duration(seconds: 1),
       );
 
       discovery = NatBehaviorDiscovery(stunClient: stunClient);
@@ -185,7 +196,10 @@ void main() {
       );
 
       final mappingBehavior = await mockDiscovery.discoverMappingBehavior();
-      expect(mappingBehavior, equals(NatMappingBehavior.addressAndPortDependent));
+      expect(
+        mappingBehavior,
+        equals(NatMappingBehavior.addressAndPortDependent),
+      );
     });
 
     test('should detect endpoint-independent filtering', () async {
@@ -199,7 +213,10 @@ void main() {
       );
 
       final filteringBehavior = await mockDiscovery.discoverFilteringBehavior();
-      expect(filteringBehavior, equals(NatFilteringBehavior.endpointIndependent));
+      expect(
+        filteringBehavior,
+        equals(NatFilteringBehavior.endpointIndependent),
+      );
     });
 
     test('should detect address-dependent filtering', () async {
@@ -227,7 +244,10 @@ void main() {
       );
 
       final filteringBehavior = await mockDiscovery.discoverFilteringBehavior();
-      expect(filteringBehavior, equals(NatFilteringBehavior.addressAndPortDependent));
+      expect(
+        filteringBehavior,
+        equals(NatFilteringBehavior.addressAndPortDependent),
+      );
     });
   });
 }

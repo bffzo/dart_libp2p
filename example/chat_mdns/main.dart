@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-
 import '../shared/host_utils.dart';
 import 'chat_client_mdns.dart';
 
@@ -21,12 +20,12 @@ void main() async {
     final chatClient = ChatClientMdns(host);
 
     // Set up graceful shutdown
-    bool isShuttingDown = false;
-    
-    void cleanup() async {
+    var isShuttingDown = false;
+
+    Future<void> cleanup() async {
       if (isShuttingDown) return;
       isShuttingDown = true;
-      
+
       print('\n\n🛑 Shutting down...');
       try {
         await chatClient.stopDiscovery();
@@ -43,11 +42,13 @@ void main() async {
 
     // Start REAL mDNS discovery
     await chatClient.startDiscovery();
-    
+
     print('🔍 Broadcasting mDNS service and searching for peers...');
     print('📢 Using REAL mDNS service advertisement - no UDP fallback needed!');
-    print('🌐 Other mDNS-enabled chat clients will discover you automatically.\n');
-    
+    print(
+      '🌐 Other mDNS-enabled chat clients will discover you automatically.\n',
+    );
+
     print('--- REAL mDNS P2P Chat Session ---');
     print('Commands:');
     print('  list         - Show discovered peers');
@@ -55,33 +56,37 @@ void main() async {
     print('  help or ?    - Show help');
     print('  quit         - Exit');
     print('');
-    print('💡 Tip: Run this program on multiple devices/terminals to see peer discovery in action!');
+    print(
+      '💡 Tip: Run this program on multiple devices/terminals to see peer discovery in action!',
+    );
     print('-----------------------------\n');
 
     // Wait a moment for initial discovery
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 2));
     chatClient.showPeerList();
 
     // Start input processing loop
-    stdin.transform(utf8.decoder).transform(LineSplitter()).listen((line) async {
+    stdin
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) async {
       if (line.trim().isEmpty) {
         stdout.write('> ');
         return;
       }
-      
+
       final shouldContinue = await chatClient.processCommand(line);
       if (!shouldContinue) {
         cleanup();
         return;
       }
-      
+
       // Show status and prompt
       print('📊 Status: ${chatClient.getStatus()}');
       stdout.write('> ');
     });
 
     stdout.write('> ');
-    
   } catch (e) {
     print('❌ Error: $e');
     exit(1);

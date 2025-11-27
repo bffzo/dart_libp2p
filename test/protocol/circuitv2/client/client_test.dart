@@ -1,15 +1,14 @@
-import 'package:test/test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
-
+import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
 import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
-import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/connmgr/conn_manager.dart';
-import 'package:dart_libp2p/p2p/transport/upgrader.dart';
+import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/client/client.dart';
 import 'package:dart_libp2p/p2p/protocol/circuitv2/proto.dart';
+import 'package:dart_libp2p/p2p/transport/upgrader.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test/test.dart';
 
 @GenerateMocks([Host, Upgrader, ConnManager, P2PStream, Conn])
 import 'client_test.mocks.dart';
@@ -42,17 +41,19 @@ void main() {
         await client.start();
 
         // Assert
-        verify(mockHost.setStreamHandler(
-          CircuitV2Protocol.protoIDv2Stop,
-          any,
-        )).called(1);
+        verify(
+          mockHost.setStreamHandler(
+            CircuitV2Protocol.protoIDv2Stop,
+            any,
+          ),
+        ).called(1);
       });
 
       test('should stop and remove protocol handler', () async {
         // Arrange
         when(mockHost.removeStreamHandler(any)).thenReturn(null);
         when(mockHost.setStreamHandler(any, any)).thenReturn(null);
-        
+
         await client.start();
 
         // Act
@@ -130,26 +131,26 @@ void main() {
     group('Circuit Address Parsing', () {
       test('should correctly parse relay ID from circuit address', () {
         // Arrange
-        final relayId = '12D3KooWRelayPeerID123456789';
-        final destId = '12D3KooWDestPeerID987654321';
+        const relayId = '12D3KooWRelayPeerID123456789';
+        const destId = '12D3KooWDestPeerID987654321';
         final circuitAddr = MultiAddr(
           '/ip4/10.10.3.10/tcp/4001/p2p/$relayId/p2p-circuit/p2p/$destId',
         );
 
         // Act - We'll verify by checking the address components
         final components = circuitAddr.components;
-        
+
         // Assert - Find the relay ID and dest ID in components
         final hasRelayId = components.any((comp) => comp.$2 == relayId);
         final hasDestId = components.any((comp) => comp.$2 == destId);
-        
+
         expect(hasRelayId, isTrue, reason: 'Should contain relay peer ID');
         expect(hasDestId, isTrue, reason: 'Should contain destination peer ID');
       });
 
       test('should handle circuit address with only relay ID', () {
         // Arrange - No destination, connecting to relay itself
-        final relayId = '12D3KooWRelayPeerID123456789';
+        const relayId = '12D3KooWRelayPeerID123456789';
         final circuitAddr = MultiAddr(
           '/ip4/10.10.3.10/tcp/4001/p2p/$relayId/p2p-circuit',
         );
@@ -263,7 +264,7 @@ void main() {
 
         // Act & Assert
         expect(
-          () async => await client.dial(invalidAddr),
+          () async => client.dial(invalidAddr),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -274,7 +275,7 @@ void main() {
 
         // Act & Assert
         expect(
-          () async => await client.dial(invalidAddr),
+          () async => client.dial(invalidAddr),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -291,7 +292,7 @@ void main() {
 
         // Act & Assert - Should propagate error
         expect(
-          () async => await client.dial(circuitAddr),
+          () async => client.dial(circuitAddr),
           throwsException,
         );
       });
@@ -339,7 +340,7 @@ void main() {
         // Arrange
         when(mockHost.setStreamHandler(any, any)).thenReturn(null);
         when(mockHost.removeStreamHandler(any)).thenReturn(null);
-        
+
         await client.start();
 
         // Act
@@ -367,7 +368,7 @@ void main() {
         when(mockHost.removeStreamHandler(any)).thenReturn(null);
 
         // Act & Assert - Should not throw
-        expect(() async => await client.stop(), returnsNormally);
+        expect(() async => client.stop(), returnsNormally);
       });
     });
   });

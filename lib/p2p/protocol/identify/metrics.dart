@@ -5,20 +5,19 @@
 ///
 /// This is a port of the Go implementation from go-libp2p/p2p/protocol/identify/metrics.go
 /// to Dart, using native Dart idioms.
+library;
 
-import 'package:dart_libp2p/core/network/network.dart';
-
-import '../../../core/event/addrs.dart';
-import '../../../core/event/protocol.dart';
+import 'package:dart_libp2p/core/event/addrs.dart';
+import 'package:dart_libp2p/core/event/protocol.dart';
 
 /// The support status for the identify push protocol.
 enum IdentifyPushSupport {
   /// The peer's support for identify push is unknown.
   unknown,
-  
+
   /// The peer supports identify push.
   supported,
-  
+
   /// The peer does not support identify push.
   unsupported,
 }
@@ -27,13 +26,13 @@ enum IdentifyPushSupport {
 abstract class MetricsTracer {
   /// TriggeredPushes counts IdentifyPushes triggered by event.
   void triggeredPushes(dynamic event);
-  
+
   /// ConnPushSupport counts peers by Push Support.
   void connPushSupport(IdentifyPushSupport support);
-  
+
   /// IdentifyReceived tracks metrics on receiving an identify response.
   void identifyReceived(bool isPush, int numProtocols, int numAddrs);
-  
+
   /// IdentifySent tracks metrics on sending an identify response.
   void identifySent(bool isPush, int numProtocols, int numAddrs);
 }
@@ -42,16 +41,16 @@ abstract class MetricsTracer {
 class NoopMetricsTracer implements MetricsTracer {
   /// Creates a new no-op metrics tracer.
   const NoopMetricsTracer();
-  
+
   @override
   void triggeredPushes(dynamic event) {}
-  
+
   @override
   void connPushSupport(IdentifyPushSupport support) {}
-  
+
   @override
   void identifyReceived(bool isPush, int numProtocols, int numAddrs) {}
-  
+
   @override
   void identifySent(bool isPush, int numProtocols, int numAddrs) {}
 }
@@ -60,10 +59,10 @@ class NoopMetricsTracer implements MetricsTracer {
 class LoggingMetricsTracer implements MetricsTracer {
   /// Creates a new logging metrics tracer.
   const LoggingMetricsTracer();
-  
+
   @override
   void triggeredPushes(dynamic event) {
-    String type = 'unknown';
+    var type = 'unknown';
     if (event is EvtLocalProtocolsUpdated) {
       type = 'protocols_updated';
     } else if (event is EvtLocalAddressesUpdated) {
@@ -71,23 +70,27 @@ class LoggingMetricsTracer implements MetricsTracer {
     }
     print('Identify push triggered by $type');
   }
-  
+
   @override
   void connPushSupport(IdentifyPushSupport support) {
     print('Connection push support: $support');
   }
-  
+
   @override
   void identifyReceived(bool isPush, int numProtocols, int numAddrs) {
     final direction = isPush ? 'inbound' : 'outbound';
     final type = isPush ? 'push' : 'identify';
-    print('Received $type ($direction) with $numProtocols protocols and $numAddrs addresses');
+    print(
+      'Received $type ($direction) with $numProtocols protocols and $numAddrs addresses',
+    );
   }
-  
+
   @override
   void identifySent(bool isPush, int numProtocols, int numAddrs) {
     final direction = isPush ? 'outbound' : 'inbound';
     final type = isPush ? 'push' : 'identify';
-    print('Sent $type ($direction) with $numProtocols protocols and $numAddrs addresses');
+    print(
+      'Sent $type ($direction) with $numProtocols protocols and $numAddrs addresses',
+    );
   }
 }

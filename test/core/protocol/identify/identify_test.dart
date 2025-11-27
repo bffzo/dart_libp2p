@@ -1,8 +1,7 @@
+import 'package:dart_libp2p/core/event/bus.dart';
+import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/p2p/protocol/identify/identify.dart';
 import 'package:dart_libp2p/p2p/protocol/identify/pb/identify.pb.dart';
-import 'package:dart_libp2p/core/host/host.dart';
-import 'package:dart_libp2p/core/event/bus.dart';
-import 'package:dart_libp2p/core/record/envelope.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
@@ -39,8 +38,10 @@ void main() {
       fakeSubscription = FakeSubscription();
       fakeEmitter = FakeEmitter();
       when(mockHost.eventBus).thenReturn(mockEventBus);
-      when(mockEventBus.subscribe(any, opts: anyNamed('opts'))).thenReturn(fakeSubscription);
-      when(mockEventBus.emitter(any, opts: anyNamed('opts'))).thenAnswer((_) async => fakeEmitter);
+      when(mockEventBus.subscribe(any, opts: anyNamed('opts')))
+          .thenReturn(fakeSubscription);
+      when(mockEventBus.emitter(any, opts: anyNamed('opts')))
+          .thenAnswer((_) async => fakeEmitter);
     });
 
     group('signedPeerRecordFromMessage', () {
@@ -63,12 +64,12 @@ void main() {
         final msg = Identify(
           signedPeerRecord: [1, 2, 3, 4, 5], // Invalid protobuf data
         );
-        
+
         final service = IdentifyService(mockHost);
         final result = await service.signedPeerRecordFromMessage(msg);
-        
+
         expect(result, isNull);
       });
     });
   });
-} 
+}

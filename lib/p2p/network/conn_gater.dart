@@ -1,14 +1,23 @@
+import 'dart:async';
+
 import 'package:dart_libp2p/core/connmgr/conn_gater.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/conn.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
-import 'dart:async';
 import 'package:logging/logging.dart';
 
 /// BasicConnGater is a simple implementation of the ConnGater interface that
 /// allows all connections by default but can be configured to block specific
 /// peers or addresses.
 class BasicConnGater implements ConnGater {
+  /// Creates a new BasicConnGater with the specified limits
+  BasicConnGater({
+    int maxConnections = 1000,
+    int maxConnectionsPerPeer = 10,
+    Duration connectionTimeout = const Duration(minutes: 5),
+  })  : _maxConnections = maxConnections,
+        _maxConnectionsPerPeer = maxConnectionsPerPeer,
+        _connectionTimeout = connectionTimeout;
   final Logger _logger = Logger('BasicConnGater');
 
   /// Set of blocked peer IDs
@@ -43,16 +52,6 @@ class BasicConnGater implements ConnGater {
 
   /// Connection timeout duration
   final Duration _connectionTimeout;
-
-  /// Creates a new BasicConnGater with the specified limits
-  BasicConnGater({
-    int maxConnections = 1000,
-    int maxConnectionsPerPeer = 10,
-    Duration connectionTimeout = const Duration(minutes: 5),
-  }) : 
-    _maxConnections = maxConnections,
-    _maxConnectionsPerPeer = maxConnectionsPerPeer,
-    _connectionTimeout = connectionTimeout;
 
   /// BlockPeer blocks a peer by its ID
   void blockPeer(PeerId peerId) {
@@ -136,7 +135,8 @@ class BasicConnGater implements ConnGater {
   bool _isAddrInSubnet(MultiAddr addr, String subnet) {
     try {
       // Extract IP address from multiaddr
-      final ipAddr = addr.valueForProtocol('ip4') ?? addr.valueForProtocol('ip6');
+      final ipAddr =
+          addr.valueForProtocol('ip4') ?? addr.valueForProtocol('ip6');
       if (ipAddr == null) return false;
 
       // Parse CIDR notation
@@ -180,7 +180,7 @@ class BasicConnGater implements ConnGater {
       return bytes;
     } else {
       // IPv4
-      return ip.split('.').map((part) => int.parse(part)).toList();
+      return ip.split('.').map(int.parse).toList();
     }
   }
 
@@ -291,7 +291,9 @@ class BasicConnGater implements ConnGater {
 
     // Check total connection limit
     if (_activeConnections.length >= _maxConnections) {
-      _logger.fine('Connection limit reached: ${_activeConnections.length} connections');
+      _logger.fine(
+        'Connection limit reached: ${_activeConnections.length} connections',
+      );
       return false;
     }
 
@@ -299,7 +301,9 @@ class BasicConnGater implements ConnGater {
     final peerIdStr = conn.remotePeer.toString();
     final peerConns = _peerConnections[peerIdStr] ?? {};
     if (peerConns.length >= _maxConnectionsPerPeer) {
-      _logger.fine('Per-peer connection limit reached for peer $peerIdStr: ${peerConns.length} connections');
+      _logger.fine(
+        'Per-peer connection limit reached for peer $peerIdStr: ${peerConns.length} connections',
+      );
       return false;
     }
 
@@ -330,7 +334,7 @@ class BasicConnGater implements ConnGater {
       _logger.fine('Blocked upgraded connection: ${conn.remotePeer}');
       return (
         false,
-        DisconnectReason(
+        const DisconnectReason(
           code: 1,
           message: 'Peer is blocked',
         ),
@@ -340,7 +344,7 @@ class BasicConnGater implements ConnGater {
       _logger.fine('Blocked upgraded connection: ${conn.id}');
       return (
         false,
-        DisconnectReason(
+        const DisconnectReason(
           code: 2,
           message: 'Connection is blocked',
         ),
@@ -363,19 +367,18 @@ class BasicConnGater implements ConnGater {
 
 /// Connection metrics
 class ConnectionMetrics {
-  final PeerId peerId;
-  final DateTime startTime;
-  int bytesIn = 0;
-  int bytesOut = 0;
-
   ConnectionMetrics({
     required this.peerId,
     required this.startTime,
   });
+  final PeerId peerId;
+  final DateTime startTime;
+  int bytesIn = 0;
+  int bytesOut = 0;
 
   /// Gets the connection duration
   Duration get duration => DateTime.now().difference(startTime);
 
   /// Gets the total bytes transferred
   int get totalBytes => bytesIn + bytesOut;
-} 
+}

@@ -1,21 +1,19 @@
 import 'dart:async';
 
 import 'package:dart_libp2p/core/multiaddr.dart';
+import 'package:dart_libp2p/core/network/conn.dart';
+import 'package:dart_libp2p/core/network/context.dart';
+import 'package:dart_libp2p/core/network/notifiee.dart';
+import 'package:dart_libp2p/core/network/rcmgr.dart';
 import 'package:dart_libp2p/core/network/stream.dart';
 import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/peerstore.dart';
-import 'package:dart_libp2p/core/network/conn.dart';
-import 'package:dart_libp2p/core/network/context.dart';
-import 'package:dart_libp2p/core/network/rcmgr.dart';
-
-import 'notifiee.dart';
 
 /// MessageSizeMax is a soft (recommended) maximum for network messages.
 /// One can write more, as the interface is a stream. But it is useful
 /// to bunch it up into multiple read/writes when the whole message is
 /// a single, large serialized object.
 const int messageSizeMax = 1 << 22; // 4 MB
-
 
 /// Connectedness signals the capacity for a connection with a given node.
 /// It is used to signal to services and other peers whether a node is reachable.
@@ -51,13 +49,14 @@ enum Reachability {
   private,
 }
 
-
-
 /// StreamHandler is the type of function used to listen for
 /// streams opened by the remote side.
 // typedef StreamHandler = void Function(P2PStream stream);
 
-typedef StreamHandler = Future<void> Function(P2PStream stream, PeerId remotePeer);
+typedef StreamHandler = Future<void> Function(
+  P2PStream stream,
+  PeerId remotePeer,
+);
 
 /// Network is the interface used to connect to the outside world.
 /// It dials and listens for connections. it uses a Swarm to pool
@@ -68,10 +67,13 @@ abstract class Network implements Dialer {
 
   /// Sets the handler for new streams opened by the remote side.
   /// This operation is thread-safe.
-  /// 
+  ///
   /// @param protocol The protocol ID for which to set the handler
   /// @param handler The handler function that will be called when a new stream is opened
-  void setStreamHandler(String protocol, Future<void> Function(dynamic stream, PeerId remotePeer) handler);
+  void setStreamHandler(
+    String protocol,
+    Future<void> Function(dynamic stream, PeerId remotePeer) handler,
+  );
 
   /// Returns a new stream to given peer p.
   /// If there is no connection to p, attempts to create one.
@@ -150,37 +152,35 @@ abstract class Dialer {
   bool canDial(PeerId peerId, MultiAddr addr);
 
   void removeListenAddress(MultiAddr addr);
-
 }
 
-
 class EvtPeerConnectednessChanged {
-  /// Peer is the remote peer whose connectedness has changed.
-  final PeerId peer;
-
-  /// Connectedness is the new connectedness state.
-  final Connectedness connectedness;
-
   /// Creates a new EvtPeerConnectednessChanged event.
   EvtPeerConnectednessChanged({
     required this.peer,
     required this.connectedness,
   });
+
+  /// Peer is the remote peer whose connectedness has changed.
+  final PeerId peer;
+
+  /// Connectedness is the new connectedness state.
+  final Connectedness connectedness;
 }
 
 /// AddrDelay provides an address along with the delay after which the address
 /// should be dialed
 class AddrDelay {
+  const AddrDelay({
+    required this.addr,
+    required this.delay,
+  });
+
   /// The address to dial
   final MultiAddr addr;
 
   /// The delay after which to dial
   final Duration delay;
-
-  const AddrDelay({
-    required this.addr,
-    required this.delay,
-  });
 }
 
 /// DialRanker provides a schedule of dialing the provided addresses

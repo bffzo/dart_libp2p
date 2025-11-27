@@ -4,13 +4,12 @@ import 'dart:io';
 import 'package:dart_libp2p/dart_libp2p.dart';
 
 class EchoServer {
-  final Host host;
-  static const String protocolId = '/echo/1.0.0';
-
   EchoServer(this.host) {
     // Set a stream handler for our echo protocol
     host.setStreamHandler(protocolId, _handleEchoRequest);
   }
+  final Host host;
+  static const String protocolId = '/echo/1.0.0';
 
   // Handler for incoming echo requests
   Future<void> _handleEchoRequest(P2PStream stream, PeerId remotePeer) async {
@@ -20,7 +19,9 @@ class EchoServer {
       if (data.isNotEmpty) {
         final message = utf8.decode(data).trim();
         // Display the received message (echo it back to console)
-        print('\n🔊 [ECHO SERVER] Received: "$message" from client [${_truncatePeerId(remotePeer)}]');
+        print(
+          '\n🔊 [ECHO SERVER] Received: "$message" from client [${_truncatePeerId(remotePeer)}]',
+        );
         stdout.write('> ');
       }
     } catch (e) {

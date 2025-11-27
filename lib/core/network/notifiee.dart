@@ -7,13 +7,13 @@ import 'package:dart_libp2p/core/network/network.dart';
 abstract class Notifiee {
   /// Called when network starts listening on an addr
   void listen(Network network, MultiAddr addr);
-  
+
   /// Called when network stops listening on an addr
   void listenClose(Network network, MultiAddr addr);
-  
+
   /// Called when a connection opened
   Future<void> connected(Network network, Conn conn);
-  
+
   /// Called when a connection closed
   Future<void> disconnected(Network network, Conn conn);
 }
@@ -22,18 +22,6 @@ abstract class Notifiee {
 /// and nop'ing if they are unset. This is the easy way to register for
 /// notifications.
 class NotifyBundle implements Notifiee {
-  /// Function called when network starts listening on an addr
-  final void Function(Network, MultiAddr)? listenF;
-  
-  /// Function called when network stops listening on an addr
-  final void Function(Network, MultiAddr)? listenCloseF;
-  
-  /// Function called when a connection opened
-  final void Function(Network, Conn)? connectedF;
-  
-  /// Function called when a connection closed
-  final void Function(Network, Conn)? disconnectedF;
-  
   /// Creates a new NotifyBundle with the given functions
   const NotifyBundle({
     this.listenF,
@@ -41,28 +29,40 @@ class NotifyBundle implements Notifiee {
     this.connectedF,
     this.disconnectedF,
   });
-  
+
+  /// Function called when network starts listening on an addr
+  final void Function(Network, MultiAddr)? listenF;
+
+  /// Function called when network stops listening on an addr
+  final void Function(Network, MultiAddr)? listenCloseF;
+
+  /// Function called when a connection opened
+  final void Function(Network, Conn)? connectedF;
+
+  /// Function called when a connection closed
+  final void Function(Network, Conn)? disconnectedF;
+
   @override
   void listen(Network network, MultiAddr addr) {
     if (listenF != null) {
       listenF!(network, addr);
     }
   }
-  
+
   @override
   void listenClose(Network network, MultiAddr addr) {
     if (listenCloseF != null) {
       listenCloseF!(network, addr);
     }
   }
-  
+
   @override
   Future<void> connected(Network network, Conn conn) async {
     if (connectedF != null) {
       connectedF!(network, conn);
     }
   }
-  
+
   @override
   Future<void> disconnected(Network network, Conn conn) async {
     if (disconnectedF != null) {
@@ -78,18 +78,17 @@ final NoopNotifiee globalNoopNotifiee = NoopNotifiee();
 class NoopNotifiee implements Notifiee {
   @override
   Future<void> connected(Network network, Conn conn) async {
-    return await Future.delayed(Duration(milliseconds: 10));
+    return Future.delayed(const Duration(milliseconds: 10));
   }
-  
+
   @override
   Future<void> disconnected(Network network, Conn conn) async {
-
-    return await Future.delayed(Duration(milliseconds: 10));
+    return Future.delayed(const Duration(milliseconds: 10));
   }
-  
+
   @override
   void listen(Network network, MultiAddr addr) {}
-  
+
   @override
   void listenClose(Network network, MultiAddr addr) {}
 }
