@@ -51,7 +51,7 @@ class NoProtocolsException implements Exception {
 /// on this stream. It returns an error if the muxer does not support the protocol.
 Future<void> selectProtoOrFail(
   ProtocolID proto,
-  P2PStream<dynamic> stream,
+  P2PStream stream,
 ) async {
   try {
     // Send the multistream protocol ID and the requested protocol
@@ -91,7 +91,7 @@ Future<void> selectProtoOrFail(
 /// until it finds one which is supported by the muxer.
 Future<ProtocolID> selectOneOf(
   List<ProtocolID> protos,
-  P2PStream<dynamic> stream,
+  P2PStream stream,
 ) async {
   if (protos.isEmpty) {
     throw const NoProtocolsException();
@@ -131,7 +131,7 @@ Future<ProtocolID> selectOneOf(
 }
 
 /// Tries to select a protocol by sending it to the muxer and reading the response
-Future<void> _trySelect(ProtocolID proto, P2PStream<dynamic> stream) async {
+Future<void> _trySelect(ProtocolID proto, P2PStream stream) async {
   await writeDelimited(stream, utf8.encode(proto));
 
   final response = await readNextToken(stream);
@@ -144,7 +144,7 @@ Future<void> _trySelect(ProtocolID proto, P2PStream<dynamic> stream) async {
 
 /// Writes a delimited message to the stream
 Future<void> writeDelimited(
-  P2PStream<dynamic> stream,
+  P2PStream stream,
   List<int> message,
 ) async {
   // Encode the length as a varint
@@ -165,7 +165,7 @@ Future<void> writeDelimited(
 }
 
 /// Reads a delimited message from the stream
-Future<Uint8List> readDelimited(P2PStream<dynamic> stream) async {
+Future<Uint8List> readDelimited(P2PStream stream) async {
   // Read the first byte to determine if we need to read more for the varint
   final firstByte = await stream.read(1);
   if (firstByte.isEmpty) {
@@ -221,7 +221,7 @@ Future<Uint8List> readDelimited(P2PStream<dynamic> stream) async {
 }
 
 /// Reads the next token from the stream
-Future<String> readNextToken(P2PStream<dynamic> stream) async {
+Future<String> readNextToken(P2PStream stream) async {
   final bytes = await readDelimited(stream);
   return utf8.decode(bytes);
 }

@@ -76,9 +76,7 @@ class BackoffDiscovery implements Discovery {
 
       for (final ai in c.prevPeers.values) {
         if (controller.isClosed ||
-            (opts.limit != null &&
-                controller.hasListener &&
-                (controller.sink as dynamic).count >= opts.limit!)) {
+            (opts.limit != null && controller.hasListener)) {
           break;
         }
         controller.add(ai);

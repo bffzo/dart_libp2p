@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart' hide PublicKey;
 import 'package:dart_libp2p/core/crypto/keys.dart';
 import 'package:dart_libp2p/core/network/transport_conn.dart';
-import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/p2p/security/secured_connection.dart';
 import 'package:dart_libp2p/p2p/security/security_protocol.dart';
 import 'package:logging/logging.dart';
@@ -16,14 +15,12 @@ import 'streamlined_mock_transport_conn.dart';
 class MockSecuredConnection extends SecuredConnection {
   MockSecuredConnection(
     this._underlying,
-    PeerId? establishedRemotePeer,
     PublicKey? establishedRemotePublicKey,
     String securityProtocolId,
   ) : super(
           _underlying,
           _DummySecretKey(), // dummy encryption key
           _DummySecretKey(), // dummy decryption key
-          establishedRemotePeer: establishedRemotePeer,
           establishedRemotePublicKey: establishedRemotePublicKey,
           securityProtocolId: securityProtocolId,
         );
@@ -89,7 +86,6 @@ class MockSecurityProtocol implements SecurityProtocol {
       // Return a mock secured connection that doesn't encrypt for testing
       return MockSecuredConnection(
         conn,
-        conn.remotePeer,
         null,
         protocolId,
       );
@@ -110,7 +106,6 @@ class MockSecurityProtocol implements SecurityProtocol {
       // Return a mock secured connection that doesn't encrypt for testing
       return MockSecuredConnection(
         conn,
-        conn.remotePeer,
         null,
         protocolId,
       );

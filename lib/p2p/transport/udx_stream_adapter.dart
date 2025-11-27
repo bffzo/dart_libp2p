@@ -18,7 +18,7 @@ import 'package:logging/logging.dart';
 
 final Logger _logger = Logger('UDXStreamAdapter');
 
-class UDXP2PStreamAdapter implements MuxedStream, P2PStream<Uint8List> {
+class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
   UDXP2PStreamAdapter({
     required UDXStream udxStream,
     required UDXSessionConn parentConn,
@@ -63,7 +63,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream<Uint8List> {
         }
         _parentConn.notifyActivity();
       },
-      onError: (err, s) {
+      onError: (Object err, StackTrace s) {
         _logger.fine(
           '[UDXP2PStreamAdapter ${id()}] Error on UDXStream data: $err',
         );
@@ -109,7 +109,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream<Uint8List> {
         );
         _close();
       },
-      onError: (err, s) {
+      onError: (Object err, StackTrace s) {
         _logger.fine(
           '[UDXP2PStreamAdapter ${id()}] UDXStream close event error: $err',
         );
@@ -309,7 +309,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream<Uint8List> {
     }
   }
 
-  Future<void> _closeWithError(dynamic error, [StackTrace? stackTrace]) async {
+  Future<void> _closeWithError(Object error, [StackTrace? stackTrace]) async {
     _logger.fine(
       '[UDXP2PStreamAdapter ${id()}] _closeWithError called with error: $error',
     );
@@ -390,7 +390,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream<Uint8List> {
       );
 
   @override
-  P2PStream<Uint8List> get incoming {
+  P2PStream get incoming {
     return this;
   }
 
@@ -437,7 +437,7 @@ class UDXListener implements Listener {
         );
         _handleIncomingConnection(socket);
       },
-      onError: (err, stackTrace) {
+      onError: (Object err, StackTrace stackTrace) {
         _logger.fine(
           '[UDXListener $addr] !!! onError in connection subscription: $err',
         );
@@ -540,7 +540,7 @@ class UDXListener implements Listener {
           remotePort,
         );
       },
-      onError: (err, stackTrace) {
+      onError: (Object err, StackTrace stackTrace) {
         _logger.fine(
           '[UDXListener $addr] Error waiting for initial stream on $sessionKey: $err',
         );

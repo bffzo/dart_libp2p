@@ -267,7 +267,7 @@ class MockConn implements Conn {
   @override
   PeerId get localPeer => MockPeerId('local_mock_peer');
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) async {
+  Future<P2PStream> newStream(Context context) async {
     throw UnimplementedError('MockConn.newStream not implemented');
   }
 
@@ -289,7 +289,7 @@ class MockConn implements Conn {
   @override
   ConnStats get stat => MockConnStats();
   @override
-  Future<List<P2PStream<dynamic>>> get streams async => [];
+  Future<List<P2PStream>> get streams async => [];
 }
 
 void main() {

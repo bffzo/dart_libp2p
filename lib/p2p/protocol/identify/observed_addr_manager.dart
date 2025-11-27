@@ -33,7 +33,6 @@ const maxExternalThinWaistAddrsPerLocalAddr = 3;
 
 /// thinWaist is a class that stores the address along with it's thin waist prefix and rest of the multiaddr
 class ThinWaist {
-
   ThinWaist({required this.addr, required this.tw, required this.rest});
   final MultiAddr addr;
   final MultiAddr tw;
@@ -42,7 +41,6 @@ class ThinWaist {
 
 /// thinWaistWithCount is a thinWaist along with the count of the connection that have it as the local address
 class ThinWaistWithCount {
-
   ThinWaistWithCount({required this.thinWaist, this.count = 0});
   final ThinWaist thinWaist;
   int count;
@@ -125,7 +123,6 @@ abstract class ConnMultiaddrs {
 
 /// Adapter to make Conn implement ConnMultiaddrs
 class ConnAdapter implements ConnMultiaddrs {
-
   ConnAdapter(this.conn);
   final Conn conn;
 
@@ -155,7 +152,6 @@ const observerSetCacheSize = 5;
 
 /// observerSet is the set of observers who have observed ThinWaistAddr
 class ObserverSet {
-
   ObserverSet({required this.observedTWAddr});
   final MultiAddr observedTWAddr;
   final Map<String, int> observedBy = {};
@@ -190,7 +186,6 @@ class ObserverSet {
 }
 
 class Observation {
-
   Observation({required this.conn, required this.observed});
   final ConnMultiaddrs conn;
   final MultiAddr observed;
@@ -198,7 +193,6 @@ class Observation {
 
 /// ObservedAddrManager maps connection's local multiaddrs to their externally observable multiaddress
 class ObservedAddrManager {
-
   /// Creates a new observed address manager.
   ObservedAddrManager({
     required List<MultiAddr> Function() listenAddrs,
@@ -245,13 +239,16 @@ class ObservedAddrManager {
   final Map<String, ThinWaistWithCount> _localAddrs = {};
 
   void _startWorker() {
-    _observationController.stream.listen((observation) {
-      _maybeRecordObservation(observation.conn, observation.observed);
-    }, onDone: () {
-      if (!_completer.isCompleted) {
-        _completer.complete();
-      }
-    },);
+    _observationController.stream.listen(
+      (observation) {
+        _maybeRecordObservation(observation.conn, observation.observed);
+      },
+      onDone: () {
+        if (!_completer.isCompleted) {
+          _completer.complete();
+        }
+      },
+    );
   }
 
   /// AddrsFor return all activated observed addresses associated with the given
@@ -289,7 +286,7 @@ class ObservedAddrManager {
 
     for (final t in _localAddrs.values) {
       final twStr = String.fromCharCodes(t.thinWaist.tw.toBytes());
-      for (final s in m[twStr] ?? []) {
+      for (final s in m[twStr] ?? <ObserverSet>[]) {
         addrs.add(s.cacheMultiaddr(t.thinWaist.rest));
       }
     }
@@ -304,7 +301,9 @@ class ObservedAddrManager {
   /// listening on the same interface and port 9000 for WebTransport, we can infer
   /// the external WebTransport address.
   List<MultiAddr> _appendInferredAddrs(
-      Map<String, List<ObserverSet>>? twToObserverSets, List<MultiAddr> addrs,) {
+    Map<String, List<ObserverSet>>? twToObserverSets,
+    List<MultiAddr> addrs,
+  ) {
     twToObserverSets ??= {};
 
     for (final localTWStr in _externalAddrs.keys) {
@@ -322,7 +321,8 @@ class ObservedAddrManager {
       lAddrs = _listenAddrs();
     } catch (e) {
       _log.warning(
-          'Failed to get interface resolved listen addrs. Using just the listen addrs: $e',);
+        'Failed to get interface resolved listen addrs. Using just the listen addrs: $e',
+      );
     }
 
     final seenTWs = <String>{};
@@ -349,7 +349,7 @@ class ObservedAddrManager {
       }
 
       final twStr = String.fromCharCodes(t.tw.toBytes());
-      for (final s in twToObserverSets[twStr] ?? []) {
+      for (final s in twToObserverSets[twStr] ?? <ObserverSet>[]) {
         addrs.add(s.cacheMultiaddr(t.rest));
       }
     }
@@ -392,10 +392,12 @@ class ObservedAddrManager {
     if (_closed) return;
 
     try {
-      _observationController.add(Observation(
-        conn: ConnAdapter(conn),
-        observed: observed,
-      ),);
+      _observationController.add(
+        Observation(
+          conn: ConnAdapter(conn),
+          observed: observed,
+        ),
+      );
     } catch (e) {
       _log.fine('Dropping address observation due to full buffer: $e');
     }
@@ -410,8 +412,12 @@ class ObservedAddrManager {
     }
   }
 
-  bool _shouldRecordObservation(ConnMultiaddrs? conn, MultiAddr? observed,
-      {required ThinWaist? localTW, required ThinWaist? observedTW,}) {
+  bool _shouldRecordObservation(
+    ConnMultiaddrs? conn,
+    MultiAddr? observed, {
+    required ThinWaist? localTW,
+    required ThinWaist? observedTW,
+  }) {
     if (conn == null || observed == null) {
       return false;
     }
@@ -525,8 +531,12 @@ class ObservedAddrManager {
     ThinWaist? localTW;
     ThinWaist? observedTW;
 
-    final shouldRecord = _shouldRecordObservation(conn, observed,
-        localTW: localTW, observedTW: observedTW,);
+    final shouldRecord = _shouldRecordObservation(
+      conn,
+      observed,
+      localTW: localTW,
+      observedTW: observedTW,
+    );
 
     if (!shouldRecord || localTW == null || observedTW == null) {
       return;
@@ -539,7 +549,10 @@ class ObservedAddrManager {
   }
 
   void _recordObservation(
-      ConnMultiaddrs conn, ThinWaist localTW, ThinWaist observedTW,) {
+    ConnMultiaddrs conn,
+    ThinWaist localTW,
+    ThinWaist observedTW,
+  ) {
     if (conn.isClosed()) {
       // dont record if the connection is already closed. Any previous observations will be removed in
       // the disconnected callback
@@ -569,8 +582,11 @@ class ObservedAddrManager {
         return;
       }
       // if we have a previous entry remove it from externalAddrs
-      _removeExternalAddrs(observer, localTWStr,
-          String.fromCharCodes(prevObservedTWAddr.toBytes()),);
+      _removeExternalAddrs(
+        observer,
+        localTWStr,
+        String.fromCharCodes(prevObservedTWAddr.toBytes()),
+      );
       // no need to change the localAddrs map here
     }
 
@@ -579,7 +595,10 @@ class ObservedAddrManager {
   }
 
   void _removeExternalAddrs(
-      String observer, String localTWStr, String observedTWStr,) {
+    String observer,
+    String localTWStr,
+    String observedTWStr,
+  ) {
     final s = _externalAddrs[localTWStr]?[observedTWStr];
     if (s == null) {
       return;
@@ -599,8 +618,12 @@ class ObservedAddrManager {
     }
   }
 
-  void _addExternalAddrs(MultiAddr observedTWAddr, String observer,
-      String localTWStr, String observedTWStr,) {
+  void _addExternalAddrs(
+    MultiAddr observedTWAddr,
+    String observer,
+    String localTWStr,
+    String observedTWStr,
+  ) {
     var s = _externalAddrs[localTWStr]?[observedTWStr];
     if (s == null) {
       s = ObserverSet(observedTWAddr: observedTWAddr);
@@ -649,8 +672,11 @@ class ObservedAddrManager {
       return;
     }
 
-    _removeExternalAddrs(observer, String.fromCharCodes(localTW.tw.toBytes()),
-        String.fromCharCodes(observedTWAddr.toBytes()),);
+    _removeExternalAddrs(
+      observer,
+      String.fromCharCodes(localTW.tw.toBytes()),
+      String.fromCharCodes(observedTWAddr.toBytes()),
+    );
 
     _addrRecordedController.add(null);
   }

@@ -69,12 +69,12 @@ class QueryEvent {
   /// Creates a QueryEvent from a JSON representation.
   static QueryEvent fromJson(Map<String, dynamic> json) {
     return QueryEvent(
-      id: PeerId.fromString(json['ID']),
-      type: QueryEventType.values[json['Type']],
+      id: PeerId.fromString(json['ID'] as String),
+      type: QueryEventType.values[json['Type'] as int],
       responses: json['Responses'] != null
           ? (json['Responses'] as List).map((e) => e as AddrInfo).toList()
           : null,
-      extra: json['Extra'],
+      extra: json['Extra'] as String?,
     );
   }
 }

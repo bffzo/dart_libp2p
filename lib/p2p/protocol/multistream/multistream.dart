@@ -143,7 +143,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   @override
-  Future<(ProtocolID, HandlerFunc)> negotiate(P2PStream<dynamic> stream) async {
+  Future<(ProtocolID, HandlerFunc)> negotiate(P2PStream stream) async {
     try {
       // 1. Read the initiator's multistream protocol ID
       _log.fine(
@@ -222,7 +222,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   @override
-  Future<void> handle(P2PStream<dynamic> stream) async {
+  Future<void> handle(P2PStream stream) async {
     final (proto, handler) = await negotiate(stream);
 
     // Ensure the stream is valid before proceeding
@@ -267,7 +267,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   ///
   /// Returns the selected [ProtocolID] or `null` if no protocol could be agreed upon.
   Future<ProtocolID?> selectOneOf(
-    P2PStream<dynamic> stream,
+    P2PStream stream,
     List<ProtocolID> protocolsToSelect,
   ) async {
     final startTime = DateTime.now();
@@ -335,7 +335,7 @@ class MultistreamMuxer implements ProtocolSwitch {
 
   /// Writes a delimited message to the stream
   Future<void> _writeDelimited(
-    P2PStream<dynamic> stream,
+    P2PStream stream,
     List<int> message,
   ) async {
     // Encode the length as a varint
@@ -356,7 +356,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   /// Reads a delimited message from the stream with comprehensive error handling
-  Future<Uint8List> _readDelimited(P2PStream<dynamic> stream) async {
+  Future<Uint8List> _readDelimited(P2PStream stream) async {
     return _safeStreamOperation<Uint8List>(
       () async => _performReadDelimited(stream),
       stream,
@@ -365,7 +365,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   /// Internal implementation of read delimited with timeout and retry logic
-  Future<Uint8List> _performReadDelimited(P2PStream<dynamic> stream) async {
+  Future<Uint8List> _performReadDelimited(P2PStream stream) async {
     var retryCount = 0;
 
     while (retryCount <= maxRetries) {
@@ -403,7 +403,7 @@ class MultistreamMuxer implements ProtocolSwitch {
 
   /// Performs a single read delimited operation with timeout
   Future<Uint8List> _performSingleReadDelimited(
-    P2PStream<dynamic> stream,
+    P2PStream stream,
   ) async {
     // Validate stream state before starting
     if (stream.isClosed) {
@@ -421,7 +421,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   /// Internal method that performs the actual read operation without timeout
-  Future<Uint8List> _actualReadDelimited(P2PStream<dynamic> stream) async {
+  Future<Uint8List> _actualReadDelimited(P2PStream stream) async {
     final buffer = BytesBuilder();
     var length = -1;
     var bytesRead = 0;
@@ -497,7 +497,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   }
 
   /// Reads the next token from the stream with error handling
-  Future<String> _readNextToken(P2PStream<dynamic> stream) async {
+  Future<String> _readNextToken(P2PStream stream) async {
     return _safeStreamOperation<String>(
       () async {
         final bytes = await _readDelimited(stream);
@@ -511,7 +511,7 @@ class MultistreamMuxer implements ProtocolSwitch {
   /// Safely executes a stream operation with comprehensive error handling
   Future<T> _safeStreamOperation<T>(
     Future<T> Function() operation,
-    P2PStream<dynamic> stream,
+    P2PStream stream,
     String operationName,
   ) async {
     try {

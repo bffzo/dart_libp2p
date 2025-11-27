@@ -81,7 +81,7 @@ class ConnectionHealthMetrics {
   }
 
   /// Record an error
-  void recordError(dynamic error) {
+  void recordError(Object error) {
     _consecutiveErrors++;
     _successfulOperations = 0;
     _lastError = error;
@@ -156,6 +156,7 @@ class ConnectionHealthMonitor {
   /// Get health metrics
   ConnectionHealthMetrics get metrics => _metrics;
 
+  /*
   /// Monitor connection through existing error propagation and lifecycle events
   /// This is transport-agnostic and works with any connection type
   void monitorConnection(dynamic connection) {
@@ -187,7 +188,7 @@ class ConnectionHealthMonitor {
               _logger.warning('Connection closed - recording closure');
               _metrics.recordClosure();
             },
-            onError: (error) {
+            onError: (Object error) {
               _logger.warning('Connection closed with error: $error');
               _metrics.recordError(error);
             },
@@ -199,6 +200,7 @@ class ConnectionHealthMonitor {
       // This is fine - not all connections may have onClose
     }
   }
+  */
 
   /// Record successful operation (called from SwarmConn)
   void recordSuccess(String reason) {
@@ -207,7 +209,7 @@ class ConnectionHealthMonitor {
   }
 
   /// Record error with classification (called from SwarmConn)
-  void recordError(dynamic error, String context) {
+  void recordError(Object error, String context) {
     _logger.warning('Recording health error in $context: $error');
 
     // Classify error based on existing error types
@@ -232,7 +234,7 @@ class ConnectionHealthMonitor {
   int _streamErrorCount = 0;
   DateTime? _lastStreamError;
 
-  void _recordStreamError(dynamic error) {
+  void _recordStreamError(Object error) {
     final now = DateTime.now();
 
     // Reset counter if last error was more than 30 seconds ago
@@ -255,9 +257,7 @@ class ConnectionHealthMonitor {
   }
 
   /// Classify if error is connection-level (affects entire connection)
-  bool _isConnectionLevelError(dynamic error) {
-    if (error == null) return false;
-
+  bool _isConnectionLevelError(Object error) {
     final errorString = error.toString().toLowerCase();
 
     // Connection-level errors from existing error types
@@ -285,9 +285,7 @@ class ConnectionHealthMonitor {
   }
 
   /// Classify if error is stream-level (affects individual stream)
-  bool _isStreamLevelError(dynamic error) {
-    if (error == null) return false;
-
+  bool _isStreamLevelError(Object error) {
     final errorString = error.toString().toLowerCase();
 
     // UDX-specific stream errors

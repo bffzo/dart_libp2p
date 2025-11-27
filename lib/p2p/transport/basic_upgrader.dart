@@ -27,7 +27,7 @@ import 'package:dart_libp2p/p2p/transport/multiplexing/multiplexer.dart'
 import 'package:dart_libp2p/p2p/transport/upgrader.dart'; // For Upgrader interface
 
 // --- Helper: NegotiationStreamWrapper ---
-class NegotiationStreamWrapper implements P2PStream<Uint8List> {
+class NegotiationStreamWrapper implements P2PStream {
   NegotiationStreamWrapper(this._conn, [this._protocolId = 'negotiator']);
   final TransportConn _conn;
   final String _protocolId;
@@ -108,7 +108,7 @@ class NegotiationStreamWrapper implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming =>
+  P2PStream get incoming =>
       throw UnimplementedError('incoming not supported by negotiation wrapper');
 }
 

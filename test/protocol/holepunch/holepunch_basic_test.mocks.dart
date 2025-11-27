@@ -68,7 +68,7 @@ class _FakeEventBus_5 extends _i1.SmartFake implements _i7.EventBus {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_6<T> extends _i1.SmartFake implements _i8.P2PStream<T> {
+class _FakeP2PStream_6<T> extends _i1.SmartFake implements _i8.P2PStream {
   _FakeP2PStream_6(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -200,20 +200,20 @@ class MockHost extends _i1.Mock implements _i12.Host {
       );
 
   @override
-  _i14.Future<_i8.P2PStream<dynamic>> newStream(
+  _i14.Future<_i8.P2PStream> newStream(
     _i2.PeerId? p,
     List<String>? pids,
     _i15.Context? context,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [p, pids, context]),
-        returnValue: _i14.Future<_i8.P2PStream<dynamic>>.value(
+        returnValue: _i14.Future<_i8.P2PStream>.value(
           _FakeP2PStream_6<dynamic>(
             this,
             Invocation.method(#newStream, [p, pids, context]),
           ),
         ),
-      ) as _i14.Future<_i8.P2PStream<dynamic>>);
+      ) as _i14.Future<_i8.P2PStream>);
 
   @override
   _i14.Future<void> close() => (super.noSuchMethod(
@@ -303,19 +303,19 @@ class MockNetwork extends _i1.Mock implements _i4.Network {
       );
 
   @override
-  _i14.Future<_i8.P2PStream<dynamic>> newStream(
+  _i14.Future<_i8.P2PStream> newStream(
     _i15.Context? context,
     _i2.PeerId? peerId,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [context, peerId]),
-        returnValue: _i14.Future<_i8.P2PStream<dynamic>>.value(
+        returnValue: _i14.Future<_i8.P2PStream>.value(
           _FakeP2PStream_6<dynamic>(
             this,
             Invocation.method(#newStream, [context, peerId]),
           ),
         ),
-      ) as _i14.Future<_i8.P2PStream<dynamic>>);
+      ) as _i14.Future<_i8.P2PStream>);
 
   @override
   _i14.Future<void> listen(List<_i13.MultiAddr>? addrs) => (super.noSuchMethod(

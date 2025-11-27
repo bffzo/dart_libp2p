@@ -64,7 +64,7 @@ class _FakeEventBus_5 extends _i1.SmartFake implements _i7.EventBus {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_6<T> extends _i1.SmartFake implements _i8.P2PStream<T> {
+class _FakeP2PStream_6<T> extends _i1.SmartFake implements _i8.P2PStream {
   _FakeP2PStream_6(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -166,20 +166,20 @@ class MockHost extends _i1.Mock implements _i9.Host {
       );
 
   @override
-  _i11.Future<_i8.P2PStream<dynamic>> newStream(
+  _i11.Future<_i8.P2PStream> newStream(
     _i2.PeerId? p,
     List<String>? pids,
     _i13.Context? context,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [p, pids, context]),
-        returnValue: _i11.Future<_i8.P2PStream<dynamic>>.value(
+        returnValue: _i11.Future<_i8.P2PStream>.value(
           _FakeP2PStream_6<dynamic>(
             this,
             Invocation.method(#newStream, [p, pids, context]),
           ),
         ),
-      ) as _i11.Future<_i8.P2PStream<dynamic>>);
+      ) as _i11.Future<_i8.P2PStream>);
 
   @override
   _i11.Future<void> close() => (super.noSuchMethod(
@@ -205,7 +205,7 @@ class MockEventBus extends _i1.Mock implements _i7.EventBus {
   }
 
   @override
-  _i7.Subscription<dynamic> subscribe(
+  _i7.Subscription<Object> subscribe(
     Object? eventType, {
     List<_i7.SubscriptionOpt>? opts,
   }) =>
@@ -215,7 +215,7 @@ class MockEventBus extends _i1.Mock implements _i7.EventBus {
           this,
           Invocation.method(#subscribe, [eventType], {#opts: opts}),
         ),
-      ) as _i7.Subscription<dynamic>);
+      ) as _i7.Subscription<Object>);
 
   @override
   _i11.Future<_i7.Emitter> emitter(

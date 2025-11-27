@@ -217,12 +217,13 @@ void main() {
         );
 
         // Step 5: Concurrent operations that might trigger deadlock
-        final futures = <Future>[];
+        final futures = <Future<List<MultiAddr>>>[];
 
         // Multiple addrs() lookups concurrently (like holepunch + other services)
         for (var i = 0; i < 5; i++) {
           futures.add(
-            Future<void>.delayed(Duration(milliseconds: i * 10), () async {
+            Future<List<MultiAddr>>.delayed(Duration(milliseconds: i * 10),
+                () async {
               print(
                 '🔎 Lookup $i: Looking up addresses for peer $targetPeerId in peerstore...',
               );

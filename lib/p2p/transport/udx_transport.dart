@@ -268,7 +268,6 @@ class UDXTransport implements Transport {
       _logger.fine('[UDXTransport.listen] Creating UDXListener for $boundMa');
       final listener = UDXListener(
         listeningSocket: multiplexer,
-        udxInstance: _udxInstance,
         boundAddr: boundMa,
         transport: this,
         connManager: _connManager,
@@ -389,7 +388,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
       // Phase 1.2: UDX Socket Health Monitoring - Enhanced initial stream error monitoring
       _initialStream.on('error').listen(
         (event) {
-          final error = event.data;
+          final error = event.data as Object;
           final timeSinceOpen = DateTime.now().difference(_openedAt);
           _logger.severe(
             '[UDXSessionConn $id] INITIAL_STREAM_ERROR: $error, time_since_open: ${timeSinceOpen.inMilliseconds}ms',
@@ -451,7 +450,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
         );
         close();
       },
-      onError: (err, s) {
+      onError: (Object err, StackTrace s) {
         _logger.fine(
           '[UDXSessionConn $id] Initial stream error event: $err. Closing session with error.',
         );
@@ -486,7 +485,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
       );
       _socketMessageSubscription = _udpSocket.on('unmatchedUDXPacket').listen(
         _handleDialerUnmatchedPacket,
-        onError: (err, s) {
+        onError: (Object err, StackTrace s) {
           _logger.fine(
             '[UDXSessionConn $id] (Dialer) error on UDPSocket: $err. Closing session.',
           );
@@ -951,7 +950,7 @@ class UDXSessionConn implements MuxedConn, TransportConn {
     );
   }
 
-  Future<void> closeWithError(dynamic error, [StackTrace? stackTrace]) async {
+  Future<void> closeWithError(Object error, [StackTrace? stackTrace]) async {
     _logger
         .fine('[UDXSessionConn $id] closeWithError called with error: $error');
     if (!_isClosed && !_isClosing) {

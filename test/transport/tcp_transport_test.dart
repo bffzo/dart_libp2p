@@ -277,7 +277,9 @@ void main() {
         final serverAcceptStreamFuture = serverYamuxSession!.acceptStream();
 
         // Allow the acceptStream future to be processed by the event loop
-        await Future<void>.delayed(const Duration(milliseconds: 50)); // Small delay
+        await Future<void>.delayed(
+          const Duration(milliseconds: 50),
+        ); // Small delay
 
         // Now client opens the stream
         final clientStream = await clientYamuxSession!.openStream(Context());
@@ -337,7 +339,9 @@ void main() {
         final serverAcceptStreamFuture = serverYamuxSession!.acceptStream();
 
         // Allow the acceptStream future to be processed by the event loop
-        await Future<void>.delayed(const Duration(milliseconds: 50)); // Small delay
+        await Future<void>.delayed(
+          const Duration(milliseconds: 50),
+        ); // Small delay
 
         // Now client opens the stream
         final clientStream = await clientYamuxSession!.openStream(Context());

@@ -16,7 +16,7 @@ void main() {
   group('RelayManager', () {
     late MockHost mockHost;
     late MockEventBus mockEventBus;
-    late MockSubscription mockSubscription;
+    late MockSubscription<Object> mockSubscription;
 
     setUp(() {
       mockHost = MockHost();

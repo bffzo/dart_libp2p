@@ -25,7 +25,6 @@ import 'package:dart_libp2p/p2p/protocol/holepunch.dart'; // Added for HolePunch
 /// This allows the Host to find the addresses for peers when
 /// it does not have them.
 class RoutedHost implements Host {
-
   RoutedHost(this._host, this._routing);
   final Host _host; // The host we're wrapping
   final PeerRouting _routing;
@@ -72,7 +71,10 @@ class RoutedHost implements Host {
 
   @override
   void setStreamHandlerMatch(
-      ProtocolID pid, bool Function(ProtocolID) match, StreamHandler handler,) {
+    ProtocolID pid,
+    bool Function(ProtocolID) match,
+    StreamHandler handler,
+  ) {
     _host.setStreamHandlerMatch(pid, match, handler);
   }
 
@@ -102,7 +104,8 @@ class RoutedHost implements Host {
     if (peerInfo.id != peerId) {
       // _log.severe('Routing failure: got info for wrong peer. Wanted $peerId, got ${peerInfo.id}');
       throw Exception(
-          'Routing failure: provided addrs for different peer. Wanted $peerId, got ${peerInfo.id}',);
+        'Routing failure: provided addrs for different peer. Wanted $peerId, got ${peerInfo.id}',
+      );
     }
     return peerInfo.addrs;
   }
@@ -237,7 +240,10 @@ class RoutedHost implements Host {
 
   @override
   Future<P2PStream> newStream(
-      PeerId p, List<ProtocolID> pids, Context context,) async {
+    PeerId p,
+    List<ProtocolID> pids,
+    Context context,
+  ) async {
     final effectiveCtx =
         context; // context is now non-nullable due to interface
 

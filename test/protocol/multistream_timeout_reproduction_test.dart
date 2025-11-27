@@ -33,12 +33,12 @@ class MockConn implements Conn {
   MultiAddr get remoteMultiaddr => MultiAddr('/ip4/127.0.0.1/tcp/0');
 
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) async {
+  Future<P2PStream> newStream(Context context) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams async => [];
+  Future<List<P2PStream>> get streams async => [];
 
   @override
   ConnStats get stat => MockConnStats();
@@ -74,7 +74,7 @@ class MockConnStats implements ConnStats {
 }
 
 /// Mock stream that simulates hanging/slow reads to trigger timeouts
-class HangingMockStream implements P2PStream<Uint8List> {
+class HangingMockStream implements P2PStream {
   HangingMockStream({
     Duration hangDuration = const Duration(minutes: 5),
     bool shouldHangForever = true,
@@ -136,7 +136,7 @@ class HangingMockStream implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
 
   @override
   Future<void> close() async {

@@ -557,7 +557,7 @@ class StreamSinkFromP2PStream implements Sink<List<int>> {
       if (_writeCompleter != null && !_writeCompleter.isCompleted) {
         _writeCompleter.complete();
       }
-    }).catchError((error) {
+    }).catchError((Object error) {
       // Write failed
       if (_writeCompleter != null && !_writeCompleter.isCompleted) {
         _writeCompleter.completeError(error);

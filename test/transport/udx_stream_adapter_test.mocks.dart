@@ -109,7 +109,7 @@ class _FakeMuxedStream_11 extends _i1.SmartFake implements _i11.MuxedStream {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_12<T> extends _i1.SmartFake implements _i12.P2PStream<T> {
+class _FakeP2PStream_12<T> extends _i1.SmartFake implements _i12.P2PStream {
   _FakeP2PStream_12(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -485,12 +485,12 @@ class MockUDXSessionConn extends _i1.Mock implements _i25.UDXSessionConn {
       );
 
   @override
-  _i22.Future<List<_i12.P2PStream<dynamic>>> get streams => (super.noSuchMethod(
+  _i22.Future<List<_i12.P2PStream>> get streams => (super.noSuchMethod(
         Invocation.getter(#streams),
-        returnValue: _i22.Future<List<_i12.P2PStream<dynamic>>>.value(
-          <_i12.P2PStream<dynamic>>[],
+        returnValue: _i22.Future<List<_i12.P2PStream>>.value(
+          <_i12.P2PStream>[],
         ),
-      ) as _i22.Future<List<_i12.P2PStream<dynamic>>>);
+      ) as _i22.Future<List<_i12.P2PStream>>);
 
   @override
   _i5.MultiAddr get localMultiaddr => (super.noSuchMethod(
@@ -619,19 +619,19 @@ class MockUDXSessionConn extends _i1.Mock implements _i25.UDXSessionConn {
       );
 
   @override
-  _i22.Future<_i12.P2PStream<dynamic>> newStream(
+  _i22.Future<_i12.P2PStream> newStream(
     _i28.Context? context, [
     int? streamId,
   ]) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [context, streamId]),
-        returnValue: _i22.Future<_i12.P2PStream<dynamic>>.value(
+        returnValue: _i22.Future<_i12.P2PStream>.value(
           _FakeP2PStream_12<dynamic>(
             this,
             Invocation.method(#newStream, [context, streamId]),
           ),
         ),
-      ) as _i22.Future<_i12.P2PStream<dynamic>>);
+      ) as _i22.Future<_i12.P2PStream>);
 
   @override
   void setReadTimeout(Duration? timeout) => super.noSuchMethod(
@@ -653,7 +653,7 @@ class MockUDXSessionConn extends _i1.Mock implements _i25.UDXSessionConn {
       ) as _i22.Future<void>);
 
   @override
-  _i22.Future<void> closeWithError(dynamic error, [StackTrace? stackTrace]) =>
+  _i22.Future<void> closeWithError(Object error, [StackTrace? stackTrace]) =>
       (super.noSuchMethod(
         Invocation.method(#closeWithError, [error, stackTrace]),
         returnValue: _i22.Future<void>.value(),

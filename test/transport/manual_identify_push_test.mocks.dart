@@ -104,7 +104,7 @@ class _FakeEventBus_11 extends _i1.SmartFake implements _i8.EventBus {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_12<T> extends _i1.SmartFake implements _i9.P2PStream<T> {
+class _FakeP2PStream_12<T> extends _i1.SmartFake implements _i9.P2PStream {
   _FakeP2PStream_12(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -358,20 +358,20 @@ class MockHost extends _i1.Mock implements _i10.Host {
       );
 
   @override
-  _i13.Future<_i9.P2PStream<dynamic>> newStream(
+  _i13.Future<_i9.P2PStream> newStream(
     _i4.PeerId? p,
     List<String>? pids,
     _i18.Context? context,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [p, pids, context]),
-        returnValue: _i13.Future<_i9.P2PStream<dynamic>>.value(
+        returnValue: _i13.Future<_i9.P2PStream>.value(
           _FakeP2PStream_12<dynamic>(
             this,
             Invocation.method(#newStream, [p, pids, context]),
           ),
         ),
-      ) as _i13.Future<_i9.P2PStream<dynamic>>);
+      ) as _i13.Future<_i9.P2PStream>);
 
   @override
   _i13.Future<void> close() => (super.noSuchMethod(
@@ -403,12 +403,12 @@ class MockConn extends _i1.Mock implements _i10.Conn {
       ) as String);
 
   @override
-  _i13.Future<List<_i9.P2PStream<dynamic>>> get streams => (super.noSuchMethod(
+  _i13.Future<List<_i9.P2PStream>> get streams => (super.noSuchMethod(
         Invocation.getter(#streams),
-        returnValue: _i13.Future<List<_i9.P2PStream<dynamic>>>.value(
-          <_i9.P2PStream<dynamic>>[],
+        returnValue: _i13.Future<List<_i9.P2PStream>>.value(
+          <_i9.P2PStream>[],
         ),
-      ) as _i13.Future<List<_i9.P2PStream<dynamic>>>);
+      ) as _i13.Future<List<_i9.P2PStream>>);
 
   @override
   bool get isClosed =>
@@ -477,16 +477,16 @@ class MockConn extends _i1.Mock implements _i10.Conn {
       ) as _i13.Future<void>);
 
   @override
-  _i13.Future<_i9.P2PStream<dynamic>> newStream(_i18.Context? context) =>
+  _i13.Future<_i9.P2PStream> newStream(_i18.Context? context) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [context]),
-        returnValue: _i13.Future<_i9.P2PStream<dynamic>>.value(
+        returnValue: _i13.Future<_i9.P2PStream>.value(
           _FakeP2PStream_12<dynamic>(
             this,
             Invocation.method(#newStream, [context]),
           ),
         ),
-      ) as _i13.Future<_i9.P2PStream<dynamic>>);
+      ) as _i13.Future<_i9.P2PStream>);
 }
 
 /// A class which mocks [EventBus].
@@ -498,7 +498,7 @@ class MockEventBus extends _i1.Mock implements _i8.EventBus {
   }
 
   @override
-  _i8.Subscription<dynamic> subscribe(
+  _i8.Subscription<Object> subscribe(
     Object? eventType, {
     List<_i8.SubscriptionOpt>? opts,
   }) =>
@@ -508,7 +508,7 @@ class MockEventBus extends _i1.Mock implements _i8.EventBus {
           this,
           Invocation.method(#subscribe, [eventType], {#opts: opts}),
         ),
-      ) as _i8.Subscription<dynamic>);
+      ) as _i8.Subscription<Object>);
 
   @override
   _i13.Future<_i8.Emitter> emitter(
@@ -1126,7 +1126,7 @@ class MockMultistreamMuxer extends _i1.Mock implements _i23.MultistreamMuxer {
 
   @override
   _i13.Future<(String, _i24.HandlerFunc)> negotiate(
-    _i9.P2PStream<dynamic>? stream,
+    _i9.P2PStream? stream,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#negotiate, [stream]),
@@ -1135,13 +1135,12 @@ class MockMultistreamMuxer extends _i1.Mock implements _i23.MultistreamMuxer {
             this,
             Invocation.method(#negotiate, [stream]),
           ),
-          (String protocol, _i9.P2PStream<dynamic> stream) {},
+          (String protocol, _i9.P2PStream stream) {},
         )),
       ) as _i13.Future<(String, _i24.HandlerFunc)>);
 
   @override
-  _i13.Future<void> handle(_i9.P2PStream<dynamic>? stream) =>
-      (super.noSuchMethod(
+  _i13.Future<void> handle(_i9.P2PStream? stream) => (super.noSuchMethod(
         Invocation.method(#handle, [stream]),
         returnValue: _i13.Future<void>.value(),
         returnValueForMissingStub: _i13.Future<void>.value(),
@@ -1149,7 +1148,7 @@ class MockMultistreamMuxer extends _i1.Mock implements _i23.MultistreamMuxer {
 
   @override
   _i13.Future<String?> selectOneOf(
-    _i9.P2PStream<dynamic>? stream,
+    _i9.P2PStream? stream,
     List<String>? protocolsToSelect,
   ) =>
       (super.noSuchMethod(

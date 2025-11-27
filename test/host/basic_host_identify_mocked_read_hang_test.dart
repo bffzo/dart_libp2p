@@ -264,7 +264,7 @@ class MockP2PStream implements P2PStream {
   }
 
   @override
-  P2PStream<Uint8List> get incoming =>
+  P2PStream get incoming =>
       throw UnimplementedError('MockP2PStream.incoming not implemented');
   @override
   StreamManagementScope scope() => throw UnimplementedError(

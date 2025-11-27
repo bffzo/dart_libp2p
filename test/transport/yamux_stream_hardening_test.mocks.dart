@@ -54,7 +54,7 @@ class _FakeConnScope_4 extends _i1.SmartFake implements _i5.ConnScope {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_5<T> extends _i1.SmartFake implements _i6.P2PStream<T> {
+class _FakeP2PStream_5<T> extends _i1.SmartFake implements _i6.P2PStream {
   _FakeP2PStream_5(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -74,12 +74,12 @@ class MockConn extends _i1.Mock implements _i3.Conn {
       ) as String);
 
   @override
-  _i8.Future<List<_i6.P2PStream<dynamic>>> get streams => (super.noSuchMethod(
+  _i8.Future<List<_i6.P2PStream>> get streams => (super.noSuchMethod(
         Invocation.getter(#streams),
-        returnValue: _i8.Future<List<_i6.P2PStream<dynamic>>>.value(
-          <_i6.P2PStream<dynamic>>[],
+        returnValue: _i8.Future<List<_i6.P2PStream>>.value(
+          <_i6.P2PStream>[],
         ),
-      ) as _i8.Future<List<_i6.P2PStream<dynamic>>>);
+      ) as _i8.Future<List<_i6.P2PStream>>);
 
   @override
   bool get isClosed =>
@@ -148,14 +148,14 @@ class MockConn extends _i1.Mock implements _i3.Conn {
       ) as _i8.Future<void>);
 
   @override
-  _i8.Future<_i6.P2PStream<dynamic>> newStream(_i10.Context? context) =>
+  _i8.Future<_i6.P2PStream> newStream(_i10.Context? context) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [context]),
-        returnValue: _i8.Future<_i6.P2PStream<dynamic>>.value(
+        returnValue: _i8.Future<_i6.P2PStream>.value(
           _FakeP2PStream_5<dynamic>(
             this,
             Invocation.method(#newStream, [context]),
           ),
         ),
-      ) as _i8.Future<_i6.P2PStream<dynamic>>);
+      ) as _i8.Future<_i6.P2PStream>);
 }

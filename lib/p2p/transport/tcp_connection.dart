@@ -166,7 +166,7 @@ class TCPConnection implements TransportConn {
             _pendingReadCompleter!.complete();
           }
         },
-        onError: (error, stackTrace) {
+        onError: (Object error, StackTrace stackTrace) {
           _log.severe(
             'TCPConnection($id) - Socket error: $error',
             error,

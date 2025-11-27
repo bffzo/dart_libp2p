@@ -25,7 +25,7 @@ void main() {
     late MockHost mockHost;
     late MockEventBus mockEventBus;
     late MockEmitter mockEmitter;
-    late MockSubscription mockSubscription;
+    late MockSubscription<Object> mockSubscription;
     late MockNetwork mockNetwork;
     late MockUpgrader mockUpgrader;
     late AutoRelayConfig config;
@@ -59,7 +59,7 @@ void main() {
       // Mock subscriptions for background tasks - use broadcast streams
       when(mockEventBus.subscribe(any)).thenReturn(mockSubscription);
       when(mockSubscription.stream)
-          .thenAnswer((_) => const Stream.empty().asBroadcastStream());
+          .thenAnswer((_) => const Stream<Object>.empty().asBroadcastStream());
     });
 
     group('Initialization', () {

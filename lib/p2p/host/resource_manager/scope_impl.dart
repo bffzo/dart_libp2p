@@ -12,7 +12,8 @@ void _logWarn(String message) {
   print('WARN: $message');
 }
 
-class _Resources { // In bytes
+class _Resources {
+  // In bytes
 
   _Resources(this.limit);
   final Limit limit;
@@ -68,7 +69,8 @@ class _Resources { // In bytes
     memory -= size;
     if (memory < 0) {
       _logWarn(
-          'BUG: too much memory released (size: $size, memory before: ${memory + size}, after attempted subtract: $memory)',);
+        'BUG: too much memory released (size: $size, memory before: ${memory + size}, after attempted subtract: $memory)',
+      );
       memory = 0;
     }
     // print('DEBUG: _Resources.releaseMemory. Memory after: $memory');
@@ -193,10 +195,13 @@ class _Resources { // In bytes
 class ResourceScopeImpl implements ResourceScope, ResourceScopeSpan {
   // TODO: Add trace and metrics objects later
 
-  ResourceScopeImpl(Limit limit, this.name,
-      {ResourceScopeImpl? owner,
-      List<ResourceScopeImpl>? edges,}) // Changed back to edges
-      : _resources = _Resources(limit),
+  ResourceScopeImpl(
+    Limit limit,
+    this.name, {
+    ResourceScopeImpl? owner,
+    List<ResourceScopeImpl>? edges,
+  })   // Changed back to edges
+  : _resources = _Resources(limit),
         _owner = owner,
         edges = edges ?? [] {
     // if (limit is BaseLimit) {
@@ -298,7 +303,9 @@ class ResourceScopeImpl implements ResourceScope, ResourceScopeSpan {
         // and returns ScopeStat + error. We're calling the public async API.
         // This might need adjustment if we create internal synchronous reservation paths.
         await edge.reserveMemory(
-            size, priority,); // Assuming this is how child notifies parent
+          size,
+          priority,
+        ); // Assuming this is how child notifies parent
         reservedEdges.add(edge);
       }
     } catch (e) {
@@ -356,7 +363,10 @@ class ResourceScopeImpl implements ResourceScope, ResourceScopeSpan {
     final spanName = '$name.span-$_spanIdCounter';
     // Span inherits its limit from the owner.
     return ResourceScopeImpl._asSpan(
-        _resources.limit, spanName, this, _spanIdCounter,);
+      _resources.limit,
+      spanName,
+      this,
+    );
   }
 
   @override
@@ -405,7 +415,8 @@ class ResourceScopeImpl implements ResourceScope, ResourceScopeSpan {
     for (var i = 0; i < childStat.numStreamsOutbound; i++) {
       _resources.removeStream(Direction.outbound, name); // Pass owner id (name)
       _removeStreamForAncestors(
-          Direction.outbound,); // Propagate release upwards
+        Direction.outbound,
+      ); // Propagate release upwards
     }
     // Assuming childStat.numFD is the number of connections that used FDs
     // And that conns are released one by one with their direction and fd usage.

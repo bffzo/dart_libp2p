@@ -24,7 +24,7 @@ class ConnectionManager implements ConnManager {
   final _protections = <PeerId, Set<String>>{};
 
   /// Custom notifiee for connection events
-  const _notifiee = NotifyBundle();
+  final _notifiee = const NotifyBundle();
 
   /// Duration after which an idle connection is considered stale
   final Duration idleTimeout;

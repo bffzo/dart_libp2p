@@ -24,7 +24,8 @@ const String serviceName = 'libp2p.autonat';
 // const int maxMsgSize = 4 * 1024 * 1024; // Defined in options.dart or specific to usage
 const Duration streamTimeout = Duration(seconds: 60);
 
-class AutoNATService { // Simple mutex placeholder
+class AutoNATService {
+  // Simple mutex placeholder
 
   AutoNATService(this._config);
   final AutoNATConfig _config;
@@ -57,20 +58,25 @@ class AutoNATService { // Simple mutex placeholder
 
       if (req.type != pb.Message_MessageType.DIAL) {
         _autonatServiceLog(
-            'AutoNATService: Unexpected message from $remotePeerId: ${req.type}',);
+          'AutoNATService: Unexpected message from $remotePeerId: ${req.type}',
+        );
         await stream.reset(); // Reset before releasing memory if possible
         return;
       }
 
-      final dialResponse = await _handleDial(remotePeerId,
-          stream.conn.remoteMultiaddr, req.dial.peer,); // await here
+      final dialResponse = await _handleDial(
+        remotePeerId,
+        stream.conn.remoteMultiaddr,
+        req.dial.peer,
+      ); // await here
       final resMsg = pb.Message()
         ..type = pb.Message_MessageType.DIAL_RESPONSE
         ..dialResponse = dialResponse;
 
       await writeDelimited(stream, resMsg);
       _config.metricsTracer?.receivedDialResponse(
-          dialResponse.status,); // Assuming similar metric event
+        dialResponse.status,
+      ); // Assuming similar metric event
     } catch (e) {
       _autonatServiceLog('AutoNATService: Error handling stream: $e');
       await stream.reset(); // Reset before releasing memory if possible
@@ -81,11 +87,16 @@ class AutoNATService { // Simple mutex placeholder
   }
 
   Future<pb.Message_DialResponse> _handleDial(
-      PeerId p, MultiAddr obsAddr, pb.Message_PeerInfo mpi,) async {
+    PeerId p,
+    MultiAddr obsAddr,
+    pb.Message_PeerInfo mpi,
+  ) async {
     // Made async
     if (!mpi.hasId()) {
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_BAD_REQUEST, 'missing peer info',);
+        pb.Message_ResponseStatus.E_BAD_REQUEST,
+        'missing peer info',
+      );
     }
 
     PeerId msgPeerId; // Revert to PeerId, as PeerId.fromBytes returns PeerId
@@ -93,13 +104,17 @@ class AutoNATService { // Simple mutex placeholder
       msgPeerId = core_peer.PeerId.fromBytes(Uint8List.fromList(mpi.id));
     } catch (e) {
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_BAD_REQUEST, 'bad peer id',);
+        pb.Message_ResponseStatus.E_BAD_REQUEST,
+        'bad peer id',
+      );
     }
 
     if (msgPeerId.toString() != p.toString()) {
       // Compare string representations
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_BAD_REQUEST, 'peer id mismatch',);
+        pb.Message_ResponseStatus.E_BAD_REQUEST,
+        'peer id mismatch',
+      );
     }
 
     final addrsToDial = <MultiAddr>[];
@@ -107,8 +122,10 @@ class AutoNATService { // Simple mutex placeholder
 
     if (_config.dialPolicy.skipDial(obsAddr)) {
       // _config.metricsTracer?.outgoingDialRefused(DialBlockedReason.dialBlocked); // TODO: Define DialBlockedReason
-      return _newDialResponseError(pb.Message_ResponseStatus.E_DIAL_REFUSED,
-          'refusing to dial peer with blocked observed address',);
+      return _newDialResponseError(
+        pb.Message_ResponseStatus.E_DIAL_REFUSED,
+        'refusing to dial peer with blocked observed address',
+      );
     }
 
     MultiAddr? hostIpComponent;
@@ -117,15 +134,18 @@ class AutoNATService { // Simple mutex placeholder
       if (comp.$1.name == 'ip4' || comp.$1.name == 'ip6') {
         // Use .$1 and .$2
         hostIpComponent = MultiAddr(
-            '/${comp.$1.name}/${comp.$2}',); // Create a Multiaddr from the component
+          '/${comp.$1.name}/${comp.$2}',
+        ); // Create a Multiaddr from the component
         hostIpComponentValue = comp.$2;
         break;
       }
     }
 
     if (hostIpComponent == null || hostIpComponentValue == null) {
-      return _newDialResponseError(pb.Message_ResponseStatus.E_INTERNAL_ERROR,
-          'observed address has no IP component',);
+      return _newDialResponseError(
+        pb.Message_ResponseStatus.E_INTERNAL_ERROR,
+        'observed address has no IP component',
+      );
     }
 
     addrsToDial.add(obsAddr);
@@ -149,10 +169,9 @@ class AutoNATService { // Simple mutex placeholder
             // Use .$1 and .$2
             if (comp.$2 != hostIpComponentValue) {
               // Replace with observed IP
-              newComponents.add((
-                hostIpComponent.protocols.first,
-                hostIpComponentValue
-              ),); // Added ! for hostIpComponentValue
+              newComponents.add(
+                (hostIpComponent.protocols.first, hostIpComponentValue),
+              ); // Added ! for hostIpComponentValue
               ipReplaced = true;
             } else {
               newComponents.add(comp);
@@ -167,11 +186,13 @@ class AutoNATService { // Simple mutex placeholder
           // Reconstruct addr if IP was replaced
           if (newComponents.isNotEmpty) {
             addrToProcess = MultiAddr(
-                '/${newComponents.first.$1.name}/${newComponents.first.$2}',); // Use .$1 and .$2
+              '/${newComponents.first.$1.name}/${newComponents.first.$2}',
+            ); // Use .$1 and .$2
             for (var i = 1; i < newComponents.length; i++) {
               addrToProcess = addrToProcess.encapsulate(
-                  newComponents[i].$1.name,
-                  newComponents[i].$2,); // Use .$1 and .$2
+                newComponents[i].$1.name,
+                newComponents[i].$2,
+              ); // Use .$1 and .$2
             }
           } else {
             // Should not happen if originalAddr was valid
@@ -199,7 +220,9 @@ class AutoNATService { // Simple mutex placeholder
     if (addrsToDial.isEmpty) {
       // _config.metricsTracer?.outgoingDialRefused(DialBlockedReason.noValidAddress); // TODO: Define DialBlockedReason
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_DIAL_REFUSED, 'no dialable addresses',);
+        pb.Message_ResponseStatus.E_DIAL_REFUSED,
+        'no dialable addresses',
+      );
     }
 
     return _doDial(AddrInfo(p, addrsToDial)); // await here
@@ -223,15 +246,20 @@ class AutoNATService { // Simple mutex placeholder
       // This path might be hit more frequently now without the lock
       // _config.metricsTracer?.outgoingDialRefused(DialBlockedReason.rateLimited); // TODO: Define DialBlockedReason
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_DIAL_REFUSED, 'too many dials',);
+        pb.Message_ResponseStatus.E_DIAL_REFUSED,
+        'too many dials',
+      );
     }
 
     final dialer = _config.dialer;
     if (dialer == null) {
       _autonatServiceLog(
-          'AutoNATService: Dialer not available, cannot perform dial.',);
+        'AutoNATService: Dialer not available, cannot perform dial.',
+      );
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_INTERNAL_ERROR, 'dialer not configured',);
+        pb.Message_ResponseStatus.E_INTERNAL_ERROR,
+        'dialer not configured',
+      );
     }
 
     final ctx =
@@ -248,12 +276,14 @@ class AutoNATService { // Simple mutex placeholder
     Conn? conn;
     try {
       _autonatServiceLog(
-          'AutoNATService: Attempting to dial ${pi.id} at ${pi.addrs} with timeout ${_config.dialTimeout}',);
+        'AutoNATService: Attempting to dial ${pi.id} at ${pi.addrs} with timeout ${_config.dialTimeout}',
+      );
       conn = await dialer.dialPeer(ctx, pi.id).timeout(_config.dialTimeout);
       // If dialPeer succeeds, we have a connection.
       // The remote multiaddr from the connection is the one that worked.
       _autonatServiceLog(
-          'AutoNATService: Successfully dialed ${pi.id} at ${conn.remoteMultiaddr}',);
+        'AutoNATService: Successfully dialed ${pi.id} at ${conn.remoteMultiaddr}',
+      );
       return _newDialResponseOK(conn.remoteMultiaddr);
     } catch (e) {
       _autonatServiceLog('AutoNATService: Error dialing ${pi.id}: $e');
@@ -264,7 +294,9 @@ class AutoNATService { // Simple mutex placeholder
       // then we don't need an explicit additional wait here.
       // For now, assume dialPeer respects the context timeout.
       return _newDialResponseError(
-          pb.Message_ResponseStatus.E_DIAL_ERROR, 'dial failed: $e',);
+        pb.Message_ResponseStatus.E_DIAL_ERROR,
+        'dial failed: $e',
+      );
     } finally {
       // Close the connection if it was established, as it was only for the dial-back test.
       await conn?.close();
@@ -284,7 +316,9 @@ class AutoNATService { // Simple mutex placeholder
   }
 
   pb.Message_DialResponse _newDialResponseError(
-      pb.Message_ResponseStatus status, String text,) {
+    pb.Message_ResponseStatus status,
+    String text,
+  ) {
     return pb.Message_DialResponse()
       ..status = status
       ..statusText = text;

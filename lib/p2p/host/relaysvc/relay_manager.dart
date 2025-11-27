@@ -94,7 +94,7 @@ class RelayManager {
           _backgroundCompleter!.complete();
         }
       },
-      onError: (e, StackTrace s) {
+      onError: (Object e, StackTrace s) {
         _log.severe('Error in reachability listener.', e, s);
         if (!_isClosed &&
             _backgroundCompleter != null &&

@@ -7,6 +7,7 @@ import 'package:dart_libp2p/core/event/reachability.dart';
 import 'package:dart_libp2p/core/host/host.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
 import 'package:dart_libp2p/core/network/network.dart';
+import 'package:dart_libp2p/core/peer/peer_id.dart';
 import 'package:dart_libp2p/core/protocol/autonatv2/autonatv2.dart';
 import 'package:dart_libp2p/p2p/host/autonat/ambient_config.dart';
 import 'package:logging/logging.dart';
@@ -103,7 +104,7 @@ class AmbientAutoNATv2 {
     }
   }
 
-  Future<void> _handlePeerIdentified(dynamic peerId) async {
+  Future<void> _handlePeerIdentified(PeerId peerId) async {
     if (_closed) return;
 
     try {
@@ -221,7 +222,7 @@ class AmbientAutoNATv2 {
     _scheduleNextProbe(false);
   }
 
-  void _handleProbeError(dynamic error) {
+  void _handleProbeError(Object error) {
     _log.warning('Probe error, treating as unknown: $error');
 
     // Treat errors as unknown observations

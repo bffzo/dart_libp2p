@@ -81,7 +81,7 @@ class YamuxSession implements Multiplexer, core_mux.MuxedConn, Conn {
   final _pendingStreams = <int, Completer<void>>{};
 
   void _init() {
-    _readFrames().catchError((error, stackTrace) {
+    _readFrames().catchError((Object error, StackTrace stackTrace) {
       if (!_closed) {
         _log.severe(
           '$_logPrefix Uncaught error in _readFrames, initiating GO_AWAY: $error',

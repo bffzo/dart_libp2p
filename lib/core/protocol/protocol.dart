@@ -39,7 +39,7 @@ class ProtocolIDUtil {
 /// was registered using a match function.
 typedef HandlerFunc = void Function(
   ProtocolID protocol,
-  P2PStream<dynamic> stream,
+  P2PStream stream,
 );
 
 /// Router is an interface that allows users to add and remove protocol handlers,
@@ -87,10 +87,10 @@ abstract class Negotiator {
   /// inbound stream, returning after the protocol has been determined and the
   /// Negotiator has finished using the stream for negotiation. Returns an
   /// error if negotiation fails.
-  Future<(ProtocolID, HandlerFunc)> negotiate(P2PStream<dynamic> stream);
+  Future<(ProtocolID, HandlerFunc)> negotiate(P2PStream stream);
 
   /// Handle calls Negotiate to determine which protocol handler to use for an
   /// inbound stream, then invokes the protocol handler function, passing it
   /// the protocol ID and the stream. Returns an error if negotiation fails.
-  Future<void> handle(P2PStream<dynamic> stream);
+  Future<void> handle(P2PStream stream);
 }

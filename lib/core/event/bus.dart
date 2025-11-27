@@ -80,7 +80,10 @@ abstract class EventBus {
   ///     }
   ///   });
   ///   await sub.close();
-  Subscription subscribe(Object eventType, {List<SubscriptionOpt>? opts});
+  Subscription<Object> subscribe(
+    Object eventType, {
+    List<SubscriptionOpt>? opts,
+  });
 
   /// Creates a new event emitter.
   ///

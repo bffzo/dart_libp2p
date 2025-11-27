@@ -1837,7 +1837,7 @@ class IdentifyService implements IDService {
           ' [SPAWN-IDENTIFY-ALREADY-COMPLETED] identifyWaitCompleter for peer=$peerId was already completed',
         );
       }
-    }).catchError((error, stackTrace) {
+    }).catchError((Object error, StackTrace stackTrace) {
       final duration = DateTime.now().difference(spawnStart);
       _log.warning(
         ' [SPAWN-IDENTIFY-ERROR] _identifyConn for peer=$peerId failed, duration=${duration.inMilliseconds}ms, error=$error\n$stackTrace',

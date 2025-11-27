@@ -45,9 +45,9 @@ class MockConnection implements Conn {
 
   bool _isClosed = false;
 
-  final List<P2PStream<dynamic>> _streams = [];
+  final List<P2PStream> _streams = [];
 
-  const ConnState _state = ConnState(
+  final ConnState _state = const ConnState(
     streamMultiplexer: '/mock/1.0.0',
     security: '/mock/1.0.0',
     transport: 'mock',
@@ -70,12 +70,12 @@ class MockConnection implements Conn {
   }
 
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) async {
+  Future<P2PStream> newStream(Context context) async {
     throw UnimplementedError('newStream not implemented in MockConnection');
   }
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams async => _streams;
+  Future<List<P2PStream>> get streams async => _streams;
 
   @override
   bool get isClosed => _isClosed;

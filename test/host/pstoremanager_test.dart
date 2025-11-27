@@ -19,7 +19,7 @@ void main() {
     late MockEventBus eventBus;
     late MockNetwork network;
     late MockEmitter emitter;
-    late MockSubscription subscription;
+    late MockSubscription<Object> subscription;
     late StreamController<Object> eventController;
 
     setUp(() {

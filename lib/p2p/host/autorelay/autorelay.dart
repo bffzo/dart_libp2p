@@ -24,7 +24,6 @@ class EvtAutoRelayAddrsUpdated {
 }
 
 class AutoRelay {
-
   // Original AddrFactory to be wrapped or replaced.
   // This is complex in Dart. Go's direct modification is not typical.
   // List<Multiaddr> Function(List<Multiaddr>)? _originalAddrsFactory;
@@ -35,7 +34,8 @@ class AutoRelay {
         relayFinder =
             RelayFinder(host, upgrader, userConfig ?? AutoRelayConfig()),
         metricsTracer = WrappedMetricsTracer(
-            userConfig?.metricsTracer ?? AutoRelayConfig().metricsTracer,) {
+          userConfig?.metricsTracer ?? AutoRelayConfig().metricsTracer,
+        ) {
     // TODO: Address advertising. The Go version modifies host.AddrsFactory.
     // A Dart-idiomatic way would be preferable, perhaps via events or a dedicated service.
     // For now, this aspect is a placeholder.
@@ -80,8 +80,7 @@ class AutoRelay {
 
   Future<void> _updateAndEmitAdvertisableAddrs() async {
     try {
-      final currentHostAddrs =
-          await host.network.interfaceListenAddresses;
+      final currentHostAddrs = await host.network.interfaceListenAddresses;
       List<MultiAddr> newAddrs;
       if (_status == Reachability.private || _status == Reachability.unknown) {
         newAddrs = await relayFinder.getRelayAddrs(currentHostAddrs);
@@ -99,39 +98,46 @@ class AutoRelay {
 
   Future<void> _background(Stream<void> stopSignal) async {
     _log.fine(
-        'AutoRelay background task started, subscribing to reachability events',);
+      'AutoRelay background task started, subscribing to reachability events',
+    );
     final reachabilityEventBusSub =
         host.eventBus.subscribe(EvtLocalReachabilityChanged);
-    _reachabilitySubscription = reachabilityEventBusSub.stream
-        .takeUntil(stopSignal)
-        .listen((event) async {
-      // Make listener async
-      if (event is EvtLocalReachabilityChanged) {
-        _status = event.reachability;
-        _log.fine('AutoRelay: Reachability changed to $_status');
-        if (_status == Reachability.private ||
-            _status == Reachability.unknown) {
-          _log.fine(
-              'AutoRelay: Reachability is Private/Unknown, starting RelayFinder',);
-          await relayFinder.start().catchError((e) {
-            _log.severe('AutoRelay: Failed to start RelayFinder: $e');
-          });
-          metricsTracer.relayFinderStatus(true);
-        } else {
-          // Public
-          _log.fine('AutoRelay: Reachability is Public, stopping RelayFinder');
-          await relayFinder.stop().catchError((e) {
-            _log.severe('AutoRelay: Failed to stop RelayFinder: $e');
-          });
-          metricsTracer.relayFinderStatus(false);
+    _reachabilitySubscription =
+        reachabilityEventBusSub.stream.takeUntil(stopSignal).listen(
+      (event) async {
+        // Make listener async
+        if (event is EvtLocalReachabilityChanged) {
+          _status = event.reachability;
+          _log.fine('AutoRelay: Reachability changed to $_status');
+          if (_status == Reachability.private ||
+              _status == Reachability.unknown) {
+            _log.fine(
+              'AutoRelay: Reachability is Private/Unknown, starting RelayFinder',
+            );
+            await relayFinder.start().catchError((e) {
+              _log.severe('AutoRelay: Failed to start RelayFinder: $e');
+            });
+            metricsTracer.relayFinderStatus(true);
+          } else {
+            // Public
+            _log.fine(
+              'AutoRelay: Reachability is Public, stopping RelayFinder',
+            );
+            await relayFinder.stop().catchError((e) {
+              _log.severe('AutoRelay: Failed to stop RelayFinder: $e');
+            });
+            metricsTracer.relayFinderStatus(false);
+          }
+          await _updateAndEmitAdvertisableAddrs(); // Update addrs on any reachability change
         }
-        await _updateAndEmitAdvertisableAddrs(); // Update addrs on any reachability change
-      }
-    }, onError: (e) {
-      _log.severe('AutoRelay: Error on reachability event stream: $e');
-    }, onDone: () {
-      _log.fine('AutoRelay: Reachability event stream closed');
-    },);
+      },
+      onError: (e) {
+        _log.severe('AutoRelay: Error on reachability event stream: $e');
+      },
+      onDone: () {
+        _log.fine('AutoRelay: Reachability event stream closed');
+      },
+    );
 
     // Listen to relayFinder's relayUpdated stream
     _relayFinderRelayUpdatedSubscription =
@@ -179,8 +185,7 @@ class AutoRelay {
   // This method can be removed if address advertising is fully event-driven.
   // Or kept for manual/direct queries if needed.
   Future<List<MultiAddr>> getAdvertisableAddrs() async {
-    final currentHostAddrs =
-        await host.network.interfaceListenAddresses;
+    final currentHostAddrs = await host.network.interfaceListenAddresses;
     if (_status == Reachability.private || _status == Reachability.unknown) {
       return relayFinder.getRelayAddrs(currentHostAddrs);
     }

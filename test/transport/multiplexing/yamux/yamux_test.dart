@@ -120,7 +120,7 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'client stream creation',
-      ) as P2PStream<Uint8List>; // Cast to P2PStream<Uint8List>
+      ) as P2PStream; // Cast to P2PStream
       expect(stream1, isNotNull);
       expect(stream1.isClosed, isFalse);
       print('Client stream created with ID: ${(stream1 as YamuxStream).id()}');
@@ -187,7 +187,7 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>; // Cast to P2PStream<Uint8List>
+      ) as P2PStream; // Cast to P2PStream
       final stream2 =
           await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
@@ -250,7 +250,7 @@ void main() {
         ]),
         'client streams creation',
       ))
-          .cast<P2PStream<Uint8List>>(); // Cast to P2PStream<Uint8List>
+          .cast<P2PStream>(); // Cast to P2PStream
       print('Client streams created: ${streams1.length}');
 
       print('Waiting for server to accept all streams...');
@@ -316,7 +316,7 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>; // Cast to P2PStream<Uint8List>
+      ) as P2PStream; // Cast to P2PStream
       final stream2 =
           await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
@@ -349,7 +349,7 @@ void main() {
         stream1.write(largeData).then((_) {
           print('Write operation completed');
           writeComplete.complete();
-        }).catchError((e) {
+        }).catchError((Object e) {
           print('Write operation failed: $e');
           writeComplete.completeError(e);
         });
@@ -456,7 +456,7 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>;
+      ) as P2PStream;
       final stream2 =
           await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
@@ -541,7 +541,7 @@ void main() {
         receivedStreams.add(stream);
       });
 
-      final streams = <P2PStream<Uint8List>>[]; // Specify type here
+      final streams = <P2PStream>[]; // Specify type here
       try {
         // Create streams in small batches
         const batchSize = 2; // Smaller batch size
@@ -563,7 +563,7 @@ void main() {
             ),
             'batch streams creation',
           ))
-              .cast<P2PStream<Uint8List>>(); // Cast to P2PStream<Uint8List>
+              .cast<P2PStream>(); // Cast to P2PStream
 
           streams.addAll(batch);
           print('Created ${streams.length}/$testMaxStreams streams');
@@ -644,7 +644,7 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>; // Cast to P2PStream<Uint8List>
+      ) as P2PStream; // Cast to P2PStream
       final stream2 =
           await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
@@ -794,10 +794,9 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>;
+      ) as P2PStream;
       final stream2 =
-          await withTimeout(streamReceived.future, 'stream acceptance')
-              as P2PStream<Uint8List>;
+          await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
 
       // 1. stream1 closes its write side
@@ -859,10 +858,9 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>;
+      ) as P2PStream;
       final stream2 =
-          await withTimeout(streamReceived.future, 'stream acceptance')
-              as P2PStream<Uint8List>;
+          await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
 
       // 1. stream1 closes its read side locally
@@ -926,10 +924,9 @@ void main() {
       final stream1 = await withTimeout(
         session1.openStream(core_context.Context()),
         'stream creation',
-      ) as P2PStream<Uint8List>;
+      ) as P2PStream;
       final stream2 =
-          await withTimeout(streamReceived.future, 'stream acceptance')
-              as P2PStream<Uint8List>;
+          await withTimeout(streamReceived.future, 'stream acceptance');
       print('Streams established');
 
       try {

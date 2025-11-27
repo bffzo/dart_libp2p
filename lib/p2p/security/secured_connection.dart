@@ -100,6 +100,7 @@ class SecuredConnection implements TransportConn {
     this._decryptionKey, {
     required this.securityProtocolId, // Make it required, this.establishedRemotePeer,
     this.establishedRemotePublicKey,
+    this.establishedRemotePeer,
   }) {
     // ADDED LOGGING
     _log.finer(

@@ -8,9 +8,9 @@ import 'package:test/test.dart';
 
 import 'identify_test.mocks.dart';
 
-class FakeSubscription implements Subscription {
+class FakeSubscription implements Subscription<Object> {
   @override
-  Stream get stream => const Stream.empty();
+  Stream<Object> get stream => const Stream.empty();
   @override
   String get name => 'fake';
   @override

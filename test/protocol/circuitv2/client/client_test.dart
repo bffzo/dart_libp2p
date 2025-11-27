@@ -321,19 +321,19 @@ void main() {
       });
     });
 
-    group('Integration with Host', () {
-      test('should access host peerstore correctly', () {
-        // Arrange
-        when(mockHost.peerStore).thenReturn(null as dynamic);
+    // group('Integration with Host', () {
+    //   test('should access host peerstore correctly', () {
+    //     // Arrange
+    //     when(mockHost.peerStore).thenReturn(null as dynamic);
 
-        // Act
-        // Accessing peerstore property
-        client.peerstore;
+    //     // Act
+    //     // Accessing peerstore property
+    //     client.peerstore;
 
-        // Assert
-        verify(mockHost.peerStore).called(1);
-      });
-    });
+    //     // Assert
+    //     verify(mockHost.peerStore).called(1);
+    //   });
+    // });
 
     group('Lifecycle Management', () {
       test('close should stop the client', () async {

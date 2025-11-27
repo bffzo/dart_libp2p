@@ -73,7 +73,7 @@ class StunMessage {
   /// Creates a binding response message with mapped address
   static StunMessage createBindingResponse(
     List<int> transactionId,
-    dynamic address,
+    InternetAddress address,
     int port,
   ) {
     final attributes = <int, Uint8List>{};
@@ -81,14 +81,6 @@ class StunMessage {
     // Create XOR-MAPPED-ADDRESS attribute
     final addressBytes = address.address.split('.').map(int.parse).toList();
     final xorAddressBytes = Uint8List(8);
-    final xorBuffer = ByteData.view(xorAddressBytes.buffer);
-
-    // First byte is address family (0x01 for IPv4)
-    xorBuffer.setUint8(0, 0x01);
-    // Second byte is reserved (0x00)
-    xorBuffer.setUint8(1, 0x00);
-    // Port number XORed with most significant 16 bits of magic cookie
-    xorBuffer.setUint16(2, port ^ (magicCookie >> 16));
     // IPv4 address XORed with magic cookie
     for (var i = 0; i < 4; i++) {
       xorAddressBytes[i + 4] =

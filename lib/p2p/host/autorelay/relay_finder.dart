@@ -29,7 +29,6 @@ const rsvpExpirationSlack = Duration(minutes: 2);
 const autorelayTag = 'autorelay';
 
 class Candidate {
-
   Candidate({
     required this.added,
     required this.supportsRelayV2,
@@ -41,7 +40,6 @@ class Candidate {
 }
 
 class RelayFinder {
-
   RelayFinder(this.host, this.upgrader, this.config)
       : _peerSource = config.effectivePeerSource,
         metricsTracer = WrappedMetricsTracer(config.metricsTracer),
@@ -156,7 +154,8 @@ class RelayFinder {
 
   Future<void> _background(Stream<void> stopSignal) async {
     _log.fine(
-        'RelayFinder background task started. Boot delay: ${config.bootDelay}',);
+      'RelayFinder background task started. Boot delay: ${config.bootDelay}',
+    );
     final peerSourceRateLimiter = StreamController<void>();
     peerSourceRateLimiter.add(null);
 
@@ -166,7 +165,8 @@ class RelayFinder {
 
     final bootDelayTimer = Timer(config.bootDelay, () {
       _log.fine(
-          'RelayFinder boot delay expired, notifying to check for relays',);
+        'RelayFinder boot delay expired, notifying to check for relays',
+      );
       if (!(_stopController?.isClosed ?? true)) _notifyMaybeConnectToRelay();
     });
 
@@ -199,36 +199,41 @@ class RelayFinder {
   }
 
   DateTime _runScheduledWork(
-      DateTime now, StreamController<void> peerSourceRateLimiter,) {
+    DateTime now,
+    StreamController<void> peerSourceRateLimiter,
+  ) {
     var nextGlobalTime = now.add(_getLeastFrequentInterval());
 
     if (now.isAfter(_scheduledWorkTimes.nextRefresh)) {
       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource:
-              _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: now.add(rsvpRefreshInterval),
-          nextBackoff: _scheduledWorkTimes.nextBackoff,
-          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,);
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: now.add(rsvpRefreshInterval),
+        nextBackoff: _scheduledWorkTimes.nextBackoff,
+        nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+      );
       // Call _refreshReservations; it handles _clearCachedAddrsAndSignalAddressChange internally
       _refreshReservations(now);
     }
 
     if (now.isAfter(_scheduledWorkTimes.nextBackoff)) {
       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource:
-              _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: _scheduledWorkTimes.nextRefresh,
-          nextBackoff: _clearBackoff(now),
-          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,);
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: _scheduledWorkTimes.nextRefresh,
+        nextBackoff: _clearBackoff(now),
+        nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+      );
     }
 
     if (now.isAfter(_scheduledWorkTimes.nextOldCandidateCheck)) {
       _scheduledWorkTimes = ScheduledWorkTimes(
-          nextAllowedCallToPeerSource:
-              _scheduledWorkTimes.nextAllowedCallToPeerSource,
-          nextRefresh: _scheduledWorkTimes.nextRefresh,
-          nextBackoff: _scheduledWorkTimes.nextBackoff,
-          nextOldCandidateCheck: _clearOldCandidates(now),);
+        nextAllowedCallToPeerSource:
+            _scheduledWorkTimes.nextAllowedCallToPeerSource,
+        nextRefresh: _scheduledWorkTimes.nextRefresh,
+        nextBackoff: _scheduledWorkTimes.nextBackoff,
+        nextOldCandidateCheck: _clearOldCandidates(now),
+      );
     }
 
     if (now.isAfter(_scheduledWorkTimes.nextAllowedCallToPeerSource)) {
@@ -238,10 +243,11 @@ class RelayFinder {
           peerSourceRateLimiter.add(null);
         } catch (e) {/* already closed or full */}
         _scheduledWorkTimes = ScheduledWorkTimes(
-            nextAllowedCallToPeerSource: now.add(config.minInterval),
-            nextRefresh: _scheduledWorkTimes.nextRefresh,
-            nextBackoff: _scheduledWorkTimes.nextBackoff,
-            nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,);
+          nextAllowedCallToPeerSource: now.add(config.minInterval),
+          nextRefresh: _scheduledWorkTimes.nextRefresh,
+          nextBackoff: _scheduledWorkTimes.nextBackoff,
+          nextOldCandidateCheck: _scheduledWorkTimes.nextOldCandidateCheck,
+        );
         if (_scheduledWorkTimes.nextAllowedCallToPeerSource
             .isBefore(nextGlobalTime)) {
           nextGlobalTime = _scheduledWorkTimes.nextAllowedCallToPeerSource;
@@ -287,7 +293,9 @@ class RelayFinder {
   }
 
   Future<void> _findNodes(
-      Stream<void> stopSignal, Stream<void> peerSourceRateLimiter,) async {
+    Stream<void> stopSignal,
+    Stream<void> peerSourceRateLimiter,
+  ) async {
     Stream<AddrInfo>? currentPeerStream;
     StreamSubscription<AddrInfo>? currentPeerSubscription;
     final pendingNodeHandlers = <Future<void>>[];
@@ -299,7 +307,8 @@ class RelayFinder {
           await _candidateMx.synchronized(() => _candidates.length);
       if (numCandidates < config.minCandidates) {
         _log.fine(
-            'RelayFinder: Need more candidates ($numCandidates < ${config.minCandidates}), calling peer source for up to ${config.maxCandidates} peers',);
+          'RelayFinder: Need more candidates ($numCandidates < ${config.minCandidates}), calling peer source for up to ${config.maxCandidates} peers',
+        );
         metricsTracer
             .candidateLoopState(CandidateLoopState.peerSourceRateLimited);
         currentPeerStream = _peerSource(config.maxCandidates);
@@ -307,19 +316,22 @@ class RelayFinder {
         currentPeerSubscription = currentPeerStream?.listen(
           (addrInfo) async {
             _log.fine(
-                'RelayFinder: Received candidate from peer source: ${addrInfo.id.toBase58()}',);
+              'RelayFinder: Received candidate from peer source: ${addrInfo.id.toBase58()}',
+            );
             final isOnBackoff = await _candidateMx
                 .synchronized(() => _backoff.containsKey(addrInfo.id));
             if (isOnBackoff) {
               _log.fine(
-                  'RelayFinder: Candidate ${addrInfo.id.toBase58()} is on backoff, skipping',);
+                'RelayFinder: Candidate ${addrInfo.id.toBase58()} is on backoff, skipping',
+              );
               return;
             }
             final currentNumCandidates =
                 await _candidateMx.synchronized(() => _candidates.length);
             if (currentNumCandidates >= config.maxCandidates) {
               _log.fine(
-                  'RelayFinder: Already have enough candidates ($currentNumCandidates >= ${config.maxCandidates}), skipping',);
+                'RelayFinder: Already have enough candidates ($currentNumCandidates >= ${config.maxCandidates}), skipping',
+              );
               return;
             }
 
@@ -328,11 +340,13 @@ class RelayFinder {
             _handleNewNode(addrInfo).then((added) {
               if (added) {
                 _log.fine(
-                    'RelayFinder: Candidate ${addrInfo.id.toBase58()} added successfully',);
+                  'RelayFinder: Candidate ${addrInfo.id.toBase58()} added successfully',
+                );
                 _notifyNewCandidate();
               } else {
                 _log.fine(
-                    'RelayFinder: Candidate ${addrInfo.id.toBase58()} was not added',);
+                  'RelayFinder: Candidate ${addrInfo.id.toBase58()} was not added',
+                );
               }
             }).whenComplete(handlerCompleter.complete);
           },
@@ -383,11 +397,13 @@ class RelayFinder {
       if (supportsV2) {
         await _candidateMx.synchronized(() {
           if (_candidates.length < config.maxCandidates) {
-            _addCandidate(Candidate(
-              added: config.clock.now(),
-              addrInfo: addrInfo,
-              supportsRelayV2: true,
-            ),);
+            _addCandidate(
+              Candidate(
+                added: config.clock.now(),
+                addrInfo: addrInfo,
+                supportsRelayV2: true,
+              ),
+            );
           } else {
             return false;
           }
@@ -407,7 +423,8 @@ class RelayFinder {
       await host.connect(addrInfo);
     } catch (e) {
       throw Exception(
-          'Error connecting to potential relay ${addrInfo.id}: $e',);
+        'Error connecting to potential relay ${addrInfo.id}: $e',
+      );
     }
 
     final conns = host.network.connsToPeer(addrInfo.id);
@@ -421,7 +438,8 @@ class RelayFinder {
         .supportsProtocols(addrInfo.id, [CircuitV2Protocol.protoIDv2Hop]);
     if (supportedProtocols.isEmpty) {
       throw _ProtocolNotSupportedException(
-          "Doesn't speak circuit v2 hop (${CircuitV2Protocol.protoIDv2Hop})",);
+        "Doesn't speak circuit v2 hop (${CircuitV2Protocol.protoIDv2Hop})",
+      );
     }
     return true;
   }
@@ -481,7 +499,9 @@ class RelayFinder {
       } catch (e) {
         _notifyMaybeNeedNewCandidates();
         metricsTracer.reservationRequestFinished(
-            false, e is Exception ? e : Exception(e.toString()),);
+          false,
+          e is Exception ? e : Exception(e.toString()),
+        );
       }
     }
   }
@@ -506,9 +526,10 @@ class RelayFinder {
     Reservation rsvp;
     try {
       final circuitClient = CircuitV2Client(
-          host: host,
-          upgrader: upgrader,
-          connManager: host.connManager,); // Changed Client to CircuitV2Client
+        host: host,
+        upgrader: upgrader,
+        connManager: host.connManager,
+      ); // Changed Client to CircuitV2Client
       rsvp = await circuitClient
           .reserve(candidate.addrInfo.id)
           .timeout(const Duration(seconds: 10));
@@ -537,9 +558,10 @@ class RelayFinder {
 
     var anyChange = false;
     final client = CircuitV2Client(
-        host: host,
-        upgrader: upgrader,
-        connManager: host.connManager,); // Changed Client to CircuitV2Client
+      host: host,
+      upgrader: upgrader,
+      connManager: host.connManager,
+    ); // Changed Client to CircuitV2Client
 
     final List<Future<void>> refreshFutures = toRefresh.map((peerId) async {
       try {
@@ -558,7 +580,9 @@ class RelayFinder {
             metricsTracer.reservationEnded(1);
           }
           metricsTracer.reservationRequestFinished(
-              true, e is Exception ? e : Exception(e.toString()),);
+            true,
+            e is Exception ? e : Exception(e.toString()),
+          );
           anyChange = true;
         });
       }
@@ -702,15 +726,18 @@ class RelayFinder {
   }
 
   Future<List<MultiAddr>> getRelayAddrs(
-      List<MultiAddr> currentHostAddrs,) async {
+    List<MultiAddr> currentHostAddrs,
+  ) async {
     return _relayMx.synchronized<List<MultiAddr>>(() async {
       // Made outer lambda async
       _log.fine(
-          'RelayFinder: getRelayAddrs() called with ${currentHostAddrs.length} host addresses, ${_relays.length} active relays',);
+        'RelayFinder: getRelayAddrs() called with ${currentHostAddrs.length} host addresses, ${_relays.length} active relays',
+      );
       if (_cachedAddrs.isNotEmpty &&
           config.clock.now().isBefore(_cachedAddrsExpiry)) {
         _log.fine(
-            'RelayFinder: Returning cached addresses (${_cachedAddrs.length})',);
+          'RelayFinder: Returning cached addresses (${_cachedAddrs.length})',
+        );
         return List<MultiAddr>.from(_cachedAddrs);
       }
 
@@ -723,7 +750,8 @@ class RelayFinder {
       }
 
       _log.fine(
-          'RelayFinder: Processing ${_relays.length} relays for circuit address construction',);
+        'RelayFinder: Processing ${_relays.length} relays for circuit address construction',
+      );
       var relayAddrCountForMetrics = 0;
 
       _relays.forEach((peerId, reservation) {
@@ -731,7 +759,8 @@ class RelayFinder {
         // Use the addresses from the reservation - these are provided by the relay server
         final relayPeerAddrs = reservation.addrs;
         _log.fine(
-            'RelayFinder: Reservation has ${relayPeerAddrs.length} addresses for relay ${peerId.toBase58()}',);
+          'RelayFinder: Reservation has ${relayPeerAddrs.length} addresses for relay ${peerId.toBase58()}',
+        );
 
         for (final relayAddr in relayPeerAddrs) {
           try {
@@ -739,7 +768,8 @@ class RelayFinder {
             // We only want to encapsulate /p2p-circuit on top of actual transport addresses
             if (relayAddr.toString().contains('/p2p-circuit')) {
               _log.fine(
-                  'RelayFinder: Skipping address that already contains /p2p-circuit: $relayAddr',);
+                'RelayFinder: Skipping address that already contains /p2p-circuit: $relayAddr',
+              );
               continue;
             }
 
@@ -753,13 +783,15 @@ class RelayFinder {
             _log.fine('RelayFinder: Created circuit address: $circuitAddr');
           } catch (e) {
             _log.warning(
-                'RelayFinder: Failed to create circuit address for relay $peerId via $relayAddr: $e',);
+              'RelayFinder: Failed to create circuit address for relay $peerId via $relayAddr: $e',
+            );
           }
         }
       });
 
       _log.fine(
-          'RelayFinder: Built ${raddrs.length} total addresses (private + circuit)',);
+        'RelayFinder: Built ${raddrs.length} total addresses (private + circuit)',
+      );
       _cachedAddrs = List<MultiAddr>.from(raddrs);
       _cachedAddrsExpiry = config.clock.now().add(const Duration(seconds: 30));
       metricsTracer.relayAddressCount(relayAddrCountForMetrics);
@@ -772,7 +804,9 @@ class RelayFinder {
   /// needing to perform actual relay connections.
   @visibleForTesting
   Future<void> addTestReservation(
-      PeerId relayPeerId, Reservation reservation,) async {
+    PeerId relayPeerId,
+    Reservation reservation,
+  ) async {
     await _relayMx.synchronized(() {
       _relays[relayPeerId] = reservation;
     });

@@ -68,7 +68,7 @@ class _FakeEventBus_5 extends _i1.SmartFake implements _i7.EventBus {
       : super(parent, parentInvocation);
 }
 
-class _FakeP2PStream_6<T> extends _i1.SmartFake implements _i8.P2PStream<T> {
+class _FakeP2PStream_6 extends _i1.SmartFake implements _i8.P2PStream {
   _FakeP2PStream_6(Object parent, Invocation parentInvocation)
       : super(parent, parentInvocation);
 }
@@ -195,20 +195,20 @@ class MockHost extends _i1.Mock implements _i12.Host {
       );
 
   @override
-  _i13.Future<_i8.P2PStream<dynamic>> newStream(
+  _i13.Future<_i8.P2PStream> newStream(
     _i2.PeerId? p,
     List<String>? pids,
     _i15.Context? context,
   ) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [p, pids, context]),
-        returnValue: _i13.Future<_i8.P2PStream<dynamic>>.value(
-          _FakeP2PStream_6<dynamic>(
+        returnValue: _i13.Future<_i8.P2PStream>.value(
+          _FakeP2PStream_6(
             this,
             Invocation.method(#newStream, [p, pids, context]),
           ),
         ),
-      ) as _i13.Future<_i8.P2PStream<dynamic>>);
+      ) as _i13.Future<_i8.P2PStream>);
 
   @override
   _i13.Future<void> close() => (super.noSuchMethod(
@@ -240,12 +240,12 @@ class MockConn extends _i1.Mock implements _i9.Conn {
       ) as String);
 
   @override
-  _i13.Future<List<_i8.P2PStream<dynamic>>> get streams => (super.noSuchMethod(
+  _i13.Future<List<_i8.P2PStream>> get streams => (super.noSuchMethod(
         Invocation.getter(#streams),
-        returnValue: _i13.Future<List<_i8.P2PStream<dynamic>>>.value(
-          <_i8.P2PStream<dynamic>>[],
+        returnValue: _i13.Future<List<_i8.P2PStream>>.value(
+          <_i8.P2PStream>[],
         ),
-      ) as _i13.Future<List<_i8.P2PStream<dynamic>>>);
+      ) as _i13.Future<List<_i8.P2PStream>>);
 
   @override
   bool get isClosed =>
@@ -314,22 +314,22 @@ class MockConn extends _i1.Mock implements _i9.Conn {
       ) as _i13.Future<void>);
 
   @override
-  _i13.Future<_i8.P2PStream<dynamic>> newStream(_i15.Context? context) =>
+  _i13.Future<_i8.P2PStream> newStream(_i15.Context? context) =>
       (super.noSuchMethod(
         Invocation.method(#newStream, [context]),
-        returnValue: _i13.Future<_i8.P2PStream<dynamic>>.value(
-          _FakeP2PStream_6<dynamic>(
+        returnValue: _i13.Future<_i8.P2PStream>.value(
+          _FakeP2PStream_6(
             this,
             Invocation.method(#newStream, [context]),
           ),
         ),
-      ) as _i13.Future<_i8.P2PStream<dynamic>>);
+      ) as _i13.Future<_i8.P2PStream>);
 }
 
 /// A class which mocks [P2PStream].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockP2PStream<T> extends _i1.Mock implements _i8.P2PStream<T> {
+class MockP2PStream extends _i1.Mock implements _i8.P2PStream {
   @override
   _i9.Conn get conn => (super.noSuchMethod(
         Invocation.getter(#conn),
@@ -341,17 +341,17 @@ class MockP2PStream<T> extends _i1.Mock implements _i8.P2PStream<T> {
       ) as _i9.Conn);
 
   @override
-  _i8.P2PStream<_i18.Uint8List> get incoming => (super.noSuchMethod(
+  _i8.P2PStream get incoming => (super.noSuchMethod(
         Invocation.getter(#incoming),
-        returnValue: _FakeP2PStream_6<_i18.Uint8List>(
+        returnValue: _FakeP2PStream_6(
           this,
           Invocation.getter(#incoming),
         ),
-        returnValueForMissingStub: _FakeP2PStream_6<_i18.Uint8List>(
+        returnValueForMissingStub: _FakeP2PStream_6(
           this,
           Invocation.getter(#incoming),
         ),
-      ) as _i8.P2PStream<_i18.Uint8List>);
+      ) as _i8.P2PStream);
 
   @override
   bool get isClosed => (super.noSuchMethod(

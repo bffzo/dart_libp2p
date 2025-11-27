@@ -41,7 +41,7 @@ class MockTransport implements Transport {
   final List<Listener> listeners = [];
 
   /// Mock transport configuration
-  const TransportConfig _config = TransportConfig();
+  final TransportConfig _config = const TransportConfig();
 
   @override
   TransportConfig get config => _config;

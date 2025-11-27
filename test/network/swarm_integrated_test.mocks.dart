@@ -423,7 +423,7 @@ class MockEventBus extends _i1.Mock implements _i7.EventBus {
   }
 
   @override
-  _i7.Subscription<dynamic> subscribe(
+  _i7.Subscription<Object> subscribe(
     Object? eventType, {
     List<_i7.SubscriptionOpt>? opts,
   }) =>
@@ -433,7 +433,7 @@ class MockEventBus extends _i1.Mock implements _i7.EventBus {
           this,
           Invocation.method(#subscribe, [eventType], {#opts: opts}),
         ),
-      ) as _i7.Subscription<dynamic>);
+      ) as _i7.Subscription<Object>);
 
   @override
   _i5.Future<_i7.Emitter> emitter(
@@ -843,16 +843,16 @@ class SwarmTestMockTransport extends _i1.Mock implements _i23.Transport {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockStreamSubscription extends _i1.Mock
-    implements _i7.Subscription<dynamic> {
+    implements _i7.Subscription<Object> {
   MockStreamSubscription() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i5.Stream<dynamic> get stream => (super.noSuchMethod(
+  _i5.Stream<Object> get stream => (super.noSuchMethod(
         Invocation.getter(#stream),
-        returnValue: _i5.Stream<dynamic>.empty(),
-      ) as _i5.Stream<dynamic>);
+        returnValue: _i5.Stream<Object>.empty(),
+      ) as _i5.Stream<Object>);
 
   @override
   String get name => (super.noSuchMethod(

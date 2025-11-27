@@ -37,7 +37,10 @@ class BasicBus implements EventBus {
   }
 
   @override
-  Subscription subscribe(dynamic eventType, {List<SubscriptionOpt>? opts}) {
+  Subscription<Object> subscribe(
+    dynamic eventType, {
+    List<SubscriptionOpt>? opts,
+  }) {
     final settings = SubSettings();
     if (opts != null) {
       for (final opt in opts) {
@@ -246,7 +249,7 @@ class _NamedSink {
   final String name;
 }
 
-class _WildcardSubscription implements Subscription {
+class _WildcardSubscription implements Subscription<Object> {
   _WildcardSubscription({
     required StreamController<Object> controller,
     required this.node,
@@ -283,7 +286,7 @@ class _WildcardSubscription implements Subscription {
   }
 }
 
-class _Subscription implements Subscription {
+class _Subscription implements Subscription<Object> {
   _Subscription({
     required StreamController<Object> controller,
     required this.nodes,

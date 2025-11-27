@@ -15,7 +15,7 @@ import 'package:dart_libp2p/core/network/rcmgr.dart'
 /// being a "request -> reply" pair, or whole protocols.
 ///
 /// Streams are backed by a multiplexer underneath the hood.
-abstract class P2PStream<T> {
+abstract class P2PStream {
   /// Returns an identifier that uniquely identifies this Stream within this
   /// host, during this run. Stream IDs may repeat across restarts.
   String id();
@@ -42,7 +42,7 @@ abstract class P2PStream<T> {
   Future<void> write(Uint8List data);
 
   /// Returns a Dart Stream of the incoming data
-  P2PStream<Uint8List> get incoming;
+  P2PStream get incoming;
 
   /// Closes the stream for both reading and writing
   Future<void> close();

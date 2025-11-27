@@ -262,8 +262,7 @@ class StreamlinedMockMuxedConn implements core_mux.MuxedConn {
 }
 
 /// Streamlined mock stream with connection reuse tracking
-class StreamlinedMockStream
-    implements core_mux.MuxedStream, P2PStream<Uint8List> {
+class StreamlinedMockStream implements core_mux.MuxedStream, P2PStream {
   StreamlinedMockStream({
     required String id,
     required SecuredConnection conn,
@@ -381,7 +380,7 @@ class StreamlinedMockStream
   }
 
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
 
   /// Get the data written to this stream for testing
   List<Uint8List> get writtenData => List.unmodifiable(_writeBuffer);

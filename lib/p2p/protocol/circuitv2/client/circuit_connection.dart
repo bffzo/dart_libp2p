@@ -18,7 +18,7 @@ import 'package:dart_libp2p/p2p/transport/connection_state.dart'
 /// CircuitConnection implements TransportConn for circuit relay connections
 class CircuitConnection implements TransportConn {
   CircuitConnection({
-    required P2PStream<Uint8List> stream,
+    required P2PStream stream,
     required PeerId localPeerId,
     required PeerId remotePeerId,
     required MultiAddr remoteAddr,
@@ -38,7 +38,7 @@ class CircuitConnection implements TransportConn {
       _manager.recordActivity(this);
     }).catchError(_handleError);
   }
-  final P2PStream<Uint8List> _stream;
+  final P2PStream _stream;
   final PeerId _localPeerId;
   final PeerId _remotePeerId;
   final MultiAddr _remoteAddr;
@@ -53,7 +53,7 @@ class CircuitConnection implements TransportConn {
   Duration? _currentReadTimeout;
   Duration? _currentWriteTimeout;
 
-  void _handleError(dynamic error) {
+  void _handleError(Object error) {
     if (!_closed) {
       _closed = true;
       _manager.updateState(

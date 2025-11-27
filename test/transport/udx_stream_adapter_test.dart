@@ -205,7 +205,6 @@ void main() {
 
       listener = UDXListener(
         listeningSocket: mockMultiplexer,
-        udxInstance: mockUdx,
         boundAddr: MultiAddr('/ip4/127.0.0.1/udp/12345/udx'),
         transport: mockTransport,
         connManager: mockConnManager,

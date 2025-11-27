@@ -30,7 +30,7 @@ abstract class LazyConn {
 
 /// NewMSSelect returns a new Multistream which is able to perform
 /// protocol selection with a MultistreamMuxer.
-LazyConn newMSSelect(P2PStream<dynamic> stream, ProtocolID proto) {
+LazyConn newMSSelect(P2PStream stream, ProtocolID proto) {
   return _LazyClientConn(
     protos: [protocolID, proto],
     stream: stream,
@@ -40,7 +40,7 @@ LazyConn newMSSelect(P2PStream<dynamic> stream, ProtocolID proto) {
 /// NewMultistream returns a multistream for the given protocol. This will not
 /// perform any protocol selection. If you are using a MultistreamMuxer, use
 /// NewMSSelect.
-LazyConn newMultistream(P2PStream<dynamic> stream, ProtocolID proto) {
+LazyConn newMultistream(P2PStream stream, ProtocolID proto) {
   return _LazyClientConn(
     protos: [proto],
     stream: stream,
@@ -71,7 +71,7 @@ class _LazyClientConn implements LazyConn {
   final List<ProtocolID> protos;
 
   // The inner connection.
-  final P2PStream<dynamic> stream;
+  final P2PStream stream;
 
   /// Read reads data from the stream.
   ///

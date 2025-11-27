@@ -16,14 +16,14 @@ import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 
 /// SwarmStream is a stream over a SwarmConn.
-class SwarmStream implements P2PStream<Uint8List> {
+class SwarmStream implements P2PStream {
   /// Creates a new SwarmStream
   SwarmStream({
     required String id,
     required SwarmConn conn,
     required Direction direction,
     required DateTime opened,
-    required P2PStream<Uint8List> underlyingMuxedStream,
+    required P2PStream underlyingMuxedStream,
     required StreamManagementScope managementScope,
   })  : _id = id,
         _conn = conn,
@@ -40,7 +40,7 @@ class SwarmStream implements P2PStream<Uint8List> {
   final SwarmConn _conn;
 
   /// The underlying multiplexed stream
-  final P2PStream<Uint8List> _underlyingMuxedStream;
+  final P2PStream _underlyingMuxedStream;
 
   /// The resource management scope for this stream
   final StreamManagementScope _managementScope;
@@ -114,7 +114,7 @@ class SwarmStream implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming =>
+  P2PStream get incoming =>
       _underlyingMuxedStream; // Return the underlying stream directly
 
   @override

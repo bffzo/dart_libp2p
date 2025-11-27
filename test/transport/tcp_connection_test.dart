@@ -30,7 +30,8 @@ void main() {
   Logger.root.level = Level.ALL; // Capture all log levels
   Logger.root.onRecord.listen((record) {
     print(
-        '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}',);
+      '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}',
+    );
     if (record.error != null) {
       print('ERROR: ${record.error}');
     }
@@ -70,9 +71,9 @@ void main() {
 
     // Initialize sharedMockScope
     sharedMockScope = MockConnManagementScope();
-    when(sharedMockScope.stat).thenReturn(const ScopeStat(
-      
-    ),);
+    when(sharedMockScope.stat).thenReturn(
+      const ScopeStat(),
+    );
     when(sharedMockScope.beginSpan())
         .thenAnswer((_) async => MockResourceScopeSpan());
     when(sharedMockScope.setPeer(argThat(anything)))
@@ -81,23 +82,32 @@ void main() {
         .thenAnswer((_) async {}); // Ensure done() is mockable
 
     // Mock ResourceManager behavior to return the sharedMockScope
-    when(mockResourceManager.openConnection(
-            argThat(anything), argThat(anything), argThat(anything),),)
-        .thenAnswer((_) async => sharedMockScope);
+    when(
+      mockResourceManager.openConnection(
+        argThat(anything),
+        argThat(anything),
+        argThat(anything),
+      ),
+    ).thenAnswer((_) async => sharedMockScope);
 
     // Default behavior for socket listen (can be overridden in specific tests)
     // Client socket setup
     // clientSocketStreamController is now initialized above
-    when(mockSocketClient.listen(
-      any,
-      onError: anyNamed('onError'),
-      onDone: anyNamed('onDone'),
-      cancelOnError: anyNamed('cancelOnError'),
-    ),).thenAnswer((Invocation invocation) {
-      final void Function(Uint8List) onData = invocation.positionalArguments[0];
-      final void Function(Object, StackTrace) onError =
-          invocation.namedArguments[#onError];
-      final void Function() onDone = invocation.namedArguments[#onDone];
+    when(
+      mockSocketClient.listen(
+        any,
+        onError: anyNamed('onError'),
+        onDone: anyNamed('onDone'),
+        cancelOnError: anyNamed('cancelOnError'),
+      ),
+    ).thenAnswer((Invocation invocation) {
+      final onData =
+          invocation.positionalArguments[0] as void Function(Uint8List);
+      final onError = invocation.namedArguments[#onError] as void Function(
+        Object,
+        StackTrace,
+      );
+      final onDone = invocation.namedArguments[#onDone] as void Function();
       // final bool? cancelOnError = invocation.namedArguments[#cancelOnError]; // Not directly used here
       return clientSocketStreamController.stream
           .listen(onData, onError: onError, onDone: onDone);
@@ -156,13 +166,14 @@ void main() {
     test('should throw StateError if remotePeerId is null and accessed',
         () async {
       final conn = TCPConnection(
-          mockSocketClient,
-          localAddr,
-          remoteAddr,
-          localPeerId,
-          null, // remotePeerId is null
-          mockResourceManager,
-          false,);
+        mockSocketClient,
+        localAddr,
+        remoteAddr,
+        localPeerId,
+        null, // remotePeerId is null
+        mockResourceManager,
+        false,
+      );
       // We don't call _initialize here to test the state before it might be set.
       // However, remotePeer getter itself might be okay until _initialize is called
       // and a security handshake would typically set it.
@@ -187,33 +198,40 @@ void main() {
     test('read should handle data chunking and leftovers in buffer', () async {
       // Part 1: Read less data than available in a single chunk
       final dataChunk1 = Uint8List.fromList([1, 2, 3, 4, 5]);
-      final readFuture1 =
-          clientConnection.read(3); // Request 3 bytes
+      final readFuture1 = clientConnection.read(3); // Request 3 bytes
 
       clientSocketStreamController.add(dataChunk1); // Send 5 bytes
 
       final result1 = await readFuture1;
-      expect(result1, equals(Uint8List.fromList([1, 2, 3])),
-          reason: 'First read should get 3 bytes',);
+      expect(
+        result1,
+        equals(Uint8List.fromList([1, 2, 3])),
+        reason: 'First read should get 3 bytes',
+      );
       // Now, TCPConnection._receiveBuffer should contain [4, 5]
 
       // Part 2: Read the exact remaining data from the buffer
       final result2 = await clientConnection.read(2); // Request 2 bytes
-      expect(result2, equals(Uint8List.fromList([4, 5])),
-          reason: 'Second read should get 2 bytes from buffer',);
+      expect(
+        result2,
+        equals(Uint8List.fromList([4, 5])),
+        reason: 'Second read should get 2 bytes from buffer',
+      );
       // Now, TCPConnection._receiveBuffer should be empty
 
       // Part 3: Read more data than available in the buffer (should be empty)
       // and then receive new data from stream
       final dataChunk2 = Uint8List.fromList([6, 7, 8]);
-      final readFuture3 =
-          clientConnection.read(3); // Request 3 bytes
+      final readFuture3 = clientConnection.read(3); // Request 3 bytes
 
       clientSocketStreamController.add(dataChunk2); // Send 3 new bytes
 
       final result3 = await readFuture3;
-      expect(result3, equals(Uint8List.fromList([6, 7, 8])),
-          reason: 'Third read should get 3 new bytes from stream',);
+      expect(
+        result3,
+        equals(Uint8List.fromList([6, 7, 8])),
+        reason: 'Third read should get 3 new bytes from stream',
+      );
     });
 
     test(
@@ -221,8 +239,7 @@ void main() {
         () async {
       // Part 1: Populate _receiveBuffer with leftovers
       final dataChunk1 = Uint8List.fromList([1, 2, 3, 4, 5]);
-      final readFuture1 =
-          clientConnection.read(3); // Request 3 bytes
+      final readFuture1 = clientConnection.read(3); // Request 3 bytes
 
       clientSocketStreamController.add(dataChunk1); // Send 5 bytes
 
@@ -232,8 +249,11 @@ void main() {
 
       // Part 2: Call read(null) - it should first return the buffered [4, 5]
       final result2 = await clientConnection.read();
-      expect(result2, equals(Uint8List.fromList([4, 5])),
-          reason: 'read(null) should get [4,5] from buffer',);
+      expect(
+        result2,
+        equals(Uint8List.fromList([4, 5])),
+        reason: 'read(null) should get [4,5] from buffer',
+      );
       // Now, TCPConnection._receiveBuffer should be empty.
 
       // Part 3: Call read(null) again, buffer is empty, should get new data from stream
@@ -243,8 +263,11 @@ void main() {
       clientSocketStreamController.add(dataChunk2); // Send 3 new bytes
 
       final result3 = await readFuture3;
-      expect(result3, equals(Uint8List.fromList([6, 7, 8])),
-          reason: 'Next read(null) should get new stream data',);
+      expect(
+        result3,
+        equals(Uint8List.fromList([6, 7, 8])),
+        reason: 'Next read(null) should get new stream data',
+      );
     });
 
     test(
@@ -287,8 +310,7 @@ void main() {
         () async {
       final data = Uint8List.fromList([7, 8, 9]);
 
-      final readFuture =
-          clientConnection.read(); // Request any available data
+      final readFuture = clientConnection.read(); // Request any available data
 
       clientSocketStreamController.add(data);
 
@@ -326,30 +348,49 @@ void main() {
       // Re-setup for a clean EOF read(null) scenario
       await clientConnection.close(); // Close previous connection
       clientSocketStreamController = StreamController<Uint8List>.broadcast();
-      when(mockSocketClient.listen(any,
-              onError: anyNamed('onError'),
-              onDone: anyNamed('onDone'),
-              cancelOnError: anyNamed('cancelOnError'),),)
-          .thenAnswer((inv) => clientSocketStreamController.stream.listen(
-              inv.positionalArguments[0],
-              onError: inv.namedArguments[#onError],
-              onDone: inv.namedArguments[#onDone],),);
+      when(
+        mockSocketClient.listen(
+          any,
+          onError: anyNamed('onError'),
+          onDone: anyNamed('onDone'),
+          cancelOnError: anyNamed('cancelOnError'),
+        ),
+      ).thenAnswer(
+        (inv) => clientSocketStreamController.stream.listen(
+          inv.positionalArguments[0] as void Function(Uint8List)?,
+          onError: inv.namedArguments[#onError] as Function?,
+          onDone: inv.namedArguments[#onDone] as void Function()?,
+        ),
+      );
 
-      clientConnection = await TCPConnection.create(mockSocketClient, localAddr,
-          remoteAddr, localPeerId, remotePeerId, mockResourceManager, false,);
+      clientConnection = await TCPConnection.create(
+        mockSocketClient,
+        localAddr,
+        remoteAddr,
+        localPeerId,
+        remotePeerId,
+        mockResourceManager,
+        false,
+      );
 
       final readFutureAfterEof = clientConnection.read();
       await clientSocketStreamController.close(); // EOF
       final resultAfterEof = await readFutureAfterEof;
-      expect(resultAfterEof, isEmpty,
-          reason: 'Read(null) after EOF should return empty list',);
+      expect(
+        resultAfterEof,
+        isEmpty,
+        reason: 'Read(null) after EOF should return empty list',
+      );
 
       // Further reads on a closed-stream connection:
       // Since TCPConnection auto-closes when its socket stream is done,
       // subsequent reads should throw StateError.
-      expect(() => clientConnection.read(), throwsA(isA<StateError>()),
-          reason:
-              'Subsequent Read(null) after EOF and auto-close should throw StateError',);
+      expect(
+        () => clientConnection.read(),
+        throwsA(isA<StateError>()),
+        reason:
+            'Subsequent Read(null) after EOF and auto-close should throw StateError',
+      );
     });
 
     test(
@@ -375,20 +416,22 @@ void main() {
     });
 
     test(
-        'read should timeout if data is not received within the specified duration',
-        () async {
-      clientConnection.setReadTimeout(const Duration(milliseconds: 10));
-      final readFuture = clientConnection.read(5);
+      'read should timeout if data is not received within the specified duration',
+      () async {
+        clientConnection.setReadTimeout(const Duration(milliseconds: 10));
+        final readFuture = clientConnection.read(5);
 
-      // Don't send any data, let it timeout
+        // Don't send any data, let it timeout
 
-      expect(readFuture, throwsA(isA<TimeoutException>()));
+        expect(readFuture, throwsA(isA<TimeoutException>()));
 
-      // Reset timeout for subsequent tests if necessary, or rely on setUp.
-      // setUp will create a new clientConnection which will have default/no timeout.
-    },
-        timeout: const Timeout(
-            Duration(milliseconds: 100),),); // Test timeout for the test itself
+        // Reset timeout for subsequent tests if necessary, or rely on setUp.
+        // setUp will create a new clientConnection which will have default/no timeout.
+      },
+      timeout: const Timeout(
+        Duration(milliseconds: 100),
+      ),
+    ); // Test timeout for the test itself
 
     // Test for reading remaining data from buffer when controller closes
     test(
@@ -400,8 +443,11 @@ void main() {
 
       // Step 2: Perform an initial read of 2 bytes. This will leave 3 bytes ([3,4,5]) in _receiveBuffer.
       final initialReadResult = await clientConnection.read(2);
-      expect(initialReadResult, equals(Uint8List.fromList([1, 2])),
-          reason: 'Initial read should get 2 bytes, populating buffer.',);
+      expect(
+        initialReadResult,
+        equals(Uint8List.fromList([1, 2])),
+        reason: 'Initial read should get 2 bytes, populating buffer.',
+      );
       // Now, _receiveBuffer should contain [3, 4, 5]
 
       // Step 3: Initiate the target read for 3 bytes. This should be satisfiable from the buffer.
@@ -414,17 +460,25 @@ void main() {
 
       // Step 5: The readFuture should complete successfully using data from _receiveBuffer.
       final result = await readFuture;
-      expect(result, equals(Uint8List.fromList([3, 4, 5])),
-          reason:
-              'Target read should get 3 bytes from buffer after controller close',);
+      expect(
+        result,
+        equals(Uint8List.fromList([3, 4, 5])),
+        reason:
+            'Target read should get 3 bytes from buffer after controller close',
+      );
 
       // Step 6: Verify the connection auto-closes.
       // Further reads would fail because the connection is marked closed.
       // This is expected due to TCPConnection's auto-close behavior.
-      await Future<void>.delayed(Duration.zero); // Allow auto-close to propagate
-      expect(clientConnection.isClosed, isTrue,
-          reason:
-              'Connection should be closed after stream controller is closed and read from buffer completed.',);
+      await Future<void>.delayed(
+        Duration.zero,
+      ); // Allow auto-close to propagate
+      expect(
+        clientConnection.isClosed,
+        isTrue,
+        reason:
+            'Connection should be closed after stream controller is closed and read from buffer completed.',
+      );
     });
   });
 
@@ -451,13 +505,18 @@ void main() {
       when(mockSocketClient.add(data)).thenThrow(exception);
 
       await expectLater(
-          clientConnection.write(data), throwsA(isA<SocketException>()),);
+        clientConnection.write(data),
+        throwsA(isA<SocketException>()),
+      );
 
       // Verify connection is closed after the error
       // Need a slight delay for the async error handling and close() to complete
       await Future<void>.delayed(Duration.zero);
-      expect(clientConnection.isClosed, isTrue,
-          reason: 'Connection should be closed after socket.add error',);
+      expect(
+        clientConnection.isClosed,
+        isTrue,
+        reason: 'Connection should be closed after socket.add error',
+      );
     });
 
     test(
@@ -470,12 +529,17 @@ void main() {
       when(mockSocketClient.flush()).thenThrow(exception);
 
       await expectLater(
-          clientConnection.write(data), throwsA(isA<SocketException>()),);
+        clientConnection.write(data),
+        throwsA(isA<SocketException>()),
+      );
 
       // Verify connection is closed
       await Future<void>.delayed(Duration.zero);
-      expect(clientConnection.isClosed, isTrue,
-          reason: 'Connection should be closed after socket.flush error',);
+      expect(
+        clientConnection.isClosed,
+        isTrue,
+        reason: 'Connection should be closed after socket.flush error',
+      );
     });
 
     test('multiple writes should be synchronized and execute sequentially',
@@ -594,8 +658,10 @@ void main() {
       expect(() => clientConnection.read(1), throwsA(isA<StateError>()));
 
       // Adding to the test's controller should not cause issues if TCPConnection's listener is gone.
-      expect(() => clientSocketStreamController.add(Uint8List(1)),
-          returnsNormally,);
+      expect(
+        () => clientSocketStreamController.add(Uint8List(1)),
+        returnsNormally,
+      );
     });
 
     test('close should be idempotent and call scope.done() only once',
@@ -604,13 +670,19 @@ void main() {
 
       // First call to close
       await clientConnection.close();
-      expect(clientConnection.isClosed, isTrue,
-          reason: 'Connection should be closed after first call.',);
+      expect(
+        clientConnection.isClosed,
+        isTrue,
+        reason: 'Connection should be closed after first call.',
+      );
 
       // Second call to close (should be idempotent)
       await clientConnection.close();
-      expect(clientConnection.isClosed, isTrue,
-          reason: 'Connection should remain closed after second call.',);
+      expect(
+        clientConnection.isClosed,
+        isTrue,
+        reason: 'Connection should remain closed after second call.',
+      );
 
       // Verify that underlying socket operations and scope finalization happened only once.
       verify(mockSocketClient.close()).called(1);
@@ -624,7 +696,8 @@ void main() {
 
       // Don't send data, then close the connection
       await Future<void>.delayed(
-          const Duration(milliseconds: 10),); // Ensure read is pending
+        const Duration(milliseconds: 10),
+      ); // Ensure read is pending
 
       final closeFuture = clientConnection.close();
 
@@ -636,9 +709,12 @@ void main() {
       // onDone: () { if (!completer.isCompleted) { completer.completeError(StateError(...)); }}
       // When close() is called, it cancels _socketSubscription and closes _dataStreamController.
       // This should trigger onDone for the read's tempSubscription.
-      await expectLater(readFuture, throwsA(isA<StateError>()),
-          reason:
-              'Pending read should fail with StateError when connection closes',);
+      await expectLater(
+        readFuture,
+        throwsA(isA<StateError>()),
+        reason:
+            'Pending read should fail with StateError when connection closes',
+      );
 
       await closeFuture; // Ensure close completes
       expect(clientConnection.isClosed, isTrue);
@@ -651,16 +727,20 @@ void main() {
         () async {
       final socketError = Exception('Socket listen error');
       // Override the default mockSocketClient.listen behavior for this test
-      when(mockSocketClient.listen(
-        argThat(isA<void Function(Uint8List)>()), // onData
-        onError: argThat(isA<Function>(), named: 'onError'), // Capture onError
-        onDone: argThat(isA<void Function()>(), named: 'onDone'), // onDone
-        cancelOnError: true,
-      ),).thenAnswer((Invocation invocation) {
-        final Function onErrorCallback = invocation.namedArguments[#onError];
+      when(
+        mockSocketClient.listen(
+          argThat(isA<void Function(Uint8List)>()), // onData
+          onError:
+              argThat(isA<Function>(), named: 'onError'), // Capture onError
+          onDone: argThat(isA<void Function()>(), named: 'onDone'), // onDone
+          cancelOnError: true,
+        ),
+      ).thenAnswer((Invocation invocation) {
+        final onErrorCallback = invocation.namedArguments[#onError] as Function;
         // Simulate the error occurring by calling the passed onError callback
         Future.microtask(
-            () => onErrorCallback(socketError, StackTrace.current),);
+          () => onErrorCallback(socketError, StackTrace.current),
+        );
         // Return a simple, valid StreamSubscription that does nothing.
         return const Stream<Uint8List>.empty().listen((_) {});
       });
@@ -672,16 +752,25 @@ void main() {
           .thenAnswer((_) async => mockScope);
 
       await expectLater(
-          TCPConnection.create(mockSocketClient, localAddr, remoteAddr,
-              localPeerId, remotePeerId, mockResourceManager, false,),
-          throwsA(equals(socketError)),);
+        TCPConnection.create(
+          mockSocketClient,
+          localAddr,
+          remoteAddr,
+          localPeerId,
+          remotePeerId,
+          mockResourceManager,
+          false,
+        ),
+        throwsA(equals(socketError)),
+      );
 
       // Verify that scope.done() was called
       // This relies on openConnection being called before the error is thrown from listen.
       // TCPConnection._initialize calls openConnection then socket.listen.
       // If listen's onError is called immediately, openConnection would have been called.
-      await Future<void>.delayed(Duration
-          .zero,); // Allow async operations in error handling to complete
+      await Future<void>.delayed(
+        Duration.zero,
+      ); // Allow async operations in error handling to complete
       verify(mockScope.done()).called(1);
     });
 
@@ -692,13 +781,26 @@ void main() {
           .thenThrow(resourceError);
 
       await expectLater(
-          TCPConnection.create(mockSocketClient, localAddr, remoteAddr,
-              localPeerId, remotePeerId, mockResourceManager, false,),
-          throwsA(equals(resourceError)),);
+        TCPConnection.create(
+          mockSocketClient,
+          localAddr,
+          remoteAddr,
+          localPeerId,
+          remotePeerId,
+          mockResourceManager,
+          false,
+        ),
+        throwsA(equals(resourceError)),
+      );
       // TCPConnection should not have successfully opened, so no scope.done() to verify on a specific scope.
       // Socket should not have been listened to if openConnection fails first.
-      verifyNever(mockSocketClient.listen(any,
-          onError: anyNamed('onError'), onDone: anyNamed('onDone'),),);
+      verifyNever(
+        mockSocketClient.listen(
+          any,
+          onError: anyNamed('onError'),
+          onDone: anyNamed('onDone'),
+        ),
+      );
     });
 
     test('create should handle errors from scope.setPeer and call scope.done',
@@ -707,8 +809,9 @@ void main() {
       final mockScope =
           MockConnManagementScope(); // Use a fresh mock for this test's specific behavior
 
-      when(mockScope.stat).thenReturn(const ScopeStat(
-          ),);
+      when(mockScope.stat).thenReturn(
+        const ScopeStat(),
+      );
       when(mockScope.beginSpan())
           .thenAnswer((_) async => MockResourceScopeSpan());
       when(mockScope.setPeer(any))
@@ -722,17 +825,30 @@ void main() {
 
       // Default socket listen behavior is fine for this test
       final tempController = StreamController<Uint8List>.broadcast();
-      when(mockSocketClient.listen(any,
-              onError: anyNamed('onError'),
-              onDone: anyNamed('onDone'),
-              cancelOnError: anyNamed('cancelOnError'),),)
-          .thenAnswer((inv) =>
-              tempController.stream.listen(inv.positionalArguments[0]),);
+      when(
+        mockSocketClient.listen(
+          any,
+          onError: anyNamed('onError'),
+          onDone: anyNamed('onDone'),
+          cancelOnError: anyNamed('cancelOnError'),
+        ),
+      ).thenAnswer(
+        (inv) => tempController.stream
+            .listen(inv.positionalArguments[0] as void Function(Uint8List)?),
+      );
 
       await expectLater(
-          TCPConnection.create(mockSocketClient, localAddr, remoteAddr,
-              localPeerId, remotePeerId, mockResourceManager, false,),
-          throwsA(equals(setPeerError)),);
+        TCPConnection.create(
+          mockSocketClient,
+          localAddr,
+          remoteAddr,
+          localPeerId,
+          remotePeerId,
+          mockResourceManager,
+          false,
+        ),
+        throwsA(equals(setPeerError)),
+      );
 
       await Future<void>.delayed(Duration.zero); // Allow async error handling
       verify(mockScope.done())
@@ -742,23 +858,30 @@ void main() {
   });
 
   group('TCPConnection Timeouts', () {
-    test('read should timeout if no data arrives within the specified duration',
-        () async {
-      clientConnection.setReadTimeout(const Duration(milliseconds: 20));
-      final readFuture = clientConnection.read(5);
+    test(
+      'read should timeout if no data arrives within the specified duration',
+      () async {
+        clientConnection.setReadTimeout(const Duration(milliseconds: 20));
+        final readFuture = clientConnection.read(5);
 
-      // Do not send any data, expect a timeout
-      await expectLater(readFuture, throwsA(isA<TimeoutException>()),
-          reason: "Read should timeout if data doesn't arrive.",);
+        // Do not send any data, expect a timeout
+        await expectLater(
+          readFuture,
+          throwsA(isA<TimeoutException>()),
+          reason: "Read should timeout if data doesn't arrive.",
+        );
 
-      // It's good practice to ensure the connection might still be usable or explicitly closed
-      // depending on desired behavior after a read timeout.
-      // The current TCPConnection.read timeout does not close the connection.
-      expect(clientConnection.isClosed, isFalse,
-          reason: 'Connection should not close on read timeout itself.',);
-    },
-        timeout:
-            const Timeout(Duration(milliseconds: 200)),); // Test case timeout
+        // It's good practice to ensure the connection might still be usable or explicitly closed
+        // depending on desired behavior after a read timeout.
+        // The current TCPConnection.read timeout does not close the connection.
+        expect(
+          clientConnection.isClosed,
+          isFalse,
+          reason: 'Connection should not close on read timeout itself.',
+        );
+      },
+      timeout: const Timeout(Duration(milliseconds: 200)),
+    ); // Test case timeout
 
     test('setWriteTimeout should store the timeout duration', () async {
       // This test is conceptual as TCPConnection.write doesn't enforce _currentWriteTimeout.
@@ -769,28 +892,33 @@ void main() {
       // This test serves more as documentation or for a subclass that might use it.
       // If there was a getter or an observable effect, we'd test that.
       // For now, we just call it to ensure it doesn't throw.
-      expect(() => clientConnection.setWriteTimeout(timeoutDuration),
-          returnsNormally,);
+      expect(
+        () => clientConnection.setWriteTimeout(timeoutDuration),
+        returnsNormally,
+      );
     });
 
-    test('multiple reads with timeouts, one times out, another succeeds',
-        () async {
-      // First read times out
-      clientConnection.setReadTimeout(const Duration(milliseconds: 10));
-      final readFuture1 = clientConnection.read(5);
-      await expectLater(readFuture1, throwsA(isA<TimeoutException>()));
+    test(
+      'multiple reads with timeouts, one times out, another succeeds',
+      () async {
+        // First read times out
+        clientConnection.setReadTimeout(const Duration(milliseconds: 10));
+        final readFuture1 = clientConnection.read(5);
+        await expectLater(readFuture1, throwsA(isA<TimeoutException>()));
 
-      // Reset timeout (or set a longer one) for the next read
-      clientConnection.setReadTimeout(const Duration(seconds: 1));
-      final readFuture2 = clientConnection.read(3);
+        // Reset timeout (or set a longer one) for the next read
+        clientConnection.setReadTimeout(const Duration(seconds: 1));
+        final readFuture2 = clientConnection.read(3);
 
-      // Send data for the second read
-      clientSocketStreamController.add(Uint8List.fromList([1, 2, 3]));
+        // Send data for the second read
+        clientSocketStreamController.add(Uint8List.fromList([1, 2, 3]));
 
-      final result2 = await readFuture2;
-      expect(result2, equals(Uint8List.fromList([1, 2, 3])));
-      expect(clientConnection.isClosed, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 2)),);
+        final result2 = await readFuture2;
+        expect(result2, equals(Uint8List.fromList([1, 2, 3])));
+        expect(clientConnection.isClosed, isFalse);
+      },
+      timeout: const Timeout(Duration(seconds: 2)),
+    );
   });
 }
 

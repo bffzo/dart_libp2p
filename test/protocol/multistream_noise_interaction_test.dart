@@ -61,12 +61,12 @@ class MockConn implements Conn {
   MultiAddr get remoteMultiaddr => _remoteMultiaddr;
 
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) async {
+  Future<P2PStream> newStream(Context context) async {
     throw UnimplementedError('MockConn.newStream not implemented');
   }
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams async => [];
+  Future<List<P2PStream>> get streams async => [];
 
   @override
   ConnStats get stat => MockConnStats();
@@ -104,7 +104,7 @@ class MockStreamStats implements StreamStats {
   Map get extra => {};
 }
 
-class MockP2PStream implements P2PStream<Uint8List> {
+class MockP2PStream implements P2PStream {
   MockP2PStream(
     this._outgoingDataController,
     Stream<Uint8List> incomingStream,
@@ -135,7 +135,7 @@ class MockP2PStream implements P2PStream<Uint8List> {
           _pendingReadCompleter = null;
         }
       },
-      onError: (e, s) {
+      onError: (Object e, StackTrace s) {
         if (_pendingReadCompleter != null &&
             !_pendingReadCompleter!.isCompleted) {
           _pendingReadCompleter!.completeError(e, s);
@@ -268,7 +268,7 @@ class MockP2PStream implements P2PStream<Uint8List> {
   @override
   StreamManagementScope scope() => NullScope();
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
   @override
   Future<void> get done async {
     await Future.wait([
@@ -315,7 +315,7 @@ class P2PStreamToTransportConnAdapter implements TransportConn {
         _localMultiaddr = localMultiaddr,
         _remoteMultiaddr = remoteMultiaddr,
         _id = 'adapter-conn-${Random().nextInt(1 << 32)}';
-  final P2PStream<Uint8List> _p2pStream;
+  final P2PStream _p2pStream;
   final core_peer.PeerId _localPeer;
   final core_peer.PeerId _remotePeer;
   final MultiAddr _localMultiaddr;
@@ -391,14 +391,14 @@ class P2PStreamToTransportConnAdapter implements TransportConn {
 
   // Conn methods not directly applicable or needing mock implementation
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) {
+  Future<P2PStream> newStream(Context context) {
     throw UnimplementedError(
       'newStream not applicable on an already established P2PStream adapter',
     );
   }
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams async =>
+  Future<List<P2PStream>> get streams async =>
       [_p2pStream]; // The stream itself
 
   @override
@@ -482,7 +482,7 @@ void main() {
           (protocol, p2pStreamFromServer) async {
         try {
           final adapterFromServer = P2PStreamToTransportConnAdapter(
-            p2pStreamFromServer as P2PStream<Uint8List>, // Cast needed
+            p2pStreamFromServer, // Cast needed
             localPeer: serverPeerId,
             remotePeer: clientPeerId,
             localMultiaddr: serverMa,

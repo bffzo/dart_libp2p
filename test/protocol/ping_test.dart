@@ -222,7 +222,7 @@ class MockConn implements Conn {
   bool get isClosed => _isClosed;
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams async => [];
+  Future<List<P2PStream>> get streams async => [];
 
   @override
   MultiAddr get localMultiaddr => _localMultiaddr;
@@ -231,7 +231,7 @@ class MockConn implements Conn {
   PeerId get localPeer => localPeerId;
 
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) async {
+  Future<P2PStream> newStream(Context context) async {
     // Corrected signature with streamId
     throw UnimplementedError(
       'MockConn.newStream is not implemented for this test.',
@@ -277,7 +277,7 @@ class MockConnStats extends ConnStats {
   MockConnStats({required super.stats, required super.numStreams});
 }
 
-class PingPongMockStream implements P2PStream<Uint8List> {
+class PingPongMockStream implements P2PStream {
   // Private constructor
   PingPongMockStream._({
     required this.remotePeerId,
@@ -322,7 +322,7 @@ class PingPongMockStream implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
   @override
   bool get isClosed => _closed;
   @override

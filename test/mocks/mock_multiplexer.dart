@@ -169,7 +169,7 @@ class MockMuxedConn implements core_mux.MuxedConn {
 }
 
 /// Mock muxed stream
-class MockMuxedStream implements core_mux.MuxedStream, P2PStream<Uint8List> {
+class MockMuxedStream implements core_mux.MuxedStream, P2PStream {
   MockMuxedStream({
     required String id,
     required SecuredConnection conn,
@@ -275,7 +275,7 @@ class MockMuxedStream implements core_mux.MuxedStream, P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
 
   /// Get the data written to this stream for testing
   List<Uint8List> get writtenData => List.unmodifiable(_writeBuffer);

@@ -19,15 +19,15 @@ class NatBehaviorRecord {
     return NatBehaviorRecord(
       behavior: NatBehavior(
         mappingBehavior:
-            NatMappingBehavior.values.byName(json['mappingBehavior']),
-        filteringBehavior:
-            NatFilteringBehavior.values.byName(json['filteringBehavior']),
-        supportsHairpinning: json['supportsHairpinning'],
-        preservesPorts: json['preservesPorts'],
-        supportsPortMapping: json['supportsPortMapping'],
-        mappingLifetime: json['mappingLifetime'],
+            NatMappingBehavior.values.byName(json['mappingBehavior'] as String),
+        filteringBehavior: NatFilteringBehavior.values
+            .byName(json['filteringBehavior'] as String),
+        supportsHairpinning: json['supportsHairpinning'] as bool?,
+        preservesPorts: json['preservesPorts'] as bool?,
+        supportsPortMapping: json['supportsPortMapping'] as bool?,
+        mappingLifetime: json['mappingLifetime'] as int?,
       ),
-      timestamp: DateTime.parse(json['timestamp']),
+      timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
 

@@ -47,7 +47,7 @@ Future<Uint8List> _readNBytesFromP2PStream(
         // For now, let's assume an empty chunk when data is expected is an issue or requires a brief pause.
         // A short delay might help if it's a transient state, but can also hide issues.
         // Consider throwing an error or implementing a timeout mechanism if this becomes problematic.
-        // await Future<void>.delayed(Duration(milliseconds: 10)); // Avoid busy-looping on transient empty reads
+        // await Future.delayed(Duration(milliseconds: 10)); // Avoid busy-looping on transient empty reads
         // continue; // Retry read
         // For now, let's treat it as an unexpected end of data if we still need bytes.
         throw StateError(
@@ -87,7 +87,7 @@ Future<T> readDelimited<T extends GeneratedMessage>(
 ) async {
   final carryOverBuffer = <int>[];
 
-  finalintBytesBuilder = BytesBuilder(copy: false);
+  final varintBytesBuilder = BytesBuilder(copy: false);
   var messageLength = -1;
   var varintByteCount = 0;
 

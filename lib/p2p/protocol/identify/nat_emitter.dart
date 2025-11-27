@@ -48,7 +48,7 @@ class NATEmitter {
     ObservedAddrManager observedAddrMgr,
     Duration eventInterval,
   ) async {
-    final emitter = NATEmitter._(host, observedAddrMgr, eventInterval);
+    final emitter = NATEmitter._(observedAddrMgr, eventInterval);
     await emitter._initialize(host);
     return emitter;
   }
@@ -58,7 +58,7 @@ class NATEmitter {
     // Subscribe to reachability events
     final subscription = host.eventBus.subscribe(EvtLocalReachabilityChanged);
     _reachabilitySub = subscription.stream.listen((event) {
-      _reachability = event.reachability;
+      _reachability = (event as EvtLocalReachabilityChanged).reachability;
     });
 
     // Create emitter for NAT device type changes

@@ -69,7 +69,7 @@ void main() {
             print('Test server received ${data.length} bytes: $data');
             serverReceivedData.add(data);
           },
-          onError: (error) {
+          onError: (Object error) {
             print('Test server socket error: $error');
           },
           onDone: () {

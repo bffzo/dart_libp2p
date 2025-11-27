@@ -42,7 +42,7 @@ class RelayedConn implements TransportConn {
   // final bool _isInitiator; // Captured by _stream.stat().direction
 
   RelayedConn({
-    required P2PStream<Uint8List> stream,
+    required P2PStream stream,
     required CircuitV2Client transport,
     required PeerId localPeer,
     required PeerId remotePeer,
@@ -57,7 +57,7 @@ class RelayedConn implements TransportConn {
         _remoteMultiaddr = remoteMultiaddr,
         // _isInitiator = isInitiator,
         _connStats = _RelayedConnStats(stream.stat());
-  final P2PStream<Uint8List> _stream; // Stream to the relay
+  final P2PStream _stream; // Stream to the relay
   final CircuitV2Client
       _transport; // The transport that created this connection
   final PeerId _localPeer;
@@ -114,7 +114,7 @@ class RelayedConn implements TransportConn {
   ConnScope get scope => _stream.conn.scope;
 
   @override
-  Future<P2PStream<dynamic>> newStream(Context context) {
+  Future<P2PStream> newStream(Context context) {
     // A RelayedConn represents a single logical channel.
     // It does not support further multiplexing new streams over itself directly.
     // New streams to the same remote peer via a relay would be new RelayedConn instances.
@@ -124,7 +124,7 @@ class RelayedConn implements TransportConn {
   }
 
   @override
-  Future<List<P2PStream<dynamic>>> get streams {
+  Future<List<P2PStream>> get streams {
     // A RelayedConn wraps a single P2PStream to the relay.
     // It does not manage a list of multiplexed streams itself.
     throw UnimplementedError('streams getter on RelayedConn is not supported.');

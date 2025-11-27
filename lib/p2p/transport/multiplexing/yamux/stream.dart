@@ -41,7 +41,7 @@ enum YamuxStreamState {
 }
 
 /// A Yamux stream that implements the P2PStream and MuxedStream interfaces
-class YamuxStream implements P2PStream<Uint8List>, core_mux.MuxedStream {
+class YamuxStream implements P2PStream, core_mux.MuxedStream {
   YamuxStream({
     required int id,
     required String protocol,
@@ -1161,7 +1161,7 @@ class YamuxStream implements P2PStream<Uint8List>, core_mux.MuxedStream {
   }
 
   @override
-  P2PStream<Uint8List> get incoming {
+  P2PStream get incoming {
     // This is problematic as P2PStream expects a P2PStream, not a raw Stream.
     // For now, returning a self-reference might be the closest, though not ideal.
     // Proper implementation would require a separate wrapper or different design.

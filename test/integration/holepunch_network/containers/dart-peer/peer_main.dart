@@ -405,11 +405,11 @@ class IntegrationTestPeer {
     final body = await utf8.decoder.bind(request).join();
     final data = jsonDecode(body) as Map<String, dynamic>;
     final targetPeerIdStr = data['peer_id'] as String;
-    final addrsJson = data['addrs'] as List<dynamic>;
+    final addrsJson = data['addrs'] as List<String>;
 
     try {
       final targetPeerId = PeerId.fromString(targetPeerIdStr);
-      final addrs = addrsJson.map((a) => MultiAddr(a)).toList();
+      final addrs = addrsJson.map(MultiAddr.new).toList();
 
       print(
         '🔗 Adding ${addrs.length} addresses for peer $targetPeerIdStr to peerstore',

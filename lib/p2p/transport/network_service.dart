@@ -35,7 +35,7 @@ class NetworkService {
           final message = String.fromCharCodes(data);
           print('Received: $message');
         },
-        onError: (error) {
+        onError: (Object error) {
           print('Error: $error');
           _isConnected = false;
           _tcpSocket?.close();
@@ -67,7 +67,7 @@ class NetworkService {
         // Echo the message back
         client.write('Server received: $message');
       },
-      onError: (error) {
+      onError: (Object error) {
         print('Error: $error');
         client.close();
       },
@@ -98,7 +98,7 @@ class NetworkService {
             }
           }
         },
-        onError: (error) {
+        onError: (Object error) {
           print('UDP Socket error: $error');
         },
         onDone: () {

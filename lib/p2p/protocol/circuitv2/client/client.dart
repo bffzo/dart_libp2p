@@ -88,7 +88,7 @@ class CircuitV2Client implements Transport {
   // Stream controller for incoming connections that have been accepted by a listener
   final StreamController<TransportConn> _incomingConnController =
       StreamController.broadcast();
-  StreamSubscription<P2PStream<dynamic>>? _stopHandlerSubscription;
+  StreamSubscription<P2PStream>? _stopHandlerSubscription;
 
   // Active listeners
   // For circuit relay, "listening" means being ready to accept incoming StopMessages.
@@ -260,8 +260,7 @@ class CircuitV2Client implements Transport {
       );
 
       final relayedConn = RelayedConn(
-        stream: stream
-            as P2PStream<Uint8List>, // Cast needed, ensure stream is Uint8List
+        stream: stream, // Cast needed, ensure stream is Uint8List
         transport: this,
         localPeer: host.id,
         remotePeer: sourcePeerId,
@@ -432,7 +431,7 @@ class CircuitV2Client implements Transport {
             writeCompleter.complete();
           }
         },
-        onError: (error) {
+        onError: (Object error) {
           if (!writeCompleter.isCompleted) {
             writeCompleter.completeError(error);
           }
@@ -485,7 +484,7 @@ class CircuitV2Client implements Transport {
       // 6. If status is OK, the stream `hopStream` is now connected to the destination peer.
       // Wrap this stream in a RelayedConn object and return it.
       final relayedConn = RelayedConn(
-        stream: hopStream as P2PStream<Uint8List>, // Cast needed
+        stream: hopStream, // Cast needed
         transport: this,
         localPeer: host.id,
         remotePeer: destId,
@@ -663,7 +662,7 @@ class CircuitListener implements Listener {
           _acceptedConnController.add(conn);
         }
       },
-      onError: (err, stack) {
+      onError: (Object err, StackTrace stack) {
         if (!_isClosed) {
           _acceptedConnController.addError(err, stack);
         }

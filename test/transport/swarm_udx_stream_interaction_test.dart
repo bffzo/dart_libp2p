@@ -50,7 +50,7 @@ class TestNotifiee implements Notifiee {
 // EOF Detection Utilities for comprehensive testing
 class StreamEOFUtils {
   /// Comprehensive EOF detection that handles all scenarios
-  static bool isEOF(dynamic result, dynamic error) {
+  static bool isEOF(dynamic result, Object? error) {
     // Check for empty data (normal EOF)
     if (result is Uint8List && result.isEmpty) {
       return true;

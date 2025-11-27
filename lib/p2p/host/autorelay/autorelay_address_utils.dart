@@ -96,7 +96,9 @@ class _PortAndAddr {
 }
 
 List<MultiAddr> sanitizeAddrsplodedSet(
-    List<MultiAddr> publicAddrs, List<MultiAddr> privateAddrs,) {
+  List<MultiAddr> publicAddrs,
+  List<MultiAddr> privateAddrs,
+) {
   final privports = <int>{};
   final pubaddrGroups = <String, List<_PortAndAddr>>{};
 
@@ -134,9 +136,9 @@ List<MultiAddr> sanitizeAddrsplodedSet(
     }
 
     if (haveAddr) {
-      result.addAll(selectedForThisKey
-          .toSet()
-          .toList(),); // toSet to remove duplicates if any
+      result.addAll(
+        selectedForThisKey.toSet().toList(),
+      ); // toSet to remove duplicates if any
     } else {
       // We weren't able to select a preferred port; use them all for this key
       for (final pa in pas) {

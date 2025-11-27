@@ -104,7 +104,7 @@ class MockStreamScope implements StreamScope {
 }
 
 /// Mock implementation of P2PStream for testing
-class MockP2PStream implements P2PStream<Uint8List> {
+class MockP2PStream implements P2PStream {
   MockP2PStream(this._id);
   final String _id;
   bool _isClosed = false;
@@ -176,7 +176,7 @@ class MockP2PStream implements P2PStream<Uint8List> {
       );
 
   @override
-  P2PStream<Uint8List> get incoming => this;
+  P2PStream get incoming => this;
 }
 
 /// Mock implementation of StreamManagementScope for testing

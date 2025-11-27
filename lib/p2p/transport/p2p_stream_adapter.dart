@@ -11,7 +11,7 @@ import 'package:dart_libp2p/core/network/stream.dart'
 import 'package:dart_libp2p/p2p/transport/tcp_connection.dart'; // Assuming TCPConnection will be the parent
 import 'package:uuid/uuid.dart'; // Moved to top
 
-class P2PStreamAdapter implements P2PStream<Uint8List> {
+class P2PStreamAdapter implements P2PStream {
   P2PStreamAdapter(
     this._underlyingMuxedStream,
     this._parentConnection,
@@ -66,7 +66,7 @@ class P2PStreamAdapter implements P2PStream<Uint8List> {
             break;
           }
         }
-      }).catchError((e) {
+      }).catchError((Object e) {
         // Catch errors from the Future itself
         if (!_isClosed && !_incomingDataController.isClosed) {
           _incomingDataController.addError(e);
@@ -76,7 +76,7 @@ class P2PStreamAdapter implements P2PStream<Uint8List> {
       }),
     ).listen(
       null, // Data is handled by the Future's loop
-      onError: (e) {
+      onError: (Object e) {
         // This onError is for errors passed through _incomingDataController.addError()
         // or errors from the stream generation logic itself if not caught by the Future's catchError.
         // The primary error handling and stream closing should be within the Future.
@@ -180,7 +180,7 @@ class P2PStreamAdapter implements P2PStream<Uint8List> {
   }
 
   @override
-  P2PStream<Uint8List> get incoming =>
+  P2PStream get incoming =>
       this; // The adapter itself can be the stream of incoming data
 
   @override

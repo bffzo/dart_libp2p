@@ -34,12 +34,12 @@ void main() {
     late MockHost mockHost;
     late MockEventBus mockEventBus;
     late MockEmitter mockEmitter;
-    late MockSubscription mockSubscription;
+    late MockSubscription<Object> mockSubscription;
     late MockPeerstore mockPeerstore;
     late MockProtoBook mockProtoBook;
     late MockAutoNATv2 mockAutoNATv2;
     late MockConn mockConn;
-    late StreamController<dynamic> eventStreamController;
+    late StreamController<Object> eventStreamController;
     late AmbientAutoNATv2Config config;
 
     setUp(() {
@@ -51,7 +51,7 @@ void main() {
       mockProtoBook = MockProtoBook();
       mockAutoNATv2 = MockAutoNATv2();
       mockConn = MockConn();
-      eventStreamController = StreamController<dynamic>.broadcast();
+      eventStreamController = StreamController<Object>.broadcast();
 
       config = const AmbientAutoNATv2Config(
         bootDelay: Duration(milliseconds: 100), // Short delay for testing

@@ -321,7 +321,7 @@ class PeerAddrs {
     return _expiringHeap.length;
   }
 
-  Future<List> getKeys() async {
+  Future<List<String>> getKeys() async {
     return _lock.synchronized(() async {
       return _addrs.keys.toList();
     });

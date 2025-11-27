@@ -103,7 +103,7 @@ class StunClient {
             }
           }
         },
-        onError: (error) {
+        onError: (Object error) {
           print('Socket error: $error');
           if (!completer.isCompleted) {
             cleanup();

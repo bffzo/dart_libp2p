@@ -22,7 +22,7 @@ abstract class YamuxException implements Exception {
   })  : timestamp = timestamp ?? DateTime.now(),
         context = context ?? const {};
   final String message;
-  final dynamic
+  final Object?
       originalException; // Changed to dynamic to handle both Exception and Error
   final StackTrace? originalStackTrace;
   final DateTime timestamp;
@@ -89,7 +89,7 @@ class YamuxStreamTimeoutException extends YamuxException {
     required this.timeout,
     required this.operation,
     required this.streamId,
-    Exception? super.originalException,
+    super.originalException,
     super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
@@ -128,7 +128,7 @@ class YamuxStreamProtocolException extends YamuxException {
     super.message, {
     required this.protocolError,
     required this.streamId,
-    Exception? super.originalException,
+    super.originalException,
     super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(
@@ -163,7 +163,7 @@ class YamuxSessionException extends YamuxException {
   YamuxSessionException(
     super.message, {
     required this.sessionError,
-    Exception? super.originalException,
+    super.originalException,
     super.originalStackTrace,
     Map<String, dynamic>? context,
   }) : super._internal(

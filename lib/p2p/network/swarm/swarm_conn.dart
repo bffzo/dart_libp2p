@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:dart_libp2p/core/crypto/keys.dart';
 import 'package:dart_libp2p/core/multiaddr.dart';
@@ -161,7 +160,7 @@ class SwarmConn implements Conn {
   }
 
   /// Records an error for health tracking
-  void _recordHealthError(dynamic error) {
+  void _recordHealthError(Object error) {
     _healthMonitor.metrics.recordError(error);
   }
 
@@ -281,8 +280,7 @@ class SwarmConn implements Conn {
       conn: this,
       direction: Direction.outbound,
       opened: DateTime.now(),
-      underlyingMuxedStream:
-          underlyingMuxedStreamResult as P2PStream<Uint8List>,
+      underlyingMuxedStream: underlyingMuxedStreamResult,
       managementScope: streamManagementScope,
     );
 

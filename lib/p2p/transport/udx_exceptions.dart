@@ -110,7 +110,7 @@ class UDXExceptionHandler {
     Future<T> Function() operation,
     String context, {
     UDXRetryConfig retryConfig = UDXRetryConfig.regular,
-    bool Function(dynamic error)? shouldRetry,
+    bool Function(Object error)? shouldRetry,
   }) async {
     var attempt = 0;
     var delay = retryConfig.initialDelay;
@@ -168,7 +168,7 @@ class UDXExceptionHandler {
 
   /// Classifies UDX exceptions into appropriate exception types
   static UDXTransportException classifyUDXException(
-    dynamic error,
+    Object error,
     String context,
     StackTrace stackTrace,
   ) {
@@ -226,7 +226,7 @@ class UDXExceptionHandler {
   /// Determines if an error should be retried
   static bool shouldRetryError(
     UDXTransportException error,
-    bool Function(dynamic error)? customShouldRetry,
+    bool Function(Object error)? customShouldRetry,
   ) {
     // Use custom retry logic if provided
     if (customShouldRetry != null) {
