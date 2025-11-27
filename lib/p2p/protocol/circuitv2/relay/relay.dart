@@ -233,11 +233,11 @@ class Relay {
       print(
         '[Relay] Writing length prefix (${lengthBytes.length} bytes) to STOP stream...',
       );
-      await dstStream.write(lengthBytes);
+      await dstStream.rawWrite(lengthBytes);
       print(
         '[Relay] Length prefix written, now writing message bytes (${messageBytes.length} bytes)...',
       );
-      await dstStream.write(messageBytes);
+      await dstStream.rawWrite(messageBytes);
       print('[Relay] Message bytes written, flushing stream...');
       // Flush the stream to ensure data is sent immediately
       if (dstStream is Sink) {
@@ -349,7 +349,7 @@ class Relay {
       try {
         var bytesRelayed = 0;
         while (true) {
-          final data = await srcStream.read();
+          final data = await srcStream.rawRead();
           if (data.isEmpty) {
             // EOF received - propagate to destination via closeWrite
             await dstStream.closeWrite().catchError((e) {
@@ -358,7 +358,7 @@ class Relay {
             break;
           }
           bytesRelayed += data.length;
-          await dstStream.write(data);
+          await dstStream.rawWrite(data);
         }
       } catch (e) {
         print('[Relay] Error relaying data from source to destination: $e');
@@ -379,7 +379,7 @@ class Relay {
       try {
         var bytesRelayed = 0;
         while (true) {
-          final data = await dstStream.read();
+          final data = await dstStream.rawRead();
           if (data.isEmpty) {
             // EOF received - propagate to source via closeWrite
             print(
@@ -391,7 +391,7 @@ class Relay {
             break;
           }
           bytesRelayed += data.length;
-          await srcStream.write(data);
+          await srcStream.rawWrite(data);
         }
       } catch (e) {
         print('[Relay] Error relaying data from destination to source: $e');
@@ -447,8 +447,8 @@ class Relay {
       // Write with length prefix (required for DelimitedReader on the receiving end)
       final messageBytes = response.writeToBuffer();
       final lengthBytes = encodeVarint(messageBytes.length);
-      await stream.write(lengthBytes);
-      await stream.write(messageBytes);
+      await stream.rawWrite(lengthBytes);
+      await stream.rawWrite(messageBytes);
       print(
         '[Relay] Sent HOP STATUS response: $status (${messageBytes.length} bytes)',
       );
@@ -518,7 +518,7 @@ Stream<Uint8List> _p2pStreamToDartStream(P2PStream p2pStream) {
       while (true) {
         if (controller.isClosed) break;
         print('[Relay] Reading chunk from P2PStream...');
-        final data = await p2pStream.read();
+        final data = await p2pStream.rawRead();
         print('[Relay] Read ${data.length} bytes, adding to controller...');
         controller.add(data);
       }
@@ -552,7 +552,7 @@ class StreamSinkFromP2PStream implements Sink<List<int>> {
   void add(List<int> data) {
     // P2PStream.write() is async, so we need to await it
     // But Sink.add() is synchronous, so we schedule it and track completion
-    _stream.write(Uint8List.fromList(data)).then((_) {
+    _stream.rawWrite(Uint8List.fromList(data)).then((_) {
       // Write completed successfully
       if (_writeCompleter != null && !_writeCompleter.isCompleted) {
         _writeCompleter.complete();

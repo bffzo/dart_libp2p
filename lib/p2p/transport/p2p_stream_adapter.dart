@@ -11,7 +11,7 @@ import 'package:dart_libp2p/core/network/stream.dart'
 import 'package:dart_libp2p/p2p/transport/tcp_connection.dart'; // Assuming TCPConnection will be the parent
 import 'package:uuid/uuid.dart'; // Moved to top
 
-class P2PStreamAdapter implements P2PStream {
+class P2PStreamAdapter extends P2PStream {
   P2PStreamAdapter(
     this._underlyingMuxedStream,
     this._parentConnection,
@@ -164,12 +164,12 @@ class P2PStreamAdapter implements P2PStream {
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) {
       throw const ResetException('Stream is closed');
     }
     try {
-      await _underlyingMuxedStream.write(data);
+      await _underlyingMuxedStream.rawWrite(data);
     } on ResetException {
       await _handleResetOrClose();
       rethrow;
@@ -189,6 +189,7 @@ class P2PStreamAdapter implements P2PStream {
   @override
   Future<void> close() async {
     if (_isClosed) return;
+    await super.close();
     try {
       await _underlyingMuxedStream.close();
     } catch (e) {

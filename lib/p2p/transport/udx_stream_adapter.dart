@@ -18,7 +18,7 @@ import 'package:logging/logging.dart';
 
 final Logger _logger = Logger('UDXStreamAdapter');
 
-class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
+class UDXP2PStreamAdapter extends P2PStream implements MuxedStream {
   UDXP2PStreamAdapter({
     required UDXStream udxStream,
     required UDXSessionConn parentConn,
@@ -258,7 +258,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     _logger.fine(
       '[UDXP2PStreamAdapter ${id()}] write called with ${data.length} bytes. isClosed: $_isClosed',
     );
@@ -325,6 +325,7 @@ class UDXP2PStreamAdapter implements MuxedStream, P2PStream {
   @override
   Future<void> close() async {
     _logger.fine('[UDXP2PStreamAdapter ${id()}] close() called.');
+    await super.close();
     return _close();
   }
 

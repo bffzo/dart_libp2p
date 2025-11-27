@@ -41,7 +41,7 @@ enum YamuxStreamState {
 }
 
 /// A Yamux stream that implements the P2PStream and MuxedStream interfaces
-class YamuxStream implements P2PStream, core_mux.MuxedStream {
+class YamuxStream extends P2PStream implements core_mux.MuxedStream {
   YamuxStream({
     required int id,
     required String protocol,
@@ -200,7 +200,7 @@ class YamuxStream implements P2PStream, core_mux.MuxedStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     final inputDataLength = data.length;
     _log.fine(
       '$_logPrefix YamuxStream.write: ENTERED. Requested to write $inputDataLength bytes. Current state: $_state, Our send window (remote receive): $_remoteReceiveWindow',
@@ -455,6 +455,7 @@ class YamuxStream implements P2PStream, core_mux.MuxedStream {
   @override
   Future<void> close() async {
     _log.fine('$_logPrefix close() called. Current state: $_state');
+    await super.close();
     if (_state == YamuxStreamState.closed || _state == YamuxStreamState.reset) {
       _log.finer(
         '$_logPrefix close() called but stream already closed/reset. State: $_state. Doing nothing.',

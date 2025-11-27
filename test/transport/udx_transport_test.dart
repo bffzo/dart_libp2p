@@ -135,7 +135,7 @@ void main() {
         print(
           '[Data Transfer Test] Dialer stream (${dialerStream.id()}) writing data...',
         );
-        await dialerStream.write(testData);
+        await dialerStream.rawWrite(testData);
         print('[Data Transfer Test] Dialer stream data written.');
 
         // Receive data on listener side
@@ -275,7 +275,7 @@ void main() {
         print(
           '[Lifecycle Test] Writing data to dialer stream ${dialerStream.id()}',
         );
-        await dialerStream.write(Uint8List.fromList([1, 2, 3]));
+        await dialerStream.rawWrite(Uint8List.fromList([1, 2, 3]));
         print(
           '[Lifecycle Test] Reading data from listener stream ${listenerStream.id()}',
         );

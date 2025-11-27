@@ -113,7 +113,7 @@ class ChatClientMdns implements MdnsNotifee {
   ) async {
     try {
       // Read the message from the stream
-      final data = await stream.read();
+      final data = await stream.rawRead();
       if (data.isNotEmpty) {
         final message = utf8.decode(data).trim();
         // Display the received message
@@ -153,7 +153,7 @@ class ChatClientMdns implements MdnsNotifee {
 
       final ctx = Context();
       final stream = await host.newStream(_currentPeer!, [protocolId], ctx);
-      await stream.write(utf8.encode('$message\n'));
+      stream.write(utf8.encode('$message\n'));
       await stream.close();
 
       // Show our own message

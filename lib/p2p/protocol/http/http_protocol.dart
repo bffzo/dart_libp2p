@@ -645,7 +645,7 @@ class HttpProtocolService {
       _logger.info('📤 [HTTP-SERVER-PHASE-7] Sending HTTP response');
       final sendStartTime = DateTime.now();
 
-      await stream.write(responseData);
+      await stream.rawWrite(responseData);
 
       final sendTime = DateTime.now().difference(sendStartTime);
       final totalTime = DateTime.now().difference(startTime);
@@ -668,7 +668,7 @@ class HttpProtocolService {
         final errorResponse =
             HttpResponse.error(HttpStatus.internalServerError);
         final errorData = errorResponse.serialize();
-        await stream.write(errorData);
+        await stream.rawWrite(errorData);
         _logger.info('✅ [HTTP-SERVER-ERROR] Error response sent successfully');
       } catch (sendError) {
         _logger.severe(
@@ -721,7 +721,7 @@ class HttpProtocolService {
       );
 
       final readStartTime = DateTime.now();
-      final chunk = await stream.read();
+      final chunk = await stream.rawRead();
       final readTime = DateTime.now().difference(readStartTime);
 
       _logger.fine(
@@ -823,7 +823,7 @@ class HttpProtocolService {
         );
 
         final bodyReadStartTime = DateTime.now();
-        final chunk = await stream.read();
+        final chunk = await stream.rawRead();
         final bodyReadTime = DateTime.now().difference(bodyReadStartTime);
 
         _logger.fine(
@@ -945,7 +945,7 @@ class HttpProtocolService {
       );
       final sendStartTime = DateTime.now();
 
-      await stream.write(requestData);
+      await stream.rawWrite(requestData);
 
       final sendTime = DateTime.now().difference(sendStartTime);
       _logger.info(

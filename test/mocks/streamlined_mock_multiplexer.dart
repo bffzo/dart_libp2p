@@ -262,7 +262,7 @@ class StreamlinedMockMuxedConn implements core_mux.MuxedConn {
 }
 
 /// Streamlined mock stream with connection reuse tracking
-class StreamlinedMockStream implements core_mux.MuxedStream, P2PStream {
+class StreamlinedMockStream extends P2PStream implements core_mux.MuxedStream {
   StreamlinedMockStream({
     required String id,
     required SecuredConnection conn,
@@ -321,7 +321,7 @@ class StreamlinedMockStream implements core_mux.MuxedStream, P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       throw StateError('Stream is closed');
     }
@@ -331,7 +331,7 @@ class StreamlinedMockStream implements core_mux.MuxedStream, P2PStream {
   }
 
   @override
-  Future<void> write(List<int> data) async {
+  Future<void> rawWrite(List<int> data) async {
     if (_isClosed) {
       throw StateError('Stream is closed');
     }

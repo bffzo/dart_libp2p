@@ -77,7 +77,7 @@ class StompServerConnection {
     }
 
     final frameBytes = frame.toBytes();
-    await stream.write(frameBytes);
+    await stream.rawWrite(frameBytes);
     _logger.finest('Sent frame to $peerId: ${frame.command}');
   }
 
@@ -93,7 +93,7 @@ class StompServerConnection {
     while (
         !stream.isClosed && _state != StompServerConnectionState.disconnected) {
       try {
-        final data = await stream.read();
+        final data = await stream.rawRead();
         if (data.isEmpty) break; // EOF
 
         _readBuffer.addAll(data);
@@ -399,7 +399,7 @@ class StompServer {
 
     try {
       while (true) {
-        final data = await stream.read();
+        final data = await stream.rawRead();
         if (data.isEmpty) {
           throw const StompConnectionException(
             'Stream closed before CONNECT frame',
@@ -443,7 +443,7 @@ class StompServer {
     try {
       final errorFrame = StompFrameFactory.error(message: message);
       final frameBytes = errorFrame.toBytes();
-      await stream.write(frameBytes);
+      await stream.rawWrite(frameBytes);
     } catch (e) {
       _logger.warning('Error sending ERROR frame: $e');
     }

@@ -505,7 +505,7 @@ class StompClient {
     }
 
     final frameBytes = frame.toBytes();
-    await _stream!.write(frameBytes);
+    await _stream!.rawWrite(frameBytes);
     _frameController.add(frame);
 
     _logger.finest('Sent frame: ${frame.command}');
@@ -526,7 +526,7 @@ class StompClient {
 
     while (!_stream!.isClosed && _state != StompClientState.disconnected) {
       try {
-        final data = await _stream!.read();
+        final data = await _stream!.rawRead();
         if (data.isEmpty) break; // EOF
 
         buffer.addAll(data);

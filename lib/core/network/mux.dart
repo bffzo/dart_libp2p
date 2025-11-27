@@ -19,7 +19,7 @@ abstract class MuxedStream {
   Future<List<int>> read(int length);
 
   /// Writes data to the stream.
-  Future<void> write(List<int> data);
+  Future<void> rawWrite(List<int> data);
 
   /// Closes the stream.
   ///

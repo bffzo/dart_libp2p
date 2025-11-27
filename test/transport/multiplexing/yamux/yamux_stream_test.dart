@@ -374,7 +374,7 @@ void main() {
 
       // Start the write operation
       final writeCompleted = Completer<void>();
-      stream.write(data).then((_) => writeCompleted.complete());
+      stream.rawWrite(data).then((_) => writeCompleted.complete());
 
       // Give it a moment to send the first chunk
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -414,7 +414,7 @@ void main() {
         );
 
         final data = Uint8List.fromList([1, 2, 3, 4, 5]);
-        await stream.write(data); // Should add 1 data frame.
+        await stream.rawWrite(data); // Should add 1 data frame.
 
         // Add a more substantial delay to allow async sendFrame to complete
         await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -467,7 +467,7 @@ void main() {
 
         // Start write operation
         final writeCompleted = Completer<void>();
-        stream.write(data).then((_) => writeCompleted.complete());
+        stream.rawWrite(data).then((_) => writeCompleted.complete());
 
         // Wait for first chunk
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -549,7 +549,7 @@ void main() {
 
         // Start write operation
         final writeCompleted = Completer<void>();
-        stream.write(data).then((_) => writeCompleted.complete());
+        stream.rawWrite(data).then((_) => writeCompleted.complete());
 
         // Wait for first frame to be sent
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -586,7 +586,7 @@ void main() {
         );
 
         final data = Uint8List.fromList([1, 2, 3]);
-        await stream.write(data); // Should add 1 data frame
+        await stream.rawWrite(data); // Should add 1 data frame
         // Add a substantial delay
         await Future<void>.delayed(const Duration(milliseconds: 50));
         print(
@@ -687,7 +687,7 @@ void main() {
 
         // Write a small amount of data
         final data = Uint8List.fromList([1, 2, 3]);
-        await stream.write(data);
+        await stream.rawWrite(data);
 
         print('Data written, frames sent: ${sentFrames.length}');
         sentFrames.clear();
@@ -712,7 +712,7 @@ void main() {
         expect(stream.read(), throwsA(isA<StateError>()));
 
         // Try to write (should result in StateError, sync or async)
-        expect(stream.write(data), throwsA(isA<StateError>()));
+        expect(stream.rawWrite(data), throwsA(isA<StateError>()));
       });
 
       test('minimal closure test', () async {

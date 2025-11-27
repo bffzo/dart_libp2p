@@ -16,7 +16,7 @@ class EchoClient {
       print(
         '📤 [ECHO CLIENT] Sending: "$message" to server [${_truncatePeerId(targetPeer)}]',
       );
-      await stream.write(utf8.encode('$message\n'));
+      stream.write(utf8.encode('$message\n'));
 
       // Close the stream after sending - the server will echo it to its console
       await stream.close();

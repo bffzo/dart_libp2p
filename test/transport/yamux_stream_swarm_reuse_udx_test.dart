@@ -173,7 +173,7 @@ void main() {
             final data =
                 'stream-$i-data-${DateTime.now().millisecondsSinceEpoch}';
             testData.add(data);
-            await stream.write(utf8.encode(data));
+            await stream.rawWrite(utf8.encode(data));
             print('Stream $i created with ID: ${stream.id()}, sent: $data');
           }
 
@@ -244,7 +244,7 @@ void main() {
             final data =
                 'reused-stream-$i-data-${DateTime.now().millisecondsSinceEpoch}';
             newTestData.add(data);
-            await newStream.write(utf8.encode(data));
+            await newStream.rawWrite(utf8.encode(data));
             print(
               'New stream $i created with ID: ${newStream.id()}, sent: $data',
             );
@@ -281,7 +281,7 @@ void main() {
           // Send additional data on remaining stream
           final additionalData =
               'additional-data-${DateTime.now().millisecondsSinceEpoch}';
-          await remainingStream.write(utf8.encode(additionalData));
+          await remainingStream.rawWrite(utf8.encode(additionalData));
           print('✓ Remaining original stream still functional');
 
           // Verify all new streams are functional
@@ -296,7 +296,7 @@ void main() {
             // Send verification data
             final verifyData =
                 'verify-$i-${DateTime.now().millisecondsSinceEpoch}';
-            await stream.write(utf8.encode(verifyData));
+            await stream.rawWrite(utf8.encode(verifyData));
             print('✓ New stream $i is functional');
           }
 
@@ -386,7 +386,7 @@ void main() {
           for (var i = 0; i < 3; i++) {
             final stream = await swarmB.newStream(Context(), swarmA.localPeer);
             cycleStreams.add(stream);
-            await stream.write(utf8.encode('cycle-$cycle-stream-$i'));
+            await stream.rawWrite(utf8.encode('cycle-$cycle-stream-$i'));
           }
 
           // Brief pause to let streams establish
@@ -466,7 +466,7 @@ void main() {
         for (var i = 0; i < 5; i++) {
           final stream = await swarmB.newStream(Context(), swarmA.localPeer);
           streams.add(stream);
-          await stream.write(utf8.encode('mixed-state-stream-$i'));
+          await stream.rawWrite(utf8.encode('mixed-state-stream-$i'));
         }
 
         final connections = swarmB.connsToPeer(swarmA.localPeer);
@@ -488,8 +488,8 @@ void main() {
         final newStream1 = await swarmB.newStream(Context(), swarmA.localPeer);
         final newStream2 = await swarmB.newStream(Context(), swarmA.localPeer);
 
-        await newStream1.write(utf8.encode('new-stream-1'));
-        await newStream2.write(utf8.encode('new-stream-2'));
+        await newStream1.rawWrite(utf8.encode('new-stream-1'));
+        await newStream2.rawWrite(utf8.encode('new-stream-2'));
 
         // Verify still using same connection
         final connectionsAfter = swarmB.connsToPeer(swarmA.localPeer);
@@ -735,7 +735,7 @@ void main() {
               await ((clientConn as dynamic).conn as core_mux_types.MuxedConn)
                   .openStream(Context()) as P2PStream;
 
-          await clientStream.write(testData);
+          await clientStream.rawWrite(testData);
           print('Client sent ${testData.length} bytes');
 
           // Wait for server to handle the stream
@@ -743,7 +743,7 @@ void main() {
 
           // Read echo response
           final receivedData =
-              await clientStream.read().timeout(const Duration(seconds: 10));
+              await clientStream.rawRead().timeout(const Duration(seconds: 10));
           print('Client received ${receivedData.length} bytes');
 
           // Verify data integrity
@@ -802,7 +802,7 @@ Future<void> _performEchoTest({
   final testData = 'echo-test-$testId-${DateTime.now().millisecondsSinceEpoch}';
   final dataBytes = utf8.encode(testData);
 
-  await clientStream.write(dataBytes);
+  await clientStream.rawWrite(dataBytes);
   print('Client sent data for test $testId: $testData');
 
   // Wait for server to handle the echo
@@ -810,7 +810,7 @@ Future<void> _performEchoTest({
 
   // Read the echo response
   final receivedData =
-      await clientStream.read().timeout(const Duration(seconds: 5));
+      await clientStream.rawRead().timeout(const Duration(seconds: 5));
   final receivedText = utf8.decode(receivedData);
 
   print('Client received echo for test $testId: $receivedText');
@@ -896,9 +896,9 @@ Future<void> _runBackgroundEchoServer({
 Future<void> _handleEchoStreamIndependently(P2PStream stream) async {
   try {
     print('Handling stream ${stream.id()} independently');
-    final data = await stream.read().timeout(const Duration(seconds: 10));
+    final data = await stream.rawRead().timeout(const Duration(seconds: 10));
     print('Server echoing ${data.length} bytes on stream ${stream.id()}');
-    await stream.write(data);
+    await stream.rawWrite(data);
     print('Echo completed for stream ${stream.id()}');
   } catch (e) {
     print('Error in independent echo handler for stream ${stream.id()}: $e');
@@ -932,11 +932,11 @@ Future<void> _performIndependentEchoTest({
     final dataBytes = utf8.encode(testData);
 
     print('Client sending data for test $testId: $testData');
-    await clientStream.write(dataBytes);
+    await clientStream.rawWrite(dataBytes);
 
     // Read the echo response
     final receivedData =
-        await clientStream.read().timeout(const Duration(seconds: 10));
+        await clientStream.rawRead().timeout(const Duration(seconds: 10));
     final receivedText = utf8.decode(receivedData);
 
     print('Client received echo for test $testId: $receivedText');
@@ -962,9 +962,9 @@ Future<void> _performIndependentEchoTest({
 /// Handles echo functionality for a stream
 Future<void> _handleEchoStream(P2PStream stream) async {
   try {
-    final data = await stream.read().timeout(const Duration(seconds: 5));
+    final data = await stream.rawRead().timeout(const Duration(seconds: 5));
     print('Server echoing ${data.length} bytes on stream ${stream.id()}');
-    await stream.write(data);
+    await stream.rawWrite(data);
   } catch (e) {
     print('Error in echo handler for stream ${stream.id()}: $e');
     rethrow;

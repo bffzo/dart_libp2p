@@ -53,7 +53,7 @@ class PingService {
       while (!stream.isClosed) {
         try {
           // Read ping data from remote with timeout
-          final pingData = await stream.read(PingConstants.pingSize);
+          final pingData = await stream.rawRead(PingConstants.pingSize);
 
           // Check for EOF (empty data means stream closed)
           if (pingData.isEmpty) {
@@ -76,7 +76,7 @@ class PingService {
           );
 
           // Echo the data back (pong)
-          await stream.write(pingData);
+          await stream.rawWrite(pingData);
           _logger.finest(
             'Ping handler sent ${pingData.length} bytes back to peer $peerId',
           );
@@ -205,9 +205,9 @@ Future<PingResult> _ping(P2PStream stream, Random randomReader) async {
     }
 
     final before = DateTime.now();
-    await stream.write(buffer);
+    await stream.rawWrite(buffer);
 
-    final responseBuffer = await stream.read(PingConstants.pingSize);
+    final responseBuffer = await stream.rawRead(PingConstants.pingSize);
 
     if (!_bytesEqual(buffer, responseBuffer)) {
       return PingResult(error: 'ping packet was incorrect');

@@ -249,12 +249,12 @@ void main() {
         final pingData =
             Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)));
 
-        await clientStream.write(pingData);
+        await clientStream.rawWrite(pingData);
 
         final receivedOnServer = await serverStream.read();
         expect(receivedOnServer, orderedEquals(pingData));
 
-        await serverStream.write(receivedOnServer);
+        await serverStream.rawWrite(receivedOnServer);
 
         final echoedToClient = await clientStream.read();
         expect(echoedToClient, orderedEquals(pingData));
@@ -466,7 +466,7 @@ void main() {
           'Client sending ping data (${pingData.length} bytes) on stream ${clientStream.id()} (Real Managers Test)',
         );
 
-        await clientStream.write(pingData);
+        await clientStream.rawWrite(pingData);
         print('Client ping data sent. (Real Managers Test)');
 
         final receivedOnServer = await serverStream.read();
@@ -478,7 +478,7 @@ void main() {
         print(
           'Server echoing data back on stream ${serverStream.id()} (Real Managers Test)',
         );
-        await serverStream.write(receivedOnServer);
+        await serverStream.rawWrite(receivedOnServer);
         print('Server data echoed. (Real Managers Test)');
 
         final echoedToClient = await clientStream.read();
@@ -693,10 +693,10 @@ void main() {
           'Client sending ping data (${pingData.length} bytes) on stream ${clientStream.id()}',
         );
 
-        await clientStream.write(pingData);
+        await clientStream.rawWrite(pingData);
         print('Client ping data sent.');
 
-        final echoedToClient = await clientStream.read();
+        final echoedToClient = await clientStream.rawRead();
         print(
           'Client received echoed data (${echoedToClient.length} bytes) on stream ${clientStream.id()}',
         );
@@ -721,9 +721,9 @@ Future<void> _handleServerPingStream(
     'Server received stream for ping: ${stream.id()} from ${stream.conn.remotePeer}',
   );
   try {
-    final data = await stream.read();
+    final data = await stream.rawRead();
     print('Server read ${data.length} bytes from stream ${stream.id()}');
-    await stream.write(data);
+    await stream.rawWrite(data);
     print('Server echoed ${data.length} bytes to stream ${stream.id()}');
   } catch (e) {
     print('Server ping handler error: $e');

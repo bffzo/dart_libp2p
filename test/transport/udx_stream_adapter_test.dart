@@ -110,10 +110,10 @@ void main() {
     test(
       'read() throws TimeoutException if no data arrives',
       () async {
-        final readFuture = adapter.read();
+        final readFuture = adapter.rawRead();
 
         expect(
-          () async => readFuture,
+          () => readFuture,
           throwsA(isA<TimeoutException>()),
         );
       },
@@ -128,7 +128,7 @@ void main() {
       final testData = Uint8List.fromList([7, 8, 9]);
       when(mockUdxStream.add(any)).thenAnswer((_) async {});
 
-      await adapter.write(testData);
+      await adapter.rawWrite(testData);
 
       verify(mockUdxStream.add(testData)).called(1);
       verify(mockParentConn.notifyActivity()).called(1);

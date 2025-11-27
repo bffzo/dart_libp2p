@@ -16,7 +16,7 @@ import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
 
 /// SwarmStream is a stream over a SwarmConn.
-class SwarmStream implements P2PStream {
+class SwarmStream extends P2PStream {
   /// Creates a new SwarmStream
   SwarmStream({
     required String id,
@@ -98,19 +98,19 @@ class SwarmStream implements P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isClosed) {
       throw Exception('Stream $_id is closed');
     }
-    return _underlyingMuxedStream.read(maxLength);
+    return _underlyingMuxedStream.rawRead(maxLength);
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isClosed) {
       throw Exception('Stream $_id is closed');
     }
-    return _underlyingMuxedStream.write(data);
+    return _underlyingMuxedStream.rawWrite(data);
   }
 
   @override
@@ -121,6 +121,7 @@ class SwarmStream implements P2PStream {
   Future<void> close() async {
     await _closedLock.synchronized(() async {
       if (_isClosed) return;
+      await super.close();
       _isClosed = true;
       _logger.fine('Closing stream $_id');
 

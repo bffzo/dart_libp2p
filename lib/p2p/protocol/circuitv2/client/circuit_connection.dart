@@ -33,7 +33,7 @@ class CircuitConnection implements TransportConn {
     _manager.registerConnection(this);
 
     // Monitor stream for closure
-    _stream.incoming.read().then((data) {
+    _stream.incoming.rawRead().then((data) {
       // Handle incoming data
       _manager.recordActivity(this);
     }).catchError(_handleError);
@@ -183,7 +183,7 @@ class CircuitConnection implements TransportConn {
     }
 
     try {
-      final data = await _stream.read();
+      final data = await _stream.rawRead();
 
       if (length != null && data.length < length) {
         throw Exception('not enough data');
@@ -204,7 +204,7 @@ class CircuitConnection implements TransportConn {
     }
 
     try {
-      await _stream.write(data);
+      await _stream.rawWrite(data);
       _manager.recordActivity(this);
     } catch (e) {
       _handleError(e);

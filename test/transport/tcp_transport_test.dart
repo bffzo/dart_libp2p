@@ -290,7 +290,7 @@ void main() {
         try {
           final dataToSend =
               Uint8List.fromList(List.generate(20, (i) => i % 256));
-          await clientStream.write(dataToSend);
+          await clientStream.rawWrite(dataToSend);
 
           final receivedDataBuffer = BytesBuilder();
           var totalBytesRead = 0;
@@ -352,7 +352,7 @@ void main() {
         try {
           final dataToSend =
               Uint8List.fromList(List.generate(1000, (i) => i % 256));
-          await clientStream.write(dataToSend);
+          await clientStream.rawWrite(dataToSend);
 
           final receivedDataBuffer = BytesBuilder();
           var totalBytesRead = 0;

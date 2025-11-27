@@ -27,7 +27,7 @@ import 'package:dart_libp2p/p2p/transport/multiplexing/multiplexer.dart'
 import 'package:dart_libp2p/p2p/transport/upgrader.dart'; // For Upgrader interface
 
 // --- Helper: NegotiationStreamWrapper ---
-class NegotiationStreamWrapper implements P2PStream {
+class NegotiationStreamWrapper extends P2PStream {
   NegotiationStreamWrapper(this._conn, [this._protocolId = 'negotiator']);
   final TransportConn _conn;
   final String _protocolId;
@@ -42,7 +42,7 @@ class NegotiationStreamWrapper implements P2PStream {
   bool get isWritable => !_conn.isClosed;
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (maxLength == null || maxLength == 0) {
       return _conn.read();
     }
@@ -57,7 +57,7 @@ class NegotiationStreamWrapper implements P2PStream {
   Future<void> reset() => _conn.close();
 
   @override
-  Future<void> write(Uint8List data) => _conn.write(data);
+  Future<void> rawWrite(Uint8List data) => _conn.write(data);
 
   @override
   String id() => _conn.id;

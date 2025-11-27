@@ -437,7 +437,7 @@ void main() {
         // Let's ensure client reads something to clear the pipe.
         try {
           final clientResponseData =
-              await clientIdentifyStream.read(8192); // Added maxLength
+              await clientIdentifyStream.rawRead(8192); // Added maxLength
           testLog.info(
             r'Client read ${clientResponseData.length} bytes of server initial identify response.',
           );
@@ -449,7 +449,7 @@ void main() {
         // Ensure server also reads client's initial message
         try {
           final serverResponseData =
-              await serverIdentifyStream.read(8192); // Added maxLength
+              await serverIdentifyStream.rawRead(8192); // Added maxLength
           testLog.info(
             r'Server read ${serverResponseData.length} bytes of client initial identify message.',
           );
@@ -542,7 +542,7 @@ void main() {
           // In our case, the server's IdentifyService doesn't explicitly wait for a response on a push stream it initiated.
           // The client's handlePush sends a response. Let's try to read it on the serverPushStream.
           final clientResponseBytes = await serverPushStream
-              .read(8192); // Added maxLength. This is where it might fail
+              .rawRead(8192); // Added maxLength. This is where it might fail
           testLog.info(
             r'Server successfully read ${clientResponseBytes.length} bytes of client response on push stream.',
           );

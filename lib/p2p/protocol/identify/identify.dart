@@ -1035,7 +1035,7 @@ class IdentifyService implements IDService {
       _log.finer(
         'IdentifyService._writeChunkedIdentifyMsg: Sending as single message (size ${msgBytes.length} <= $legacyIDSize or no signed record).',
       );
-      await stream.write(msgBytes);
+      await stream.rawWrite(msgBytes);
       _log.fine(
         'IdentifyService._writeChunkedIdentifyMsg: Single message sent to ${stream.conn.remotePeer}.',
       );
@@ -1051,7 +1051,7 @@ class IdentifyService implements IDService {
     _log.finer(
       'IdentifyService._writeChunkedIdentifyMsg: Writing first chunk (${firstChunkBytes.length} bytes, without signed record) to ${stream.conn.remotePeer}.',
     );
-    await stream.write(firstChunkBytes);
+    await stream.rawWrite(firstChunkBytes);
     _log.fine(
       'IdentifyService._writeChunkedIdentifyMsg: First chunk sent to ${stream.conn.remotePeer}.',
     );
@@ -1061,7 +1061,7 @@ class IdentifyService implements IDService {
     _log.finer(
       'IdentifyService._writeChunkedIdentifyMsg: Writing second chunk (${secondChunkBytes.length} bytes, only signed record) to ${stream.conn.remotePeer}.',
     );
-    await stream.write(secondChunkBytes);
+    await stream.rawWrite(secondChunkBytes);
     _log.fine(
       'IdentifyService._writeChunkedIdentifyMsg: Second chunk (signed record) sent to ${stream.conn.remotePeer}.',
     );
@@ -1167,7 +1167,7 @@ class IdentifyService implements IDService {
       final chunkStart = DateTime.now();
 
       try {
-        final data = await stream.read();
+        final data = await stream.rawRead();
         final chunkReadTime = DateTime.now().difference(chunkStart);
 
         if (data.isEmpty) {

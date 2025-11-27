@@ -286,21 +286,21 @@ void main() {
         print(
           'Client sending ping data (${pingData.length} bytes) over P2PStream ${clientP2PStream.id()}',
         );
-        await clientP2PStream.write(pingData);
+        await clientP2PStream.rawWrite(pingData);
         print('Client ping data sent.');
 
         final receivedOnServer =
-            await serverP2PStream.read().timeout(const Duration(seconds: 5));
+            await serverP2PStream.rawRead().timeout(const Duration(seconds: 5));
         print(
           'Server received ${receivedOnServer.length} bytes data over P2PStream ${serverP2PStream.id()}',
         );
         expect(receivedOnServer, orderedEquals(pingData));
 
-        await serverP2PStream.write(receivedOnServer);
+        await serverP2PStream.rawWrite(receivedOnServer);
         print('Server echoed data over P2PStream ${serverP2PStream.id()}');
 
         final echoedToClient =
-            await clientP2PStream.read().timeout(const Duration(seconds: 5));
+            await clientP2PStream.rawRead().timeout(const Duration(seconds: 5));
         print(
           'Client received ${echoedToClient.length} echoed data over P2PStream ${clientP2PStream.id()}',
         );

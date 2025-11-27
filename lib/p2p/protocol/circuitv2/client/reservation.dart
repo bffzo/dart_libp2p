@@ -30,7 +30,7 @@ Stream<Uint8List> _p2pStreamToDartStream(P2PStream p2pStream) {
         // Checking p2pStream.isClosed here might lead to race conditions
         // if the stream closes between the check and the read() call.
         print('[Client] Reading chunk from P2PStream...');
-        final data = await p2pStream.read();
+        final data = await p2pStream.rawRead();
         print('[Client] Read ${data.length} bytes, adding to controller...');
         // Assuming read() throws an exception (e.g., StateError or custom) when closed or EOF.
         // If read() could return an empty list to signify EOF before closing, that would need handling.

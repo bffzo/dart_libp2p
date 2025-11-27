@@ -122,7 +122,7 @@ void main() {
         // Track reads: first return data, then return empty to signal EOF
         var srcReadCount = 0;
         final testData = Uint8List.fromList([1, 2, 3, 4, 5]);
-        when(srcStream.read()).thenAnswer((_) async {
+        when(srcStream.rawRead()).thenAnswer((_) async {
           if (srcReadCount == 0) {
             srcReadCount++;
             return testData;
@@ -138,7 +138,7 @@ void main() {
         });
 
         // Destination reads return empty immediately (no reverse data)
-        when(dstStream.read()).thenAnswer((_) async => Uint8List(0));
+        when(dstStream.rawRead()).thenAnswer((_) async => Uint8List(0));
 
         // Mock close behavior
         when(srcStream.close()).thenAnswer((_) async {});
@@ -170,7 +170,7 @@ void main() {
         final dstStream = MockP2PStream();
 
         // Source reads return empty immediately (no forward data)
-        when(srcStream.read()).thenAnswer((_) async => Uint8List(0));
+        when(srcStream.rawRead()).thenAnswer((_) async => Uint8List(0));
 
         // Track source writes
         final srcWrites = <Uint8List>[];
@@ -182,7 +182,7 @@ void main() {
         // Track destination reads: first return data, then return empty
         var dstReadCount = 0;
         final testData = Uint8List.fromList([5, 4, 3, 2, 1]);
-        when(dstStream.read()).thenAnswer((_) async {
+        when(dstStream.rawRead()).thenAnswer((_) async {
           if (dstReadCount == 0) {
             dstReadCount++;
             return testData;
@@ -220,8 +220,8 @@ void main() {
         final dstStream = MockP2PStream();
 
         // Mock source stream to throw error
-        when(srcStream.read()).thenThrow(Exception('Stream error'));
-        when(dstStream.read()).thenAnswer((_) async => Uint8List(0));
+        when(srcStream.rawRead()).thenThrow(Exception('Stream error'));
+        when(dstStream.rawRead()).thenAnswer((_) async => Uint8List(0));
 
         // Mock close behavior
         when(srcStream.close()).thenAnswer((_) async {});

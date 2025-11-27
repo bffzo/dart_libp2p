@@ -147,11 +147,11 @@ void main() {
           'Server Host: Received stream for protocol ${stream.protocol} from $remotePeer',
         );
         try {
-          final data = await stream.read();
+          final data = await stream.rawRead();
           print(
             'Server Host: Read ${data.length} bytes from $remotePeer, echoing back.',
           );
-          await stream.write(data);
+          await stream.rawWrite(data);
           await stream.closeWrite(); // Close write side after echoing
           print('Server Host: Echo sent to $remotePeer, stream write closed.');
         } catch (e, s) {
@@ -215,7 +215,7 @@ void main() {
         print(
           'Test: Client writing ${pingData.length} bytes to stream ${stream.id()}',
         );
-        await stream.write(pingData);
+        await stream.rawWrite(pingData);
         print(
           'Test: Client data written. Closing write side of client stream.',
         );
@@ -223,7 +223,7 @@ void main() {
             .closeWrite(); // Important to signal end of writing to the server
 
         print('Test: Client reading echoed data from stream ${stream.id()}');
-        final echoedData = await stream.read();
+        final echoedData = await stream.rawRead();
         print('Test: Client received ${echoedData.length} bytes.');
 
         expect(echoedData, orderedEquals(pingData));

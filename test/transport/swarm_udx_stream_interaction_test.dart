@@ -76,7 +76,7 @@ class StreamEOFUtils {
     String context = 'unknown',
   }) async {
     try {
-      final data = await stream.read().timeout(timeout);
+      final data = await stream.rawRead().timeout(timeout);
 
       if (isEOF(data, null)) {
         print('[$context] EOF detected: empty data received');
@@ -307,13 +307,13 @@ void main() {
 
       try {
         final serverLogic = () async {
-          final received = await serverStream.read();
+          final received = await serverStream.rawRead();
           expect(received, equals(testData));
-          await serverStream.write(received);
+          await serverStream.rawWrite(received);
         }();
 
-        await clientStream.write(testData);
-        final echoed = await clientStream.read();
+        await clientStream.rawWrite(testData);
+        final echoed = await clientStream.rawRead();
         expect(echoed, equals(testData));
 
         await serverLogic;
@@ -390,10 +390,10 @@ void main() {
 
           // Start server read in parallel
           final serverReadFuture =
-              serverP2PStream.read().timeout(const Duration(seconds: 10));
+              serverP2PStream.rawRead().timeout(const Duration(seconds: 10));
 
           // Send data from client
-          await clientP2PStream.write(pingData);
+          await clientP2PStream.rawWrite(pingData);
           print('Client ping data sent.');
 
           // Wait for server to receive
@@ -404,12 +404,12 @@ void main() {
           expect(receivedOnServer, orderedEquals(pingData));
 
           // Server echoes back
-          await serverP2PStream.write(receivedOnServer);
+          await serverP2PStream.rawWrite(receivedOnServer);
           print('Server echoed data over P2PStream ${serverP2PStream.id()}');
 
           // Client reads echo
           final echoedToClient =
-              await clientP2PStream.read().timeout(const Duration(seconds: 10));
+              await clientP2PStream.rawRead().timeout(const Duration(seconds: 10));
           print(
             'Client received ${echoedToClient.length} echoed data over P2PStream ${clientP2PStream.id()}',
           );
@@ -443,23 +443,23 @@ void main() {
         final serverReadFuture = () async {
           final receivedData = <int>[];
           while (receivedData.length < expectedData.length) {
-            final chunk = await serverStream.read();
+            final chunk = await serverStream.rawRead();
             if (chunk.isEmpty) break;
             receivedData.addAll(chunk);
           }
           expect(Uint8List.fromList(receivedData), equals(expectedData));
           // Send confirmation back to client
-          await serverStream.write(Uint8List.fromList([2]));
+          await serverStream.rawWrite(Uint8List.fromList([2]));
         }();
 
         for (final chunk in chunks) {
-          await clientStream.write(chunk);
+          await clientStream.rawWrite(chunk);
           await Future<void>.delayed(const Duration(milliseconds: 20));
         }
         await clientStream.closeWrite();
 
         // Wait for confirmation
-        final confirmation = await clientStream.read();
+        final confirmation = await clientStream.rawRead();
         expect(confirmation, equals(Uint8List.fromList([2])));
 
         await serverReadFuture.timeout(const Duration(seconds: 10));
@@ -478,7 +478,7 @@ void main() {
       try {
         final serverReadFuture = () async {
           try {
-            await serverStream.read();
+            await serverStream.rawRead();
             fail('Read should not succeed after a reset.');
           } catch (e) {
             expect(e, isA<Exception>());
@@ -666,7 +666,7 @@ void main() {
         // Client sends data then closes write
         await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending ${testData.length} bytes');
-        await clientStream.write(testData);
+        await clientStream.rawWrite(testData);
 
         print('[Client] Calling closeWrite() - this should send FIN');
         await clientStream.closeWrite();
@@ -752,7 +752,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
         for (var i = 0; i < chunks.length; i++) {
           print('[Client] Sending chunk ${i + 1}: ${chunks[i].length} bytes');
-          await clientStream.write(chunks[i]);
+          await clientStream.rawWrite(chunks[i]);
           await Future<void>.delayed(
             const Duration(milliseconds: 100),
           ); // Simulate network delay
@@ -804,17 +804,17 @@ void main() {
           print('[Server] Successfully read protocol message');
 
           // Send acknowledgment
-          await serverStream.write(Uint8List.fromList('ACK'.codeUnits));
+          await serverStream.rawWrite(Uint8List.fromList('ACK'.codeUnits));
         }();
 
         // Client sends the protocol packet in two parts to ensure proper protocol parsing
         await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending length prefix: 4 bytes');
-        await clientStream.write(lengthPrefix.buffer.asUint8List());
+        await clientStream.rawWrite(lengthPrefix.buffer.asUint8List());
 
         await Future<void>.delayed(const Duration(milliseconds: 50));
         print('[Client] Sending message data: ${message.length} bytes');
-        await clientStream.write(message);
+        await clientStream.rawWrite(message);
 
         await serverReadFuture.timeout(const Duration(seconds: 10));
 
@@ -850,7 +850,7 @@ void main() {
           expect(receivedFromClient, equals(clientMessage));
 
           print('[Server] Sending response to client...');
-          await serverStream.write(serverMessage);
+          await serverStream.rawWrite(serverMessage);
 
           print('[Server] Closing write side...');
           await serverStream.closeWrite();
@@ -858,7 +858,7 @@ void main() {
 
         final clientLogic = () async {
           print('[Client] Sending message to server...');
-          await clientStream.write(clientMessage);
+          await clientStream.rawWrite(clientMessage);
 
           print('[Client] Reading server response...');
           final receivedFromServer =
@@ -915,7 +915,7 @@ void main() {
 
         await Future<void>.delayed(const Duration(milliseconds: 100));
         print('[Client] Sending data after timeout test...');
-        await clientStream.write(testData);
+        await clientStream.rawWrite(testData);
 
         await serverReadFuture.timeout(const Duration(seconds: 10));
         print(

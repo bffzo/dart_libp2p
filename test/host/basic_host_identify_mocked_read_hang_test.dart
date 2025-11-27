@@ -147,7 +147,7 @@ class MockConnStats implements ConnStats {
   Stats stats = MockStats();
 }
 
-class MockP2PStream implements P2PStream {
+class MockP2PStream extends P2PStream {
   final String _id =
       'mock-stream-${DateTime.now().millisecondsSinceEpoch}-${_streamIdCounter++}';
   static int _streamIdCounter = 0;
@@ -240,7 +240,7 @@ class MockP2PStream implements P2PStream {
   }
 
   @override
-  Future<void> write(Uint8List data) async {
+  Future<void> rawWrite(Uint8List data) async {
     if (_isStreamClosed || _writeClosed) {
       throw Exception('Stream closed or write-closed');
     }
@@ -248,7 +248,7 @@ class MockP2PStream implements P2PStream {
   }
 
   @override
-  Future<Uint8List> read([int? maxLength]) async {
+  Future<Uint8List> rawRead([int? maxLength]) async {
     if (_isStreamClosed || _readClosed) {
       throw Exception('Stream closed or read-closed');
     }

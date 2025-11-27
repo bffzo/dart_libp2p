@@ -270,10 +270,10 @@ class HolePuncher {
 
       // Serialize and write the message
       final msgBytes = msg.writeToBuffer();
-      await str.write(Uint8List.fromList(msgBytes));
+      await str.rawWrite(Uint8List.fromList(msgBytes));
 
       // Wait for a CONNECT message from the remote peer
-      final responseBytes = await str.read();
+      final responseBytes = await str.rawRead();
       final response = HolePunch.fromBuffer(responseBytes);
       final rtt = DateTime.now().difference(start).inMilliseconds;
 
@@ -293,7 +293,7 @@ class HolePuncher {
       final syncMsg = HolePunch()..type = HolePunch_Type.SYNC;
       // Serialize and write the sync message
       final syncMsgBytes = syncMsg.writeToBuffer();
-      await str.write(Uint8List.fromList(syncMsgBytes));
+      await str.rawWrite(Uint8List.fromList(syncMsgBytes));
 
       return HolePunchResult(addrs, obsAddrs, rtt);
     } finally {

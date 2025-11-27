@@ -211,7 +211,7 @@ class MockEventBus extends _i1.Mock implements _i7.EventBus {
   }) =>
       (super.noSuchMethod(
         Invocation.method(#subscribe, [eventType], {#opts: opts}),
-        returnValue: _FakeSubscription_7<dynamic>(
+        returnValue: _FakeSubscription_7<Object>(
           this,
           Invocation.method(#subscribe, [eventType], {#opts: opts}),
         ),

@@ -15,7 +15,7 @@ class EchoServer {
   Future<void> _handleEchoRequest(P2PStream stream, PeerId remotePeer) async {
     try {
       // Read the message from the stream
-      final data = await stream.read();
+      final data = await stream.rawRead();
       if (data.isNotEmpty) {
         final message = utf8.decode(data).trim();
         // Display the received message (echo it back to console)

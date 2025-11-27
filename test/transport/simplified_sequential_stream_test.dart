@@ -249,7 +249,7 @@ void main() {
 
       testLog.info('Exchanging data on first stream...');
       final data1 = Uint8List.fromList(utf8.encode('hello from stream1'));
-      await clientStream1.write(data1);
+      await clientStream1.rawWrite(data1);
       // Attempting to satisfy linter: assume read(maxLength) -> List<int>
       final received1List = await serverStream1.read(data1.length);
       final received1 = Uint8List.fromList(received1List);
@@ -299,7 +299,7 @@ void main() {
       testLog.info('Attempting to write on second stream...');
       final data2 = Uint8List.fromList(utf8.encode('ping data on stream2'));
       try {
-        await clientStream2.write(data2);
+        await clientStream2.rawWrite(data2);
         testLog.info('Write on second stream successful.');
 
         // Attempting to satisfy linter: assume read(maxLength) -> List<int>
