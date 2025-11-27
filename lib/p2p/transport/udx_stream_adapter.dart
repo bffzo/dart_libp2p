@@ -325,7 +325,8 @@ class UDXP2PStreamAdapter extends P2PStream implements MuxedStream {
   @override
   Future<void> close() async {
     _logger.fine('[UDXP2PStreamAdapter ${id()}] close() called.');
-    return _close();
+    await super.close();
+    await _close();
   }
 
   @override

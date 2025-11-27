@@ -240,11 +240,9 @@ class Relay {
       await dstStream.rawWrite(messageBytes);
       print('[Relay] Message bytes written, flushing stream...');
       // Flush the stream to ensure data is sent immediately
-      if (dstStream is Sink) {
-        // Most streams don't have a flush method, so we can't call it
-        // The write should already flush automatically
-      }
-      print(
+      // Most streams don't have a flush method, so we can't call it
+      // The write should already flush automatically
+          print(
         '[Relay] STOP message written successfully to destination peer: ${dstInfo.peerId.toBase58()}',
       );
 

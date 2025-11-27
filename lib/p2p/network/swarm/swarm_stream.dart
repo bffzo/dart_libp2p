@@ -124,6 +124,8 @@ class SwarmStream extends P2PStream {
       _isClosed = true;
       _logger.fine('Closing stream $_id');
 
+      await super.close();
+
       try {
         await _underlyingMuxedStream.close();
       } catch (e, s) {

@@ -160,7 +160,8 @@ Future<void> main(List<String> arguments) async {
         '[$currentHostLogId] Received ping from $remotePeerLogId on stream ${stream.id()} for protocol ${stream.protocol()}',
       );
       try {
-        final data = await stream.rawRead().timeout(const Duration(seconds: 10));
+        final data =
+            await stream.rawRead().timeout(const Duration(seconds: 10));
         print(
           '[$currentHostLogId] Ping data received (${data.length} bytes) from $remotePeerLogId.',
         );

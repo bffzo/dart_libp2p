@@ -639,8 +639,9 @@ void main() {
               // Simple echo handler - read data and echo it back
               try {
                 while (!stream.isClosed) {
-                  final data =
-                      await stream.rawRead().timeout(const Duration(seconds: 10));
+                  final data = await stream
+                      .rawRead()
+                      .timeout(const Duration(seconds: 10));
                   if (data.isEmpty) break;
 
                   print('   Server echoing ${data.length} bytes');

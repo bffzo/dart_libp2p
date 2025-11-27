@@ -78,6 +78,7 @@ class TimeoutMockStream extends P2PStream {
   @override
   Future<void> close() async {
     _isClosed = true;
+    await super.close();
     await _controller.close();
   }
 

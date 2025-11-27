@@ -220,6 +220,7 @@ class MockP2PStream extends P2PStream {
       _remoteCloseCompleter.complete();
     }
     await _incomingSubscription?.cancel();
+    await super.close();
     _incomingSubscription = null;
     if (!_outgoingDataController.isClosed) {
       await _outgoingDataController.close();

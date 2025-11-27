@@ -207,6 +207,7 @@ class MockMuxedStream extends P2PStream implements core_mux.MuxedStream {
   Future<void> close() async {
     if (!_isClosed) {
       _isClosed = true;
+      await super.close();
       _logger.fine('MockMuxedStream ${id()}: Closed');
     }
   }

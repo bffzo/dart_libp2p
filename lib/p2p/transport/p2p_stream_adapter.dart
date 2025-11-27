@@ -189,6 +189,7 @@ class P2PStreamAdapter extends P2PStream {
   @override
   Future<void> close() async {
     if (_isClosed) return;
+    await super.close();
     try {
       await _underlyingMuxedStream.close();
     } catch (e) {

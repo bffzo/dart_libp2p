@@ -223,6 +223,7 @@ class MockP2PStream extends P2PStream {
     _isStreamClosed = true;
     _writeClosed = true;
     _readClosed = true;
+    await super.close();
     if (_hangingReadCompleter?.isCompleted == false) {
       _hangingReadCompleter!
           .completeError(Exception('Stream closed while read was hanging'));

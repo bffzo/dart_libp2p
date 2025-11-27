@@ -364,6 +364,7 @@ class PingPongMockStream extends P2PStream {
   Future<void> close() async {
     if (!_closed) {
       _closed = true;
+      await super.close();
       _streamScope.done();
       // Potentially also close the underlying mock connection if this stream is the only one.
       // For this test, assuming stream close doesn't auto-close connection.

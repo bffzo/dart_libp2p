@@ -200,6 +200,7 @@ class MockP2PStream extends P2PStream {
   Future<void> close() async {
     if (!_localCloseCompleter.isCompleted) _localCloseCompleter.complete();
     if (!_remoteCloseCompleter.isCompleted) _remoteCloseCompleter.complete();
+    await super.close();
     await _incomingSubscription?.cancel();
     _incomingSubscription = null;
     if (!_outgoingDataController.isClosed) {

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dart_libp2p/core/network/common.dart';
 import 'package:dart_libp2p/core/network/conn.dart';
 import 'package:dart_libp2p/core/network/rcmgr.dart' show StreamManagementScope;
+import 'package:dart_libp2p/utils/varint.dart';
 
 /// Represents a bidirectional channel between two agents in
 /// a libp2p network. "agent" is as granular as desired, potentially
@@ -12,6 +13,120 @@ import 'package:dart_libp2p/core/network/rcmgr.dart' show StreamManagementScope;
 ///
 /// Streams are backed by a multiplexer underneath the hood.
 abstract class P2PStream implements Stream<int>, IOSink {
+  P2PStream() {
+    _inputController.stream.listen((chunk) async {
+      final writeFuture = rawWrite(chunk);
+      _pendingWrites.add(writeFuture);
+      await writeFuture.whenComplete(() => _pendingWrites.remove(writeFuture));
+    });
+  }
+
+  final _inputController = StreamController<Uint8List>();
+  var _leftover = Uint8List(0);
+  final List<Future<void>> _pendingWrites = [];
+
+  @override
+  void add(List<int> data) => _inputController.add(Uint8List.fromList(data));
+
+  @override
+  Stream<int> takeWhile(bool Function(int element) test) async* {
+    while (true) {
+      final value = await first;
+      if (test(value)) {
+        break;
+      }
+      yield value;
+    }
+  }
+
+  @override
+  Stream<int> take(int count) async* {
+    if (count <= 0) return;
+
+    var emitted = 0;
+
+    // First, use any bytes left over from the previous call.
+    if (_leftover.isNotEmpty) {
+      for (final byte in _leftover) {
+        if (emitted >= count) {
+          // Store the remaining part of the buffer for the next call.
+          final start = _leftover.indexOf(byte);
+          _leftover = Uint8List.fromList(_leftover.sublist(start));
+          break;
+        }
+        yield byte;
+        emitted++;
+      }
+      if (emitted >= count) {
+        // All requested items came from the leftover buffer.
+        _leftover = Uint8List(0);
+        return;
+      }
+      // Leftover buffer exhausted.
+      _leftover = Uint8List(0);
+    }
+
+    // Then keep reading from the underlying source until we have enough.
+    while (emitted < count) {
+      final buffer = await rawRead();
+
+      // End‑of‑stream signal.
+      if (buffer.isEmpty) break;
+
+      // If the buffer contains more bytes than we still need,
+      // emit what we need and keep the rest.
+      if (buffer.length > (count - emitted)) {
+        final needed = count - emitted;
+        for (var i = 0; i < needed; i++) {
+          yield buffer[i];
+          emitted++;
+        }
+        // Save the surplus for the next `take` call.
+        _leftover = Uint8List.fromList(buffer.sublist(needed));
+        break;
+      } else {
+        // Buffer fits entirely into the remaining quota.
+        for (final byte in buffer) {
+          yield byte;
+          emitted++;
+        }
+      }
+    }
+  }
+
+  Future<Uint8List> readBytes() async {
+    final count = await decodeVarintFromStream(this);
+    final data = await take(count).toList();
+    return Uint8List.fromList(data);
+  }
+
+  void writeBytes(List<int> data) {
+    sendVarint(data.length);
+    add(data);
+  }
+
+  void sendVarint(int count) {
+    add(encodeVarint(count));
+  }
+
+  @override
+  Future<void> close() async {
+    await _inputController.close();
+    await flush();
+  }
+
+  @override
+  Future<int> get first => take(1).first;
+
+  @override
+  Future<dynamic> flush() async {
+    while (_pendingWrites.isNotEmpty) {
+      // copying the current set to avoid a race
+      final current = List<Future<void>>.from(_pendingWrites);
+      await Future.wait(current);
+    }
+  }
+
   /// Returns an identifier that uniquely identifies this Stream within this
   /// host, during this run. Stream IDs may repeat across restarts.
   String id();
@@ -39,9 +154,6 @@ abstract class P2PStream implements Stream<int>, IOSink {
 
   /// Returns a Dart Stream of the incoming data
   P2PStream get incoming;
-
-  /// Closes the stream for both reading and writing
-  Future<void> close();
 
   /// Closes the stream for writing but leaves it open for reading
   Future<void> closeWrite();

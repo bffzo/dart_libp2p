@@ -408,8 +408,9 @@ void main() {
           print('Server echoed data over P2PStream ${serverP2PStream.id()}');
 
           // Client reads echo
-          final echoedToClient =
-              await clientP2PStream.rawRead().timeout(const Duration(seconds: 10));
+          final echoedToClient = await clientP2PStream
+              .rawRead()
+              .timeout(const Duration(seconds: 10));
           print(
             'Client received ${echoedToClient.length} echoed data over P2PStream ${clientP2PStream.id()}',
           );

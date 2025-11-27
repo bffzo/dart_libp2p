@@ -141,6 +141,7 @@ class HangingMockStream extends P2PStream {
   @override
   Future<void> close() async {
     _isClosed = true;
+    await super.close();
   }
 
   @override

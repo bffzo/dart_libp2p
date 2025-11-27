@@ -461,6 +461,7 @@ class YamuxStream extends P2PStream implements core_mux.MuxedStream {
       );
       return;
     }
+    await super.close();
 
     final previousState = _state;
     _state = YamuxStreamState.closed; // Immediately transition to closed

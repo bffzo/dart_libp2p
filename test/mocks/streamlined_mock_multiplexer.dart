@@ -306,6 +306,7 @@ class StreamlinedMockStream extends P2PStream implements core_mux.MuxedStream {
   Future<void> close() async {
     if (!_isClosed) {
       _isClosed = true;
+      await super.close();
       final age = DateTime.now().difference(_createdAt);
       _logger.fine(
         'StreamlinedMockStream ${id()}: Closed (age: $age, writes: ${_writeBuffer.length})',

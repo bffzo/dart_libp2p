@@ -33,7 +33,10 @@ class NegotiationStreamWrapper extends P2PStream {
   final String _protocolId;
 
   @override
-  Future<void> close() => _conn.close();
+  Future<void> close() async {
+    await super.close();
+    await _conn.close();
+  }
 
   @override
   bool get isClosed => _conn.isClosed;
